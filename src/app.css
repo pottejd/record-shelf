@@ -1,0 +1,101 @@
+:root {
+	--color-primary: #6366f1;
+	--color-primary-hover: #4f46e5;
+	--color-accent: #ec4899;
+	--color-bg: #fafafa;
+	--color-bg-secondary: #f0f0f0;
+	--color-bg-tertiary: #e5e5e5;
+	--color-bg-card: #ffffff;
+	--color-text: #1a1a1a;
+	--color-text-secondary: #525252;
+	--color-text-tertiary: #a3a3a3;
+	--color-border: #e5e5e5;
+	--color-border-light: #f5f5f5;
+
+	--gradient-primary: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
+	--gradient-warm: linear-gradient(135deg, #f97316, #eab308);
+	--gradient-cool: linear-gradient(135deg, #06b6d4, #3b82f6);
+
+	--font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
+		'Open Sans', 'Helvetica Neue', sans-serif;
+
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+	--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+	--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--color-primary: #818cf8;
+		--color-primary-hover: #a5b4fc;
+		--color-accent: #f472b6;
+		--color-bg: #0a0a0a;
+		--color-bg-secondary: #171717;
+		--color-bg-tertiary: #262626;
+		--color-bg-card: #171717;
+		--color-text: #fafafa;
+		--color-text-secondary: #a3a3a3;
+		--color-text-tertiary: #525252;
+		--color-border: #262626;
+		--color-border-light: #1f1f1f;
+
+		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+	}
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	font-family: var(--font-sans);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	scroll-behavior: smooth;
+}
+
+body {
+	margin: 0;
+	padding: 0;
+	background-color: var(--color-bg);
+	color: var(--color-text);
+	line-height: 1.6;
+}
+
+a {
+	color: var(--color-primary);
+	transition: color 0.2s;
+}
+
+a:hover {
+	color: var(--color-primary-hover);
+}
+
+img {
+	max-width: 100%;
+	height: auto;
+}
+
+h1, h2, h3, h4, h5, h6 {
+	line-height: 1.2;
+	color: var(--color-text);
+}
+
+::selection {
+	background: var(--color-primary);
+	color: white;
+}
+
+/* Smooth loading transition */
+@keyframes fadeIn {
+	from { opacity: 0; transform: translateY(8px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+.card {
+	animation: fadeIn 0.3s ease-out;
+}
