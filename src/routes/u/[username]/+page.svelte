@@ -21,6 +21,7 @@
 	import NewVsVintage from '$lib/components/NewVsVintage.svelte';
 	import CollectionQuiz from '$lib/components/CollectionQuiz.svelte';
 	import ShareableCard from '$lib/components/ShareableCard.svelte';
+	import CollectionBrowser from '$lib/components/CollectionBrowser.svelte';
 
 	export let data: PageData;
 
@@ -137,7 +138,7 @@
 		return shuffled;
 	}
 
-	$: randomHighlights = shuffleArray(collection.items).slice(0, 60);
+	$: randomHighlights = shuffleArray(collection.items).slice(0, 12);
 
 	// Calculate fun personality badges
 	interface Badge {
@@ -285,12 +286,6 @@
 		</section>
 	</div>
 
-	<section class="card">
-		<h2>Collection Highlights</h2>
-		<p class="section-subtitle">A random selection from your collection</p>
-		<CoverGrid items={randomHighlights} />
-	</section>
-
 	<div class="grid-2col">
 		<section class="card">
 			<h2>Top Artists</h2>
@@ -305,20 +300,34 @@
 
 	<div class="grid-2col">
 		<section class="card">
-			<h2>Collection DNA</h2>
-			<CollectionDNA {stats} />
+			<h2>Collection Highlights</h2>
+			<p class="section-subtitle">A random selection from your collection</p>
+			<CoverGrid items={randomHighlights} />
 		</section>
 
 		<section class="card">
-			<h2>Collecting Activity</h2>
-			<CollectingActivity items={collection.items} />
+			<h2>Collection DNA</h2>
+			<CollectionDNA {stats} />
 		</section>
 	</div>
 
 	<section class="card">
-		<h2>Milestones</h2>
-		<Milestones items={collection.items} />
+		<h2>Full Collection</h2>
+		<p class="section-subtitle">Browse, search, and filter the entire collection</p>
+		<CollectionBrowser items={collection.items} />
 	</section>
+
+	<div class="grid-2col">
+		<section class="card">
+			<h2>Collection Quiz</h2>
+			<CollectionQuiz items={collection.items} />
+		</section>
+
+		<section class="card">
+			<h2>Milestones</h2>
+			<Milestones items={collection.items} />
+		</section>
+	</div>
 
 	{#if stats.addedByMonth.length > 1}
 		<section class="card">
@@ -396,8 +405,8 @@
 		</section>
 
 		<section class="card">
-			<h2>Collection Quiz</h2>
-			<CollectionQuiz items={collection.items} />
+			<h2>Collecting Activity</h2>
+			<CollectingActivity items={collection.items} />
 		</section>
 	</div>
 
