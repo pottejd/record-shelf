@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto, afterNavigate } from '$app/navigation';
+	import SkeletonProfile from '$lib/components/SkeletonProfile.svelte';
 
 	let username = $state('');
 	let isLoading = $state(false);
@@ -30,6 +31,9 @@
 	/>
 </svelte:head>
 
+{#if isLoading}
+	<SkeletonProfile />
+{:else}
 <main class="home">
 	<a href="/settings" class="settings-link" aria-label="Settings">
 		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -136,6 +140,7 @@
 		<p>&copy; {new Date().getFullYear()} Record Shelf. Not affiliated with Discogs.</p>
 	</footer>
 </main>
+{/if}
 
 <style>
 	.home {

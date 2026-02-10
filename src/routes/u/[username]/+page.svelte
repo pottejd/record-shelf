@@ -26,6 +26,7 @@
 	import SectionNav from '$lib/components/SectionNav.svelte';
 	import ValueEstimate from '$lib/components/ValueEstimate.svelte';
 	import { invalidateAll } from '$app/navigation';
+	import { browser } from '$app/environment';
 
 	const navSections = [
 		{ id: 'overview', label: 'Overview' },
@@ -69,6 +70,50 @@
 	function closeDrawer() {
 		drawerOpen = false;
 	}
+
+	// Keyboard shortcuts: j/k = next/prev section, / = focus search, Escape = close drawer
+	$effect(() => {
+		if (!browser) return;
+		function handleKeydown(e: KeyboardEvent) {
+			const target = e.target as HTMLElement;
+			const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+			if (e.key === 'Escape' && drawerOpen) {
+				closeDrawer();
+				return;
+			}
+
+			if (isInput) return;
+
+			if (e.key === '/' || e.key === 's') {
+				e.preventDefault();
+				const searchInput = document.querySelector<HTMLInputElement>('#collection input[type="search"], #collection input[type="text"]');
+				if (searchInput) {
+					searchInput.focus();
+					searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				}
+				return;
+			}
+
+			if (e.key === 'j' || e.key === 'k') {
+				const sectionIds = navSections.map(s => s.id);
+				const current = sectionIds.findIndex(id => {
+					const el = document.getElementById(id);
+					if (!el) return false;
+					const rect = el.getBoundingClientRect();
+					return rect.top <= 100 && rect.bottom > 100;
+				});
+				const idx = current === -1 ? 0 : current;
+				const next = e.key === 'j'
+					? Math.min(idx + 1, sectionIds.length - 1)
+					: Math.max(idx - 1, 0);
+				const el = document.getElementById(sectionIds[next]);
+				if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		}
+		document.addEventListener('keydown', handleKeydown);
+		return () => document.removeEventListener('keydown', handleKeydown);
+	});
 
 	// Filter functions
 	function filterByDecade(label: string) {
@@ -292,8 +337,11 @@
 					<path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
 				</svg>
 			</button>
+			<a href="/u/{profile.username}/wantlist" class="discogs-link">
+				Wantlist
+			</a>
 			<a href="https://www.discogs.com/user/{profile.username}" target="_blank" rel="noopener" class="discogs-link">
-				View on Discogs
+				Discogs
 			</a>
 			<a href="/settings" class="settings-btn" aria-label="Settings">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

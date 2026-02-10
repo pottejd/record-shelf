@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import LazyImage from '../LazyImage.svelte';
 
 	let { item }: { item: DiscogsCollectionItem } = $props();
 
@@ -14,12 +15,12 @@
 	rel="noopener"
 	class="item-card"
 >
-	<img
-		src={item.basic_information.cover_image || item.basic_information.thumb || '/placeholder.svg'}
-		alt=""
-		loading="lazy"
-		class="item-cover"
-	/>
+	<div class="item-cover">
+		<LazyImage
+			src={item.basic_information.cover_image || item.basic_information.thumb || '/placeholder.svg'}
+			alt=""
+		/>
+	</div>
 	<div class="item-info">
 		<p class="item-title">{item.basic_information.title}</p>
 		<p class="item-artist">{getArtistName(item)}</p>
@@ -54,7 +55,6 @@
 	.item-cover {
 		width: 100%;
 		aspect-ratio: 1;
-		object-fit: cover;
 		background: var(--color-bg-tertiary);
 	}
 

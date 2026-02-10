@@ -126,6 +126,27 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 		const artists2 = new Set(collection2.items.flatMap(i => i.basic_information.artists.map(a => a.name)));
 		const sharedArtists = [...artists1].filter(a => artists2.has(a));
 
+		function computeGenreOverlap(g1: Map<string, number>, g2: Map<string, number>) {
+			const allGenres = new Set([...g1.keys(), ...g2.keys()]);
+			return [...allGenres].map(genre => ({
+				genre,
+				count1: g1.get(genre) || 0,
+				count2: g2.get(genre) || 0
+			})).sort((a, b) => (b.count1 + b.count2) - (a.count1 + a.count2)).slice(0, 10);
+		}
+
+		function computeDecades(items: DiscogsCollectionItem[]) {
+			const decades: Record<string, number> = {};
+			for (const item of items) {
+				const year = item.basic_information.year;
+				if (year > 0) {
+					const decade = `${Math.floor(year / 10) * 10}s`;
+					decades[decade] = (decades[decade] || 0) + 1;
+				}
+			}
+			return decades;
+		}
+
 		return {
 			user1: {
 				profile: collection1.profile,
@@ -146,7 +167,11 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 				sharedArtistsCount: sharedArtists.length,
 				sharedArtists: sharedArtists.slice(0, 10),
 				genres1: Object.fromEntries(genres1),
-				genres2: Object.fromEntries(genres2)
+				genres2: Object.fromEntries(genres2),
+				sharedGenres: [...genres1.keys()].filter(g => genres2.has(g)),
+				genreOverlap: computeGenreOverlap(genres1, genres2),
+				decades1: computeDecades(collection1.items),
+				decades2: computeDecades(collection2.items)
 			}
 		};
 	} catch (e) {

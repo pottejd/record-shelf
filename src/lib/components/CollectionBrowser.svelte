@@ -1,5 +1,8 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import { page as pageStore } from '$app/stores';
+	import { goto } from '$app/navigation';
+	import { browser } from '$app/environment';
 	import SearchBar from './browser/SearchBar.svelte';
 	import FilterControls from './browser/FilterControls.svelte';
 	import SortToolbar from './browser/SortToolbar.svelte';
@@ -8,16 +11,45 @@
 
 	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
-	let searchQuery = $state('');
-	let debouncedQuery = $state('');
-	let selectedGenre = $state('');
-	let selectedFormat = $state('');
-	let selectedDecade = $state('');
-	let sortBy: 'added' | 'artist' | 'title' | 'year' = $state('added');
-	let sortOrder: 'asc' | 'desc' = $state('desc');
+	// Read initial state from URL params
+	function getInitialParam(key: string, fallback: string): string {
+		if (!browser) return fallback;
+		return new URLSearchParams(window.location.search).get(key) || fallback;
+	}
+
+	let searchQuery = $state(getInitialParam('search', ''));
+	let debouncedQuery = $state(getInitialParam('search', ''));
+	let selectedGenre = $state(getInitialParam('genre', ''));
+	let selectedFormat = $state(getInitialParam('format', ''));
+	let selectedDecade = $state(getInitialParam('decade', ''));
+	let sortBy: 'added' | 'artist' | 'title' | 'year' = $state(
+		(getInitialParam('sort', 'added') as 'added' | 'artist' | 'title' | 'year')
+	);
+	let sortOrder: 'asc' | 'desc' = $state(
+		(getInitialParam('order', 'desc') as 'asc' | 'desc')
+	);
 	let showFilters = $state(false);
-	let page = $state(1);
+	let page = $state(parseInt(getInitialParam('page', '1'), 10) || 1);
 	const perPage = 18;
+
+	// Sync filter state to URL params
+	$effect(() => {
+		if (!browser) return;
+		const params = new URLSearchParams();
+		if (debouncedQuery) params.set('search', debouncedQuery);
+		if (selectedGenre) params.set('genre', selectedGenre);
+		if (selectedFormat) params.set('format', selectedFormat);
+		if (selectedDecade) params.set('decade', selectedDecade);
+		if (sortBy !== 'added') params.set('sort', sortBy);
+		if (sortOrder !== 'desc') params.set('order', sortOrder);
+		if (page > 1) params.set('page', String(page));
+
+		const search = params.toString();
+		const newUrl = search ? `${window.location.pathname}?${search}` : window.location.pathname;
+		if (newUrl !== `${window.location.pathname}${window.location.search}`) {
+			window.history.replaceState({}, '', newUrl);
+		}
+	});
 
 	// Debounce search input
 	$effect(() => {

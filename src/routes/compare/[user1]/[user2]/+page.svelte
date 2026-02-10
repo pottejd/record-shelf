@@ -64,6 +64,10 @@
 			<span class="stat-value">{comparison.sharedArtistsCount}</span>
 			<span class="stat-label">Shared artists</span>
 		</div>
+		<div class="stat-card">
+			<span class="stat-value">{comparison.sharedGenres.length}</span>
+			<span class="stat-label">Shared genres</span>
+		</div>
 	</section>
 
 	{#if comparison.sharedArtists.length > 0}
@@ -76,6 +80,59 @@
 				{#if comparison.sharedArtistsCount > 10}
 					<span class="more-tag">+{comparison.sharedArtistsCount - 10} more</span>
 				{/if}
+			</div>
+		</section>
+	{/if}
+
+	{#if comparison.genreOverlap?.length > 0}
+		<section class="card">
+			<h2>Genre Comparison</h2>
+			<div class="genre-bars">
+				{#each comparison.genreOverlap as g}
+					{@const max = Math.max(g.count1, g.count2, 1)}
+					<div class="genre-row">
+						<div class="genre-bar-left">
+							<div class="bar bar-1" style="width: {(g.count1 / max) * 100}%">
+								{#if g.count1 > 0}<span class="bar-label">{g.count1}</span>{/if}
+							</div>
+						</div>
+						<span class="genre-name">{g.genre}</span>
+						<div class="genre-bar-right">
+							<div class="bar bar-2" style="width: {(g.count2 / max) * 100}%">
+								{#if g.count2 > 0}<span class="bar-label">{g.count2}</span>{/if}
+							</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+			<div class="genre-legend">
+				<span class="legend-item"><span class="legend-dot dot-1"></span>{user1.profile.username}</span>
+				<span class="legend-item"><span class="legend-dot dot-2"></span>{user2.profile.username}</span>
+			</div>
+		</section>
+	{/if}
+
+	{#if comparison.decades1 && comparison.decades2}
+		{@const allDecades = [...new Set([...Object.keys(comparison.decades1), ...Object.keys(comparison.decades2)])].sort()}
+		<section class="card">
+			<h2>Decade Comparison</h2>
+			<div class="decade-chart">
+				{#each allDecades as decade}
+					{@const v1 = comparison.decades1[decade] || 0}
+					{@const v2 = comparison.decades2[decade] || 0}
+					{@const max = Math.max(v1, v2, 1)}
+					<div class="decade-col">
+						<div class="decade-bars">
+							<div class="decade-bar bar-1" style="height: {(v1 / max) * 100}%"
+								title="{user1.profile.username}: {v1}">
+							</div>
+							<div class="decade-bar bar-2" style="height: {(v2 / max) * 100}%"
+								title="{user2.profile.username}: {v2}">
+							</div>
+						</div>
+						<span class="decade-label">{decade}</span>
+					</div>
+				{/each}
 			</div>
 		</section>
 	{/if}
@@ -286,6 +343,127 @@
 		border-radius: 20px;
 		font-size: 0.875rem;
 		color: var(--color-text-tertiary);
+	}
+
+	.genre-bars {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.genre-row {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.genre-bar-left {
+		display: flex;
+		justify-content: flex-end;
+	}
+
+	.genre-bar-right {
+		display: flex;
+		justify-content: flex-start;
+	}
+
+	.bar {
+		height: 24px;
+		border-radius: 4px;
+		display: flex;
+		align-items: center;
+		min-width: 2px;
+		transition: width 0.3s ease;
+	}
+
+	.bar-1 {
+		background: linear-gradient(135deg, #6366f1, #8b5cf6);
+		justify-content: flex-start;
+		padding-left: 6px;
+	}
+
+	.bar-2 {
+		background: linear-gradient(135deg, #ec4899, #f43f5e);
+		justify-content: flex-end;
+		padding-right: 6px;
+	}
+
+	.bar-label {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		color: white;
+	}
+
+	.genre-name {
+		font-size: 0.75rem;
+		font-weight: 500;
+		text-align: center;
+		min-width: 80px;
+		color: var(--color-text-secondary);
+	}
+
+	.genre-legend {
+		display: flex;
+		justify-content: center;
+		gap: 1.5rem;
+		margin-top: 1rem;
+		font-size: 0.8125rem;
+		color: var(--color-text-secondary);
+	}
+
+	.legend-item {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+	}
+
+	.legend-dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+	}
+
+	.dot-1 { background: #6366f1; }
+	.dot-2 { background: #ec4899; }
+
+	.decade-chart {
+		display: flex;
+		justify-content: center;
+		gap: 0.5rem;
+		align-items: flex-end;
+		height: 180px;
+		padding: 1rem 0;
+	}
+
+	.decade-col {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.5rem;
+		flex: 1;
+		max-width: 60px;
+	}
+
+	.decade-bars {
+		display: flex;
+		gap: 2px;
+		align-items: flex-end;
+		height: 150px;
+		width: 100%;
+	}
+
+	.decade-bar {
+		flex: 1;
+		border-radius: 3px 3px 0 0;
+		min-height: 2px;
+		transition: height 0.3s ease;
+	}
+
+	.decade-label {
+		font-size: 0.625rem;
+		color: var(--color-text-tertiary);
+		white-space: nowrap;
 	}
 
 	.no-data {

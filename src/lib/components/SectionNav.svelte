@@ -8,6 +8,15 @@
 
 	let { sections }: { sections: Section[] } = $props();
 	let activeSection = $state('');
+	let navEl: HTMLElement | undefined = $state();
+	let canScrollLeft = $state(false);
+	let canScrollRight = $state(false);
+
+	function updateScrollIndicators() {
+		if (!navEl) return;
+		canScrollLeft = navEl.scrollLeft > 4;
+		canScrollRight = navEl.scrollLeft + navEl.clientWidth < navEl.scrollWidth - 4;
+	}
 
 	$effect(() => {
 		if (!browser) return;
@@ -30,33 +39,90 @@
 
 		return () => observer.disconnect();
 	});
+
+	// Auto-scroll active nav item into view
+	$effect(() => {
+		if (!browser || !navEl || !activeSection) return;
+		const activeEl = navEl.querySelector(`[href="#${activeSection}"]`);
+		if (activeEl) {
+			activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+		}
+	});
+
+	// Track scroll indicators
+	$effect(() => {
+		if (!browser || !navEl) return;
+		updateScrollIndicators();
+		const el = navEl;
+		el.addEventListener('scroll', updateScrollIndicators, { passive: true });
+		const ro = new ResizeObserver(updateScrollIndicators);
+		ro.observe(el);
+		return () => {
+			el.removeEventListener('scroll', updateScrollIndicators);
+			ro.disconnect();
+		};
+	});
 </script>
 
-<nav class="section-nav">
-	{#each sections as section}
-		<a
-			href="#{section.id}"
-			class="nav-item"
-			class:active={activeSection === section.id}
-		>
-			{section.label}
-		</a>
-	{/each}
-</nav>
+<div class="section-nav-wrapper" class:fade-left={canScrollLeft} class:fade-right={canScrollRight}>
+	<nav class="section-nav" bind:this={navEl}>
+		{#each sections as section}
+			<a
+				href="#{section.id}"
+				class="nav-item"
+				class:active={activeSection === section.id}
+			>
+				{section.label}
+			</a>
+		{/each}
+	</nav>
+</div>
 
 <style>
-	.section-nav {
+	.section-nav-wrapper {
 		position: sticky;
 		top: 0;
 		z-index: 50;
-		display: flex;
-		gap: 0.25rem;
-		padding: 0.5rem;
+		margin: 0 -2rem 1.5rem;
 		background: var(--color-bg);
 		border-bottom: 1px solid var(--color-border);
-		margin: 0 -2rem 1.5rem;
-		padding-left: 2rem;
-		padding-right: 2rem;
+	}
+
+	.section-nav-wrapper::before,
+	.section-nav-wrapper::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		width: 2rem;
+		z-index: 1;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.2s;
+	}
+
+	.section-nav-wrapper::before {
+		left: 0;
+		background: linear-gradient(to right, var(--color-bg), transparent);
+	}
+
+	.section-nav-wrapper::after {
+		right: 0;
+		background: linear-gradient(to left, var(--color-bg), transparent);
+	}
+
+	.section-nav-wrapper.fade-left::before {
+		opacity: 1;
+	}
+
+	.section-nav-wrapper.fade-right::after {
+		opacity: 1;
+	}
+
+	.section-nav {
+		display: flex;
+		gap: 0.25rem;
+		padding: 0.5rem 2rem;
 		overflow-x: auto;
 		scrollbar-width: none;
 	}
@@ -88,8 +154,11 @@
 	}
 
 	@media (max-width: 600px) {
-		.section-nav {
+		.section-nav-wrapper {
 			margin: 0 -1rem 1rem;
+		}
+
+		.section-nav {
 			padding-left: 1rem;
 			padding-right: 1rem;
 		}

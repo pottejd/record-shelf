@@ -137,6 +137,19 @@ export interface UserCollection {
 	fetchedAt: number;
 }
 
+export interface DiscogsWantlistItem {
+	id: number;
+	rating: number;
+	basic_information: DiscogsBasicInformation;
+	date_added: string;
+	notes?: string;
+}
+
+export interface DiscogsWantlistResponse {
+	pagination: DiscogsPagination;
+	wants: DiscogsWantlistItem[];
+}
+
 export interface CachedCollection {
 	data: UserCollection;
 	cachedAt: number;

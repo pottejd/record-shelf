@@ -2,6 +2,8 @@ import type {
 	DiscogsCollectionResponse,
 	DiscogsCollectionItem,
 	DiscogsUserProfile,
+	DiscogsWantlistItem,
+	DiscogsWantlistResponse,
 	CollectionStats,
 	UserCollection
 } from '$lib/types/discogs';
@@ -25,6 +27,9 @@ interface FetchOptions {
 	token?: string;
 }
 
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 1000;
+
 async function fetchDiscogs<T>(
 	endpoint: string,
 	options: FetchOptions
@@ -38,22 +43,36 @@ async function fetchDiscogs<T>(
 		headers['Authorization'] = `Discogs token=${options.token}`;
 	}
 
-	const response = await fetch(`${DISCOGS_API_BASE}${endpoint}`, { headers });
+	for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+		const response = await fetch(`${DISCOGS_API_BASE}${endpoint}`, { headers });
 
-	if (!response.ok) {
+		if (response.ok) {
+			return response.json();
+		}
+
 		if (response.status === 404) {
 			throw new DiscogsAPIError('User not found', 404, 'NOT_FOUND');
 		}
 		if (response.status === 403) {
 			throw new DiscogsAPIError('Collection is private', 403, 'PRIVATE');
 		}
+
+		if (response.status === 429 && attempt < MAX_RETRIES) {
+			const retryAfter = response.headers.get('Retry-After');
+			const delay = retryAfter
+				? parseInt(retryAfter, 10) * 1000
+				: BASE_DELAY_MS * Math.pow(2, attempt);
+			await new Promise((resolve) => setTimeout(resolve, delay));
+			continue;
+		}
+
 		if (response.status === 429) {
 			throw new DiscogsAPIError('Rate limited - please try again later', 429, 'RATE_LIMITED');
 		}
 		throw new DiscogsAPIError(`API error: ${response.statusText}`, response.status);
 	}
 
-	return response.json();
+	throw new DiscogsAPIError('Max retries exceeded', 429, 'RATE_LIMITED');
 }
 
 export async function fetchUserProfile(
@@ -88,6 +107,32 @@ export async function fetchUserCollection(
 		page++;
 
 		// Small delay to be nice to the API
+		if (page <= totalPages) {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+	}
+
+	return allItems;
+}
+
+export async function fetchUserWantlist(
+	username: string,
+	options: FetchOptions
+): Promise<DiscogsWantlistItem[]> {
+	const allItems: DiscogsWantlistItem[] = [];
+	let page = 1;
+	let totalPages = 1;
+
+	while (page <= totalPages) {
+		const response = await fetchDiscogs<DiscogsWantlistResponse>(
+			`/users/${username}/wants?page=${page}&per_page=${PER_PAGE}&sort=added&sort_order=desc`,
+			options
+		);
+
+		allItems.push(...response.wants);
+		totalPages = response.pagination.pages;
+		page++;
+
 		if (page <= totalPages) {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 		}
