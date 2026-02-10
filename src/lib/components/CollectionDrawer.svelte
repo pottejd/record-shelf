@@ -3,10 +3,12 @@
 	import { fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 
-	export let open = false;
-	export let title = '';
-	export let items: DiscogsCollectionItem[] = [];
-	export let onClose: () => void;
+	let { open = false, title = '', items = [], onClose }: {
+		open?: boolean;
+		title?: string;
+		items?: DiscogsCollectionItem[];
+		onClose: () => void;
+	} = $props();
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') onClose();
@@ -17,7 +19,7 @@
 	}
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if open}
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->

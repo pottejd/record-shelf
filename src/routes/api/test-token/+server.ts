@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-
-const USER_AGENT = 'RecordShelf/0.1.0 +https://github.com/record-shelf/record-shelf';
+import { USER_AGENT } from '$lib/constants';
 
 export const POST: RequestHandler = async ({ request }) => {
 	const token = request.headers.get('X-Discogs-Token');

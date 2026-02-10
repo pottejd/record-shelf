@@ -1,31 +1,14 @@
 <script lang="ts">
 	import type { CollectionStats } from '$lib/types/discogs';
+	import { getGenreColor } from '$lib/constants';
 
-	export let stats: CollectionStats;
+	let { stats }: { stats: CollectionStats } = $props();
 
 	// Generate a unique "DNA" based on collection characteristics
-	$: dnaSegments = generateDNA(stats);
+	let dnaSegments = $derived(generateDNA(stats));
 
 	function generateDNA(s: CollectionStats) {
 		const segments: Array<{ color: string; size: number; label: string }> = [];
-
-		// Genre colors
-		const genreColors: Record<string, string> = {
-			'Rock': '#ef4444',
-			'Electronic': '#8b5cf6',
-			'Jazz': '#f59e0b',
-			'Hip Hop': '#10b981',
-			'Pop': '#ec4899',
-			'Classical': '#6366f1',
-			'Soul': '#f97316',
-			'Funk': '#eab308',
-			'Reggae': '#22c55e',
-			'Blues': '#3b82f6',
-			'Folk, World, & Country': '#84cc16',
-			'Latin': '#14b8a6',
-			'Stage & Screen': '#a855f7',
-			'Non-Music': '#64748b'
-		};
 
 		// Add genre segments
 		const totalGenres = Object.values(s.genreBreakdown).reduce((a, b) => a + b, 0);
@@ -34,7 +17,7 @@
 			.slice(0, 6)
 			.forEach(([genre, count]) => {
 				segments.push({
-					color: genreColors[genre] || '#94a3b8',
+					color: getGenreColor(genre),
 					size: (count / totalGenres) * 100,
 					label: genre
 				});
@@ -44,15 +27,15 @@
 	}
 
 	// Calculate decade distribution for the rings
-	$: decadeRings = Object.entries(stats.decadeBreakdown)
+	let decadeRings = $derived(Object.entries(stats.decadeBreakdown)
 		.sort((a, b) => a[0].localeCompare(b[0]))
 		.map(([decade, count]) => ({
 			decade,
 			percentage: (count / stats.totalItems) * 100
-		}));
+		})));
 
 	// Calculate the collection's "personality traits"
-	$: traits = calculateTraits(stats);
+	let traits = $derived(calculateTraits(stats));
 
 	function calculateTraits(s: CollectionStats) {
 		const traits: Array<{ name: string; value: number; color: string }> = [];

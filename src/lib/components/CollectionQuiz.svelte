@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 
-	export let items: DiscogsCollectionItem[];
+	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
 	type QuizType = 'album' | 'year' | 'artist';
 
@@ -12,12 +12,12 @@
 		correctAnswer: string;
 	}
 
-	let currentQuestion: Question | null = null;
-	let selectedAnswer: string | null = null;
-	let showResult = false;
-	let score = 0;
-	let questionsAnswered = 0;
-	let quizActive = false;
+	let currentQuestion: Question | null = $state(null);
+	let selectedAnswer: string | null = $state(null);
+	let showResult = $state(false);
+	let score = $state(0);
+	let questionsAnswered = $state(0);
+	let quizActive = $state(false);
 
 	function getArtistName(item: DiscogsCollectionItem): string {
 		return item.basic_information.artists.map(a => a.name.replace(/\s*\(\d+\)$/, '')).join(', ');

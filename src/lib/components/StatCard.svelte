@@ -1,9 +1,8 @@
 <script lang="ts">
-	export let label: string;
-	export let value: string | number;
+	let { label, value }: { label: string; value: string | number } = $props();
 
-	$: isNumber = typeof value === 'number';
-	$: displayValue = isNumber ? (value as number).toLocaleString() : value;
+	let isNumber = $derived(typeof value === 'number');
+	let displayValue = $derived(isNumber ? (value as number).toLocaleString() : value);
 </script>
 
 <div class="stat-card">

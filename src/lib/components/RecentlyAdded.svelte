@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 
-	export let items: DiscogsCollectionItem[];
+	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
 	function getTimeAgo(dateString: string): string {
 		const date = new Date(dateString);

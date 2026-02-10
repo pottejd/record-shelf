@@ -1,28 +1,24 @@
 <script lang="ts">
-	export let data: Array<{ label: string; value: number; color?: string }>;
-	export let size = 200;
-	export let thickness = 40;
-	export let clickable = false;
-	export let onItemClick: ((label: string) => void) | undefined = undefined;
+	interface Props {
+		data: Array<{ label: string; value: number; color?: string }>;
+		size?: number;
+		thickness?: number;
+		clickable?: boolean;
+		onItemClick?: (label: string) => void;
+	}
+
+	let { data, size = 200, thickness = 40, clickable = false, onItemClick }: Props = $props();
 
 	const colors = [
-		'#6366f1', // indigo
-		'#8b5cf6', // violet
-		'#ec4899', // pink
-		'#f43f5e', // rose
-		'#f97316', // orange
-		'#eab308', // yellow
-		'#22c55e', // green
-		'#14b8a6', // teal
-		'#06b6d4', // cyan
-		'#3b82f6', // blue
+		'#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
+		'#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6',
 	];
 
-	$: total = data.reduce((sum, d) => sum + d.value, 0);
-	$: radius = size / 2;
-	$: innerRadius = radius - thickness;
+	let total = $derived(data.reduce((sum, d) => sum + d.value, 0));
+	let radius = $derived(size / 2);
+	let innerRadius = $derived(radius - thickness);
 
-	$: segments = (() => {
+	let segments = $derived((() => {
 		let currentAngle = -90;
 		return data.map((d, i) => {
 			const angle = (d.value / total) * 360;
@@ -36,7 +32,7 @@
 				percentage: ((d.value / total) * 100).toFixed(1)
 			};
 		});
-	})();
+	})());
 
 	function polarToCartesian(angle: number, r: number) {
 		const rad = (angle * Math.PI) / 180;

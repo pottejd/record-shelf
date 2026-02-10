@@ -124,6 +124,10 @@ export interface CollectionStats {
 	collectionSpan: number;
 	dominantDecade: string;
 	dominantGenre: string;
+	ratingBreakdown: Record<number, number>;
+	averageRating: number;
+	ratedCount: number;
+	topRatedItems: DiscogsCollectionItem[];
 }
 
 export interface UserCollection {

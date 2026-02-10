@@ -22,16 +22,43 @@
 	import CollectionQuiz from '$lib/components/CollectionQuiz.svelte';
 	import ShareableCard from '$lib/components/ShareableCard.svelte';
 	import CollectionBrowser from '$lib/components/CollectionBrowser.svelte';
+	import RatingsOverview from '$lib/components/RatingsOverview.svelte';
+	import SectionNav from '$lib/components/SectionNav.svelte';
+	import ValueEstimate from '$lib/components/ValueEstimate.svelte';
+	import { invalidateAll } from '$app/navigation';
 
-	export let data: PageData;
+	const navSections = [
+		{ id: 'overview', label: 'Overview' },
+		{ id: 'top-lists', label: 'Top Lists' },
+		{ id: 'collection', label: 'Collection' },
+		{ id: 'charts', label: 'Charts' },
+		{ id: 'activity', label: 'Activity' },
+		{ id: 'share', label: 'Share' }
+	];
 
-	$: ({ collection } = data);
-	$: ({ profile, stats } = collection);
+	let { data }: { data: PageData } = $props();
+
+	let collection = $derived(data.collection);
+	let profile = $derived(collection.profile);
+	let stats = $derived(collection.stats);
+
+	// Refresh state
+	let refreshing = $state(false);
+
+	async function refreshCollection() {
+		refreshing = true;
+		try {
+			await fetch(`/api/collection/${profile.username}`, { method: 'DELETE' });
+			await invalidateAll();
+		} finally {
+			refreshing = false;
+		}
+	}
 
 	// Drawer state
-	let drawerOpen = false;
-	let drawerTitle = '';
-	let drawerItems: DiscogsCollectionItem[] = [];
+	let drawerOpen = $state(false);
+	let drawerTitle = $state('');
+	let drawerItems: DiscogsCollectionItem[] = $state([]);
 
 	function openDrawer(title: string, items: DiscogsCollectionItem[]) {
 		drawerTitle = title;
@@ -105,28 +132,28 @@
 		openDrawer(String(year), filtered);
 	}
 
-	$: decadeData = Object.entries(stats.decadeBreakdown)
+	let decadeData = $derived(Object.entries(stats.decadeBreakdown)
 		.map(([decade, count]) => ({ label: `${decade}s`, value: count }))
-		.sort((a, b) => a.label.localeCompare(b.label));
+		.sort((a, b) => a.label.localeCompare(b.label)));
 
-	$: genreData = Object.entries(stats.genreBreakdown)
+	let genreData = $derived(Object.entries(stats.genreBreakdown)
 		.map(([genre, count]) => ({ label: genre, value: count }))
 		.sort((a, b) => b.value - a.value)
-		.slice(0, 8);
+		.slice(0, 8));
 
-	$: formatData = Object.entries(stats.formatBreakdown)
+	let formatData = $derived(Object.entries(stats.formatBreakdown)
 		.map(([format, count]) => ({ label: format, value: count }))
-		.sort((a, b) => b.value - a.value);
+		.sort((a, b) => b.value - a.value));
 
-	$: styleData = Object.entries(stats.styleBreakdown)
+	let styleData = $derived(Object.entries(stats.styleBreakdown)
 		.map(([style, count]) => ({ label: style, value: count }))
 		.sort((a, b) => b.value - a.value)
-		.slice(0, 12);
+		.slice(0, 12));
 
-	$: formatDetailData = Object.entries(stats.formatDetailBreakdown)
+	let formatDetailData = $derived(Object.entries(stats.formatDetailBreakdown)
 		.map(([format, count]) => ({ label: format, value: count }))
 		.sort((a, b) => b.value - a.value)
-		.slice(0, 10);
+		.slice(0, 10));
 
 	// Random highlights - shuffle the collection for variety
 	function shuffleArray<T>(array: T[]): T[] {
@@ -138,7 +165,7 @@
 		return shuffled;
 	}
 
-	$: randomHighlights = shuffleArray(collection.items).slice(0, 12);
+	let randomHighlights = $derived(shuffleArray(collection.items).slice(0, 12));
 
 	// Calculate fun personality badges
 	interface Badge {
@@ -146,7 +173,7 @@
 		style: 'primary' | 'era' | 'format' | 'size' | 'special';
 	}
 
-	$: badges = calculateBadges(stats, collection.items);
+	let badges = $derived(calculateBadges(stats, collection.items));
 
 	function calculateBadges(s: typeof stats, items: typeof collection.items): Badge[] {
 		const result: Badge[] = [];
@@ -253,6 +280,18 @@
 			</div>
 		</div>
 		<div class="header-actions">
+			<button
+				class="refresh-btn"
+				onclick={refreshCollection}
+				disabled={refreshing}
+				aria-label="Refresh collection"
+			>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class:spinning={refreshing}>
+					<polyline points="23 4 23 10 17 10" />
+					<polyline points="1 20 1 14 7 14" />
+					<path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+				</svg>
+			</button>
 			<a href="https://www.discogs.com/user/{profile.username}" target="_blank" rel="noopener" class="discogs-link">
 				View on Discogs
 			</a>
@@ -265,7 +304,9 @@
 		</div>
 	</header>
 
-	<section class="stats-overview">
+	<SectionNav sections={navSections} />
+
+	<section id="overview" class="stats-overview">
 		<StatCard label="Records" value={stats.totalItems} />
 		<StatCard label="Artists" value={stats.totalArtists} />
 		<StatCard label="Labels" value={stats.totalLabels} />
@@ -286,7 +327,7 @@
 		</section>
 	</div>
 
-	<div class="grid-2col">
+	<div id="top-lists" class="grid-2col">
 		<section class="card">
 			<h2>Top Artists</h2>
 			<TopList items={stats.topArtists} clickable onItemClick={filterByArtist} />
@@ -311,7 +352,7 @@
 		</section>
 	</div>
 
-	<section class="card">
+	<section id="collection" class="card">
 		<h2>Full Collection</h2>
 		<p class="section-subtitle">Browse, search, and filter the entire collection</p>
 		<CollectionBrowser items={collection.items} />
@@ -329,6 +370,13 @@
 		</section>
 	</div>
 
+	{#if stats.ratedCount > 0}
+		<section class="card">
+			<h2>Your Ratings</h2>
+			<RatingsOverview {stats} />
+		</section>
+	{/if}
+
 	{#if stats.addedByMonth.length > 1}
 		<section class="card">
 			<h2>Collection Growth</h2>
@@ -336,7 +384,7 @@
 		</section>
 	{/if}
 
-	<div class="grid-2col">
+	<div id="charts" class="grid-2col">
 		<section class="card">
 			<h2>By Decade</h2>
 			<BarChart data={decadeData} colorful clickable onItemClick={filterByDecade} />
@@ -392,7 +440,7 @@
 		</section>
 	</div>
 
-	<section class="card">
+	<section id="activity" class="card">
 		<h2>Collecting Calendar</h2>
 		<p class="section-subtitle">Your activity over the past year</p>
 		<CollectingCalendar items={collection.items} />
@@ -410,9 +458,14 @@
 		</section>
 	</div>
 
-	<section class="card">
+	<section id="share" class="card">
 		<h2>Share Your Stats</h2>
 		<ShareableCard username={profile.username} {stats} {badges} />
+	</section>
+
+	<section class="card">
+		<h2>Collection Value</h2>
+		<ValueEstimate items={collection.items} username={profile.username} />
 	</section>
 
 	{#if stats.oldestRelease || stats.newestRelease}
@@ -569,6 +622,43 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+	}
+
+	.refresh-btn {
+		width: 36px;
+		height: 36px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--color-text-tertiary);
+		background: var(--color-bg-secondary, #f5f5f5);
+		border: none;
+		border-radius: 6px;
+		cursor: pointer;
+		transition: background-color 0.2s, color 0.2s;
+	}
+
+	.refresh-btn:hover:not(:disabled) {
+		color: var(--color-primary);
+		background: var(--color-bg-tertiary, #e5e5e5);
+	}
+
+	.refresh-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.refresh-btn svg {
+		width: 18px;
+		height: 18px;
+	}
+
+	.spinning {
+		animation: spin 1s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
 	}
 
 	.discogs-link {

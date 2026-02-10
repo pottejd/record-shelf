@@ -1,9 +1,13 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, afterNavigate } from '$app/navigation';
 
-	let username1 = '';
-	let username2 = '';
-	let isLoading = false;
+	let username1 = $state('');
+	let username2 = $state('');
+	let isLoading = $state(false);
+
+	afterNavigate(() => {
+		isLoading = false;
+	});
 
 	function compare() {
 		if (username1.trim() && username2.trim() && !isLoading) {

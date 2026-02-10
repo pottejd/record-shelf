@@ -1,14 +1,15 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import { getGenreColor } from '$lib/constants';
 
-	export let items: DiscogsCollectionItem[];
+	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
 	interface GenrePeriod {
 		period: string;
 		genres: { name: string; count: number; percentage: number }[];
 	}
 
-	$: evolution = calculateEvolution(items);
+	let evolution = $derived(calculateEvolution(items));
 
 	function calculateEvolution(items: DiscogsCollectionItem[]): GenrePeriod[] {
 		// Group items by year added
@@ -50,25 +51,7 @@
 		});
 	}
 
-	const genreColors: Record<string, string> = {
-		'Rock': '#e11d48',
-		'Electronic': '#8b5cf6',
-		'Pop': '#ec4899',
-		'Jazz': '#f59e0b',
-		'Hip Hop': '#10b981',
-		'Classical': '#6366f1',
-		'Folk, World, & Country': '#84cc16',
-		'Funk / Soul': '#f97316',
-		'Latin': '#14b8a6',
-		'Reggae': '#22c55e',
-		'Blues': '#3b82f6',
-		'Non-Music': '#64748b',
-		'Stage & Screen': '#a855f7'
-	};
 
-	function getGenreColor(genre: string): string {
-		return genreColors[genre] || '#6b7280';
-	}
 </script>
 
 {#if evolution.length > 0}

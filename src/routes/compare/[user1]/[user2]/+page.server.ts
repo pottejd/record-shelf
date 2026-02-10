@@ -2,53 +2,12 @@ import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { DiscogsCollectionItem } from '$lib/types/discogs';
+import { USER_AGENT } from '$lib/constants';
+import { fetchUserProfile, fetchUserCollection, DiscogsAPIError } from '$lib/api/discogs';
+import { readCache, writeCache } from '$lib/server/cache';
+import { computeCollectionStats } from '$lib/api/discogs';
 
-async function fetchCollection(username: string, token: string): Promise<{
-	items: DiscogsCollectionItem[];
-	profile: { username: string; avatar_url?: string };
-}> {
-	const headers = {
-		'User-Agent': 'RecordShelf/1.0',
-		Authorization: `Discogs token=${token}`
-	};
-
-	// Fetch profile
-	const profileRes = await fetch(`https://api.discogs.com/users/${username}`, { headers });
-	if (!profileRes.ok) {
-		throw new Error(`User ${username} not found`);
-	}
-	const profile = await profileRes.json();
-
-	// Fetch collection (first 500 items for comparison)
-	const items: DiscogsCollectionItem[] = [];
-	let page = 1;
-	const maxPages = 5;
-
-	while (page <= maxPages) {
-		const res = await fetch(
-			`https://api.discogs.com/users/${username}/collection/folders/0/releases?page=${page}&per_page=100&sort=added&sort_order=desc`,
-			{ headers }
-		);
-
-		if (!res.ok) break;
-
-		const data = await res.json();
-		items.push(...data.releases);
-
-		if (page >= data.pagination.pages) break;
-		page++;
-	}
-
-	return {
-		items,
-		profile: {
-			username: profile.username,
-			avatar_url: profile.avatar_url
-		}
-	};
-}
-
-export const load: PageServerLoad = async ({ params, cookies }) => {
+export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 	const cookieToken = cookies.get('discogs_token');
 	const token = cookieToken || env.DISCOGS_TOKEN;
 
@@ -56,25 +15,63 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
 		throw redirect(303, `/settings?redirect=/compare/${params.user1}/${params.user2}`);
 	}
 
+	const fetchOptions = { userAgent: USER_AGENT, token };
+
+	async function getCollection(username: string): Promise<{
+		items: DiscogsCollectionItem[];
+		profile: { username: string; avatar_url?: string };
+	}> {
+		// Try cache first
+		const cached = await readCache(platform, username);
+		if (cached) {
+			return {
+				items: cached.data.items,
+				profile: {
+					username: cached.data.profile.username,
+					avatar_url: cached.data.profile.avatar_url
+				}
+			};
+		}
+
+		// Fetch fresh using shared API module
+		const profile = await fetchUserProfile(username, fetchOptions);
+		const items = await fetchUserCollection(username, fetchOptions);
+
+		// Cache the full collection for reuse
+		const stats = computeCollectionStats(items);
+		await writeCache(platform, username, {
+			profile,
+			items,
+			stats,
+			fetchedAt: Date.now()
+		});
+
+		return {
+			items,
+			profile: {
+				username: profile.username,
+				avatar_url: profile.avatar_url
+			}
+		};
+	}
+
 	try {
 		const [collection1, collection2] = await Promise.all([
-			fetchCollection(params.user1, token),
-			fetchCollection(params.user2, token)
+			getCollection(params.user1),
+			getCollection(params.user2)
 		]);
 
 		// Helper to get a normalized album key for comparison
-		// Uses master_id if available, otherwise falls back to normalized title + artist
 		function getAlbumKey(item: DiscogsCollectionItem): string {
 			if (item.basic_information.master_id) {
 				return `master:${item.basic_information.master_id}`;
 			}
-			// Fallback: normalize title + primary artist
 			const title = item.basic_information.title.toLowerCase().trim();
 			const artist = item.basic_information.artists[0]?.name.toLowerCase().replace(/\s*\(\d+\)$/, '').trim() || '';
 			return `title:${artist}:${title}`;
 		}
 
-		// Build lookup maps using album keys (master_id or title+artist)
+		// Build lookup maps
 		const keys1 = new Map<string, DiscogsCollectionItem>();
 		const keys2 = new Map<string, DiscogsCollectionItem>();
 
@@ -87,7 +84,7 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
 			if (!keys2.has(key)) keys2.set(key, item);
 		}
 
-		// Find overlap and unique items based on album (not specific release)
+		// Find overlap and unique items
 		const overlap: DiscogsCollectionItem[] = [];
 		const uniqueTo1: DiscogsCollectionItem[] = [];
 
@@ -118,7 +115,7 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
 			}
 		}
 
-		// Calculate taste similarity (Jaccard index on albums)
+		// Calculate taste similarity (Jaccard index)
 		const allKeys = new Set([...keys1.keys(), ...keys2.keys()]);
 		const totalUniqueAlbums = allKeys.size;
 		const overlapCount = overlap.length;
@@ -153,6 +150,18 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
 			}
 		};
 	} catch (e) {
+		if (e instanceof DiscogsAPIError) {
+			if (e.code === 'NOT_FOUND') {
+				throw error(404, e.message);
+			}
+			if (e.code === 'PRIVATE') {
+				throw error(403, e.message);
+			}
+			if (e.code === 'RATE_LIMITED') {
+				throw error(429, 'Rate limited by Discogs. Please try again in a minute.');
+			}
+			throw error(e.status, e.message);
+		}
 		throw error(404, e instanceof Error ? e.message : 'Failed to load collections');
 	}
 };

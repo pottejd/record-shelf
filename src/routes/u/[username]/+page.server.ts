@@ -1,11 +1,9 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { fetchFullUserCollection, DiscogsAPIError } from '$lib/api/discogs';
-import type { CachedCollection } from '$lib/types/discogs';
 import { env } from '$env/dynamic/private';
-
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour
-const USER_AGENT = 'RecordShelf/0.1.0 +https://github.com/record-shelf/record-shelf';
+import { USER_AGENT } from '$lib/constants';
+import { readCache, writeCache } from '$lib/server/cache';
 
 export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 	const { username } = params;
@@ -19,29 +17,17 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 	const token = cookieToken || env.DISCOGS_TOKEN;
 
 	if (!token) {
-		// Redirect to settings if no token is available
 		throw redirect(303, `/settings?redirect=/u/${encodeURIComponent(username)}`);
 	}
 
-	const cacheKey = `collection:${username.toLowerCase()}`;
-
 	// Try cache first
-	if (platform?.env?.COLLECTION_CACHE) {
-		try {
-			const cached = await platform.env.COLLECTION_CACHE.get(cacheKey, 'json');
-			if (cached) {
-				const cachedData = cached as CachedCollection;
-				if (Date.now() < cachedData.expiresAt) {
-					return {
-						collection: cachedData.data,
-						cached: true,
-						cachedAt: cachedData.cachedAt
-					};
-				}
-			}
-		} catch (e) {
-			console.error('Cache read error:', e);
-		}
+	const cached = await readCache(platform, username);
+	if (cached) {
+		return {
+			collection: cached.data,
+			cached: true,
+			cachedAt: cached.cachedAt
+		};
 	}
 
 	// Fetch fresh
@@ -51,22 +37,7 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			token
 		});
 
-		// Cache it
-		if (platform?.env?.COLLECTION_CACHE) {
-			const cacheData: CachedCollection = {
-				data: collection,
-				cachedAt: Date.now(),
-				expiresAt: Date.now() + CACHE_TTL
-			};
-
-			try {
-				await platform.env.COLLECTION_CACHE.put(cacheKey, JSON.stringify(cacheData), {
-					expirationTtl: Math.ceil(CACHE_TTL / 1000)
-				});
-			} catch (e) {
-				console.error('Cache write error:', e);
-			}
-		}
+		await writeCache(platform, username, collection);
 
 		return {
 			collection,

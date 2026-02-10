@@ -1,25 +1,24 @@
 <script lang="ts">
-	export let data: Array<{ date: string; count: number }>;
-	export let height = 120;
+	let { data, height = 120 }: { data: Array<{ date: string; count: number }>; height?: number } = $props();
 
-	$: maxCount = Math.max(...data.map((d) => d.count));
-	$: points = data
+	let maxCount = $derived(Math.max(...data.map((d) => d.count)));
+	let points = $derived(data
 		.map((d, i) => {
 			const x = (i / (data.length - 1)) * 100;
 			const y = 100 - (d.count / maxCount) * 100;
 			return `${x},${y}`;
 		})
-		.join(' ');
+		.join(' '));
 
-	$: areaPath = `M 0,100 L ${data
+	let areaPath = $derived(`M 0,100 L ${data
 		.map((d, i) => {
 			const x = (i / (data.length - 1)) * 100;
 			const y = 100 - (d.count / maxCount) * 100;
 			return `${x},${y}`;
 		})
-		.join(' L ')} L 100,100 Z`;
+		.join(' L ')} L 100,100 Z`);
 
-	$: totalAdded = data.reduce((sum, d) => sum + d.count, 0);
+	let totalAdded = $derived(data.reduce((sum, d) => sum + d.count, 0));
 </script>
 
 <div class="timeline-chart">

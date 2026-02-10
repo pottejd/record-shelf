@@ -2,9 +2,11 @@
 	import type { PageData } from './$types';
 	import CoverGrid from '$lib/components/CoverGrid.svelte';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
-	$: ({ user1, user2, comparison } = data);
+	let user1 = $derived(data.user1);
+	let user2 = $derived(data.user2);
+	let comparison = $derived(data.comparison);
 
 	function getSimilarityLabel(score: number): string {
 		if (score >= 30) return 'Taste twins!';

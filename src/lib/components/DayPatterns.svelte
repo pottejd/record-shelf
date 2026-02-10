@@ -1,14 +1,14 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 
-	export let items: DiscogsCollectionItem[];
+	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
 	const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 	const fullDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-	$: dayStats = calculateDayStats(items);
-	$: maxCount = Math.max(...dayStats.map(d => d.count));
-	$: favoriteDay = dayStats.reduce((max, d) => d.count > max.count ? d : max, dayStats[0]);
+	let dayStats = $derived(calculateDayStats(items));
+	let maxCount = $derived(Math.max(...dayStats.map(d => d.count)));
+	let favoriteDay = $derived(dayStats.reduce((max, d) => d.count > max.count ? d : max, dayStats[0]));
 
 	function calculateDayStats(items: DiscogsCollectionItem[]) {
 		const counts = new Array(7).fill(0);

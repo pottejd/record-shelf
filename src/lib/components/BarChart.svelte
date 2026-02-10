@@ -1,28 +1,24 @@
 <script lang="ts">
-	export let data: Array<{ label: string; value: number; color?: string }>;
-	export let horizontal = false;
-	export let colorful = false;
-	export let clickable = false;
-	export let onItemClick: ((label: string) => void) | undefined = undefined;
+	interface Props {
+		data: Array<{ label: string; value: number; color?: string }>;
+		horizontal?: boolean;
+		colorful?: boolean;
+		clickable?: boolean;
+		onItemClick?: (label: string) => void;
+	}
+
+	let { data, horizontal = false, colorful = false, clickable = false, onItemClick }: Props = $props();
 
 	const colors = [
-		'#6366f1', // indigo
-		'#8b5cf6', // violet
-		'#ec4899', // pink
-		'#f43f5e', // rose
-		'#f97316', // orange
-		'#eab308', // yellow
-		'#22c55e', // green
-		'#14b8a6', // teal
-		'#06b6d4', // cyan
-		'#3b82f6', // blue
+		'#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
+		'#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6',
 	];
 
-	$: maxValue = Math.max(...data.map((d) => d.value));
-	$: coloredData = data.map((d, i) => ({
+	let maxValue = $derived(Math.max(...data.map((d) => d.value)));
+	let coloredData = $derived(data.map((d, i) => ({
 		...d,
 		color: d.color || (colorful ? colors[i % colors.length] : 'var(--bar-color, #6366f1)')
-	}));
+	})));
 </script>
 
 <div class="chart" class:horizontal class:clickable>

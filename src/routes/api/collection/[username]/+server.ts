@@ -1,11 +1,9 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { fetchFullUserCollection, DiscogsAPIError } from '$lib/api/discogs';
-import type { CachedCollection } from '$lib/types/discogs';
 import { env } from '$env/dynamic/private';
-
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
-const USER_AGENT = 'RecordShelf/1.0 +https://github.com/record-shelf';
+import { USER_AGENT } from '$lib/constants';
+import { readCache, writeCache, invalidateCache } from '$lib/server/cache';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
 	const { username } = params;
@@ -14,25 +12,14 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 		throw error(400, 'Username is required');
 	}
 
-	const cacheKey = `collection:${username.toLowerCase()}`;
-
-	// Try to get from KV cache
-	if (platform?.env?.COLLECTION_CACHE) {
-		try {
-			const cached = await platform.env.COLLECTION_CACHE.get(cacheKey, 'json');
-			if (cached) {
-				const cachedData = cached as CachedCollection;
-				if (Date.now() < cachedData.expiresAt) {
-					return json({
-						...cachedData.data,
-						cached: true,
-						cachedAt: cachedData.cachedAt
-					});
-				}
-			}
-		} catch (e) {
-			console.error('Cache read error:', e);
-		}
+	// Try cache first
+	const cached = await readCache(platform, username);
+	if (cached) {
+		return json({
+			...cached.data,
+			cached: true,
+			cachedAt: cached.cachedAt
+		});
 	}
 
 	// Fetch fresh data from Discogs
@@ -43,22 +30,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 			token
 		});
 
-		// Store in cache
-		if (platform?.env?.COLLECTION_CACHE) {
-			const cacheData: CachedCollection = {
-				data: collection,
-				cachedAt: Date.now(),
-				expiresAt: Date.now() + CACHE_TTL
-			};
-
-			try {
-				await platform.env.COLLECTION_CACHE.put(cacheKey, JSON.stringify(cacheData), {
-					expirationTtl: Math.ceil(CACHE_TTL / 1000) // KV uses seconds
-				});
-			} catch (e) {
-				console.error('Cache write error:', e);
-			}
-		}
+		await writeCache(platform, username, collection);
 
 		return json({
 			...collection,
@@ -80,4 +52,16 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 		console.error('Unexpected error:', e);
 		throw error(500, 'An unexpected error occurred');
 	}
+};
+
+export const DELETE: RequestHandler = async ({ params, platform }) => {
+	const { username } = params;
+
+	if (!username) {
+		throw error(400, 'Username is required');
+	}
+
+	await invalidateCache(platform, username);
+
+	return json({ success: true });
 };

@@ -1,8 +1,10 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 
-	export let items: DiscogsCollectionItem[];
-	export let minCount = 5;
+	let { items, minCount = 5 }: {
+		items: DiscogsCollectionItem[];
+		minCount?: number;
+	} = $props();
 
 	interface LoyalArtist {
 		name: string;
@@ -10,7 +12,7 @@
 		covers: string[];
 	}
 
-	$: loyalArtists = calculateLoyalty(items);
+	let loyalArtists = $derived(calculateLoyalty(items));
 
 	// Artists to exclude (compilations, etc.)
 	const excludedArtists = new Set([

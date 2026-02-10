@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 
-	export let items: DiscogsCollectionItem[];
+	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
 	interface DayData {
 		date: string;
@@ -9,8 +9,8 @@
 		level: number;
 	}
 
-	$: calendarData = generateCalendarData(items);
-	$: totalThisYear = calendarData.reduce((sum, d) => sum + d.count, 0);
+	let calendarData = $derived(generateCalendarData(items));
+	let totalThisYear = $derived(calendarData.reduce((sum, d) => sum + d.count, 0));
 
 	function generateCalendarData(items: DiscogsCollectionItem[]): DayData[] {
 		const now = new Date();
@@ -91,8 +91,8 @@
 		});
 	}
 
-	$: weeks = getWeeks(calendarData);
-	$: monthLabels = getMonthLabels(calendarData);
+	let weeks = $derived(getWeeks(calendarData));
+	let monthLabels = $derived(getMonthLabels(calendarData));
 </script>
 
 <div class="collecting-calendar">
@@ -242,20 +242,38 @@
 		background: #2c6e2f;
 	}
 
-	:global(.dark) .day.level-1 {
+	:global(html[data-theme="dark"]) .day.level-1 {
 		background: #0e4429;
 	}
 
-	:global(.dark) .day.level-2 {
+	:global(html[data-theme="dark"]) .day.level-2 {
 		background: #006d32;
 	}
 
-	:global(.dark) .day.level-3 {
+	:global(html[data-theme="dark"]) .day.level-3 {
 		background: #26a641;
 	}
 
-	:global(.dark) .day.level-4 {
+	:global(html[data-theme="dark"]) .day.level-4 {
 		background: #39d353;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:global(html:not([data-theme="light"])) .day.level-1 {
+			background: #0e4429;
+		}
+
+		:global(html:not([data-theme="light"])) .day.level-2 {
+			background: #006d32;
+		}
+
+		:global(html:not([data-theme="light"])) .day.level-3 {
+			background: #26a641;
+		}
+
+		:global(html:not([data-theme="light"])) .day.level-4 {
+			background: #39d353;
+		}
 	}
 
 	.calendar-legend {

@@ -1,12 +1,14 @@
 <script lang="ts">
 	import type { CollectionStats } from '$lib/types/discogs';
 
-	export let username: string;
-	export let stats: CollectionStats;
-	export let badges: { label: string; style: string }[] = [];
+	let { username, stats, badges = [] }: {
+		username: string;
+		stats: CollectionStats;
+		badges?: { label: string; style: string }[];
+	} = $props();
 
-	let cardElement: HTMLDivElement;
-	let copied = false;
+	let cardElement: HTMLDivElement | undefined = $state(undefined);
+	let copied = $state(false);
 
 	async function copyAsImage() {
 		if (!cardElement) return;

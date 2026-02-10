@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 
-	export let items: DiscogsCollectionItem[];
+	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
 	interface AgeCategory {
 		label: string;
@@ -11,9 +11,9 @@
 		description: string;
 	}
 
-	$: categories = calculateCategories(items);
-	$: averageAge = calculateAverageAge(items);
-	$: buyingStyle = getBuyingStyle(categories);
+	let categories = $derived(calculateCategories(items));
+	let averageAge = $derived(calculateAverageAge(items));
+	let buyingStyle = $derived(getBuyingStyle(categories));
 
 	function calculateCategories(items: DiscogsCollectionItem[]): AgeCategory[] {
 		const now = new Date();

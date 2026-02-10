@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 
-	export let items: DiscogsCollectionItem[];
+	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
 	interface ActivityPeriod {
 		label: string;
@@ -9,10 +9,10 @@
 		percentage: number;
 	}
 
-	$: activityByYear = calculateYearlyActivity(items);
-	$: peakMonth = findPeakMonth(items);
-	$: averagePerMonth = items.length > 0 ? calculateAveragePerMonth(items) : 0;
-	$: currentStreak = calculateStreak(items);
+	let activityByYear = $derived(calculateYearlyActivity(items));
+	let peakMonth = $derived(findPeakMonth(items));
+	let averagePerMonth = $derived(items.length > 0 ? calculateAveragePerMonth(items) : 0);
+	let currentStreak = $derived(calculateStreak(items));
 
 	function calculateYearlyActivity(items: DiscogsCollectionItem[]): ActivityPeriod[] {
 		const yearMap = new Map<number, number>();

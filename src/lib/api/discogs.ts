@@ -221,6 +221,23 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 		? Object.keys(artistCounts).length / items.length
 		: 0;
 
+	// Rating stats
+	const ratingBreakdown: Record<number, number> = {};
+	let ratingSum = 0;
+	let ratedCount = 0;
+	for (const item of items) {
+		if (item.rating > 0) {
+			ratingBreakdown[item.rating] = (ratingBreakdown[item.rating] || 0) + 1;
+			ratingSum += item.rating;
+			ratedCount++;
+		}
+	}
+	const averageRating = ratedCount > 0 ? ratingSum / ratedCount : 0;
+	const topRatedItems = items
+		.filter(i => i.rating >= 4)
+		.sort((a, b) => b.rating - a.rating || a.basic_information.title.localeCompare(b.basic_information.title))
+		.slice(0, 12);
+
 	return {
 		totalItems: items.length,
 		totalArtists: Object.keys(artistCounts).length,
@@ -243,7 +260,11 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 		uniqueArtistRatio,
 		collectionSpan,
 		dominantDecade: dominantDecade ? `${dominantDecade}s` : '',
-		dominantGenre
+		dominantGenre,
+		ratingBreakdown,
+		averageRating,
+		ratedCount,
+		topRatedItems
 	};
 }
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 
-	export let items: DiscogsCollectionItem[];
+	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
 	interface Milestone {
 		count: number;
@@ -23,7 +23,7 @@
 		{ count: 10000, label: 'Mythic', icon: '10K' }
 	];
 
-	$: milestones = calculateMilestones(items);
+	let milestones = $derived(calculateMilestones(items));
 
 	function calculateMilestones(items: DiscogsCollectionItem[]): Milestone[] {
 		// Sort items by date added (oldest first)
@@ -51,10 +51,10 @@
 	}
 
 	// Find the next milestone to reach
-	$: nextMilestone = milestones.find(m => !m.reached);
-	$: progress = nextMilestone
+	let nextMilestone = $derived(milestones.find(m => !m.reached));
+	let progress = $derived(nextMilestone
 		? (items.length / nextMilestone.count) * 100
-		: 100;
+		: 100);
 </script>
 
 <div class="milestones">

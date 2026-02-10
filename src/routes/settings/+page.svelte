@@ -4,15 +4,15 @@
 	import { settings } from '$lib/stores/settings';
 	import { version } from '$app/environment';
 
-	let token = $settings.discogsToken;
-	let showToken = false;
-	let saved = false;
-	let testing = false;
-	let testResult: { success: boolean; message: string } | null = null;
+	let token = $state($settings.discogsToken);
+	let showToken = $state(false);
+	let saved = $state(false);
+	let testing = $state(false);
+	let testResult: { success: boolean; message: string } | null = $state(null);
 
 	// Check for redirect parameter (e.g., when redirected from profile page)
-	$: redirectTo = $page.url.searchParams.get('redirect');
-	$: showRedirectNotice = !!redirectTo && !$settings.discogsToken;
+	let redirectTo = $derived($page.url.searchParams.get('redirect'));
+	let showRedirectNotice = $derived(!!redirectTo && !$settings.discogsToken);
 
 	function handleSave() {
 		settings.setToken(token.trim());

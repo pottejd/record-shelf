@@ -1,14 +1,13 @@
 <script lang="ts">
-	export let data: Record<number, number>;
-	export let onYearClick: ((year: number) => void) | undefined = undefined;
+	let { data, onYearClick }: { data: Record<number, number>; onYearClick?: (year: number) => void } = $props();
 
-	$: years = Object.keys(data).map(Number).sort((a, b) => a - b);
-	$: minYear = Math.min(...years);
-	$: maxYear = Math.max(...years);
-	$: maxCount = Math.max(...Object.values(data));
+	let years = $derived(Object.keys(data).map(Number).sort((a, b) => a - b));
+	let minYear = $derived(Math.min(...years));
+	let maxYear = $derived(Math.max(...years));
+	let maxCount = $derived(Math.max(...Object.values(data)));
 
-	$: allYears = Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i);
-	$: decades = [...new Set(allYears.map((y) => Math.floor(y / 10) * 10))].sort();
+	let allYears = $derived(Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i));
+	let decades = $derived([...new Set(allYears.map((y) => Math.floor(y / 10) * 10))].sort());
 
 	function getIntensity(count: number): number {
 		if (!count) return 0;

@@ -24,8 +24,29 @@
 	--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
 
+/* Explicit dark mode via toggle */
+html[data-theme="dark"] {
+	--color-primary: #818cf8;
+	--color-primary-hover: #a5b4fc;
+	--color-accent: #f472b6;
+	--color-bg: #0a0a0a;
+	--color-bg-secondary: #171717;
+	--color-bg-tertiary: #262626;
+	--color-bg-card: #171717;
+	--color-text: #fafafa;
+	--color-text-secondary: #a3a3a3;
+	--color-text-tertiary: #525252;
+	--color-border: #262626;
+	--color-border-light: #1f1f1f;
+
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+	--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+	--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+}
+
+/* System preference fallback (when no explicit theme is set) */
 @media (prefers-color-scheme: dark) {
-	:root {
+	html:not([data-theme="light"]) {
 		--color-primary: #818cf8;
 		--color-primary-hover: #a5b4fc;
 		--color-accent: #f472b6;

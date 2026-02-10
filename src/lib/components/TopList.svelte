@@ -1,24 +1,20 @@
 <script lang="ts">
-	export let items: Array<{ name: string; count: number }>;
-	export let limit = 10;
-	export let clickable = false;
-	export let onItemClick: ((name: string) => void) | undefined = undefined;
+	interface Props {
+		items: Array<{ name: string; count: number }>;
+		limit?: number;
+		clickable?: boolean;
+		onItemClick?: (name: string) => void;
+	}
+
+	let { items, limit = 10, clickable = false, onItemClick }: Props = $props();
 
 	const colors = [
-		'#6366f1',
-		'#8b5cf6',
-		'#a855f7',
-		'#c084fc',
-		'#d8b4fe',
-		'#e9d5ff',
-		'#f3e8ff',
-		'#faf5ff',
-		'#fdf4ff',
-		'#fefce8'
+		'#6366f1', '#8b5cf6', '#a855f7', '#c084fc', '#d8b4fe',
+		'#e9d5ff', '#f3e8ff', '#faf5ff', '#fdf4ff', '#fefce8'
 	];
 
-	$: displayItems = items.slice(0, limit);
-	$: maxCount = Math.max(...displayItems.map((i) => i.count));
+	let displayItems = $derived(items.slice(0, limit));
+	let maxCount = $derived(Math.max(...displayItems.map((i) => i.count)));
 </script>
 
 <ol class="top-list" class:clickable>

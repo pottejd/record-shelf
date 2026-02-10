@@ -1,9 +1,13 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, afterNavigate } from '$app/navigation';
 
-	let username = '';
-	let isLoading = false;
-	let error = '';
+	let username = $state('');
+	let isLoading = $state(false);
+	let error = $state('');
+
+	afterNavigate(() => {
+		isLoading = false;
+	});
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();

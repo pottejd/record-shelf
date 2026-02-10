@@ -1,11 +1,11 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 
-	export let items: DiscogsCollectionItem[];
+	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
-	let picked: DiscogsCollectionItem | null = null;
-	let isSpinning = false;
-	let spinCount = 0;
+	let picked: DiscogsCollectionItem | null = $state(null);
+	let isSpinning = $state(false);
+	let spinCount = $state(0);
 
 	function pickRandom() {
 		if (items.length === 0 || isSpinning) return;
