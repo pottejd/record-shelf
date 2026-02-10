@@ -29,6 +29,7 @@
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="drawer-title"
+		tabindex="-1"
 	>
 		<aside class="drawer" transition:fly={{ x: 400, duration: 300, easing: quintOut }}>
 			<header class="drawer-header">

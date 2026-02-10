@@ -6,7 +6,6 @@
 	import SearchBar from './browser/SearchBar.svelte';
 	import FilterControls from './browser/FilterControls.svelte';
 	import SortToolbar from './browser/SortToolbar.svelte';
-	import Pagination from './browser/Pagination.svelte';
 	import RecordCard from './browser/RecordCard.svelte';
 
 	let { items }: { items: DiscogsCollectionItem[] } = $props();
@@ -30,7 +29,8 @@
 	);
 	let showFilters = $state(false);
 	let page = $state(parseInt(getInitialParam('page', '1'), 10) || 1);
-	const perPage = 18;
+	const perPage = 24;
+	let loadMoreEl: HTMLDivElement | undefined = $state();
 
 	// Sync filter state to URL params
 	$effect(() => {
@@ -120,13 +120,29 @@
 			return sortOrder === 'desc' ? -cmp : cmp;
 		}));
 
-	let totalPages = $derived(Math.ceil(filteredItems.length / perPage));
-	let pagedItems = $derived(filteredItems.slice((page - 1) * perPage, page * perPage));
+	let visibleCount = $derived(page * perPage);
+	let visibleItems = $derived(filteredItems.slice(0, visibleCount));
+	let hasMore = $derived(visibleCount < filteredItems.length);
 
 	// Reset to page 1 when filters change
 	$effect(() => {
 		debouncedQuery; selectedGenre; selectedFormat; selectedDecade; sortBy; sortOrder;
 		page = 1;
+	});
+
+	// Infinite scroll: auto-load more when sentinel enters viewport
+	$effect(() => {
+		if (!browser || !loadMoreEl) return;
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (entry.isIntersecting && hasMore) {
+					page = page + 1;
+				}
+			},
+			{ rootMargin: '200px' }
+		);
+		observer.observe(loadMoreEl);
+		return () => observer.disconnect();
 	});
 
 	function clearFilters() {
@@ -175,7 +191,7 @@
 	/>
 
 	<div class="items-grid">
-		{#each pagedItems as item (item.id)}
+		{#each visibleItems as item (item.id)}
 			<RecordCard {item} />
 		{/each}
 	</div>
@@ -187,7 +203,13 @@
 		</div>
 	{/if}
 
-	<Pagination bind:page {totalPages} />
+	{#if hasMore}
+		<div class="load-more" bind:this={loadMoreEl}>
+			<button onclick={() => page = page + 1}>
+				Show more ({filteredItems.length - visibleCount} remaining)
+			</button>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -224,6 +246,29 @@
 		border-radius: 6px;
 		color: var(--color-text);
 		cursor: pointer;
+	}
+
+	.load-more {
+		text-align: center;
+		padding: 1rem;
+	}
+
+	.load-more button {
+		padding: 0.625rem 1.5rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+
+	.load-more button:hover {
+		background: var(--color-primary);
+		border-color: var(--color-primary);
+		color: white;
 	}
 
 	@media (max-width: 600px) {

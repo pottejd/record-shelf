@@ -29,6 +29,12 @@
 		name="description"
 		content="See beautiful stats and visualizations of any public Discogs collection"
 	/>
+	<meta property="og:title" content="Record Shelf" />
+	<meta property="og:description" content="See beautiful stats and visualizations of any public Discogs collection" />
+	<meta property="og:type" content="website" />
+	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:title" content="Record Shelf" />
+	<meta name="twitter:description" content="Visualize your Discogs record collection with beautiful charts and stats" />
 </svelte:head>
 
 {#if isLoading}

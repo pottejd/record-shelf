@@ -62,19 +62,28 @@
 <div class="donut-chart" class:clickable>
 	<svg width={size} height={size} viewBox="0 0 {size} {size}">
 		{#each segments as segment}
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<path
-				d={describeArc(segment.startAngle, segment.endAngle - 0.5, radius - 2, innerRadius)}
-				fill={segment.color}
-				class="segment"
-				class:clickable
-				role={clickable ? 'button' : undefined}
-				tabindex={clickable ? 0 : undefined}
-				onclick={() => clickable && onItemClick?.(segment.label)}
-				onkeydown={(e) => e.key === 'Enter' && clickable && onItemClick?.(segment.label)}
-			>
-				<title>{segment.label}: {segment.value} ({segment.percentage}%)</title>
-			</path>
+			{#if clickable}
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<path
+					d={describeArc(segment.startAngle, segment.endAngle - 0.5, radius - 2, innerRadius)}
+					fill={segment.color}
+					class="segment clickable"
+					role="button"
+					tabindex="0"
+					onclick={() => onItemClick?.(segment.label)}
+					onkeydown={(e) => e.key === 'Enter' && onItemClick?.(segment.label)}
+				>
+					<title>{segment.label}: {segment.value} ({segment.percentage}%)</title>
+				</path>
+			{:else}
+				<path
+					d={describeArc(segment.startAngle, segment.endAngle - 0.5, radius - 2, innerRadius)}
+					fill={segment.color}
+					class="segment"
+				>
+					<title>{segment.label}: {segment.value} ({segment.percentage}%)</title>
+				</path>
+			{/if}
 		{/each}
 		<text x={radius} y={radius} text-anchor="middle" dominant-baseline="middle" class="center-text">
 			<tspan x={radius} dy="-0.3em" class="center-value">{total.toLocaleString()}</tspan>

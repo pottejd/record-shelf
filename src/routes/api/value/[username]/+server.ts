@@ -9,6 +9,30 @@ interface PriceSuggestion {
 	};
 }
 
+interface CachedPrice {
+	lowestPrice: number | null;
+	currency: string;
+	timestamp: number;
+}
+
+// In-memory price cache (survives across requests, cleared on redeploy)
+const priceCache = new Map<number, CachedPrice>();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+// Global rate limiter: track last request time
+let lastRequestTime = 0;
+const MIN_DELAY_MS = 1100; // ~54 req/min, safely under Discogs' 60/min limit
+
+async function rateLimitedFetch(url: string, headers: Record<string, string>): Promise<Response> {
+	const now = Date.now();
+	const timeSinceLast = now - lastRequestTime;
+	if (timeSinceLast < MIN_DELAY_MS) {
+		await new Promise((resolve) => setTimeout(resolve, MIN_DELAY_MS - timeSinceLast));
+	}
+	lastRequestTime = Date.now();
+	return fetch(url, { headers });
+}
+
 export const POST: RequestHandler = async ({ params, request }) => {
 	const { username } = params;
 	if (!username) throw error(400, 'Username is required');
@@ -35,37 +59,44 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	};
 
 	const results: Array<{ releaseId: number; lowestPrice: number | null; currency: string }> = [];
+	const now = Date.now();
 
-	// Fetch price suggestions for each release (with rate limit delay)
 	for (const releaseId of ids) {
+		// Check cache first
+		const cached = priceCache.get(releaseId);
+		if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
+			results.push({ releaseId, lowestPrice: cached.lowestPrice, currency: cached.currency });
+			continue;
+		}
+
 		try {
-			const response = await fetch(
+			const response = await rateLimitedFetch(
 				`https://api.discogs.com/marketplace/price_suggestions/${releaseId}`,
-				{ headers }
+				headers
 			);
 
 			if (response.ok) {
 				const data: PriceSuggestion = await response.json();
-				// Use "Very Good Plus (VG+)" or "Near Mint (NM or M-)" as reference
 				const vgPlus = data['Very Good Plus (VG+)'];
 				const nearMint = data['Near Mint (NM or M-)'];
 				const ref = nearMint || vgPlus;
 
-				results.push({
+				const result = {
 					releaseId,
 					lowestPrice: ref?.value ?? null,
 					currency: ref?.currency ?? 'USD'
+				};
+				results.push(result);
+				priceCache.set(releaseId, {
+					lowestPrice: result.lowestPrice,
+					currency: result.currency,
+					timestamp: Date.now()
 				});
 			} else {
 				results.push({ releaseId, lowestPrice: null, currency: 'USD' });
 			}
 		} catch {
 			results.push({ releaseId, lowestPrice: null, currency: 'USD' });
-		}
-
-		// Rate limit: Discogs allows 60 req/min for authenticated users
-		if (ids.indexOf(releaseId) < ids.length - 1) {
-			await new Promise((resolve) => setTimeout(resolve, 1100));
 		}
 	}
 

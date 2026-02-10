@@ -25,8 +25,14 @@
 	import RatingsOverview from '$lib/components/RatingsOverview.svelte';
 	import SectionNav from '$lib/components/SectionNav.svelte';
 	import ValueEstimate from '$lib/components/ValueEstimate.svelte';
+	import CollectionExport from '$lib/components/CollectionExport.svelte';
+	import Recommendations from '$lib/components/Recommendations.svelte';
+	import FormatDrilldown from '$lib/components/FormatDrilldown.svelte';
+	import CollectionTimeline from '$lib/components/CollectionTimeline.svelte';
+	import LazySection from '$lib/components/LazySection.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { browser } from '$app/environment';
+	import { reveal } from '$lib/actions/reveal';
 
 	const navSections = [
 		{ id: 'overview', label: 'Overview' },
@@ -147,15 +153,6 @@
 		openDrawer(style, filtered);
 	}
 
-	function filterByFormatDetail(detail: string) {
-		const filtered = collection.items.filter((item) =>
-			item.basic_information.formats?.some((f) =>
-				f.descriptions?.includes(detail) || f.text === detail
-			)
-		);
-		openDrawer(detail, filtered);
-	}
-
 	function filterByArtist(artistName: string) {
 		const filtered = collection.items.filter((item) =>
 			item.basic_information.artists.some((a) => a.name === artistName)
@@ -194,11 +191,6 @@
 		.map(([style, count]) => ({ label: style, value: count }))
 		.sort((a, b) => b.value - a.value)
 		.slice(0, 12));
-
-	let formatDetailData = $derived(Object.entries(stats.formatDetailBreakdown)
-		.map(([format, count]) => ({ label: format, value: count }))
-		.sort((a, b) => b.value - a.value)
-		.slice(0, 10));
 
 	// Random highlights - shuffle the collection for variety
 	function shuffleArray<T>(array: T[]): T[] {
@@ -293,6 +285,15 @@
 		name="description"
 		content="Explore {profile.username}'s record collection: {stats.totalItems} items across {stats.totalArtists} artists"
 	/>
+	<meta property="og:title" content="{profile.username}'s Collection - Record Shelf" />
+	<meta property="og:description" content="{stats.totalItems} records, {stats.totalArtists} artists, top genre: {stats.dominantGenre || 'Various'}" />
+	<meta property="og:type" content="profile" />
+	{#if profile.avatar_url}
+		<meta property="og:image" content={profile.avatar_url} />
+	{/if}
+	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:title" content="{profile.username}'s Record Collection" />
+	<meta name="twitter:description" content="{stats.totalItems} records across {stats.totalArtists} artists on Record Shelf" />
 </svelte:head>
 
 <main class="profile">
@@ -363,7 +364,7 @@
 		<StatCard label="Top Genre" value={stats.dominantGenre || '—'} />
 	</section>
 
-	<div class="grid-2col">
+	<div class="grid-2col" use:reveal>
 		<section class="card">
 			<h2>Recently Added</h2>
 			<RecentlyAdded items={stats.recentlyAdded} />
@@ -375,7 +376,7 @@
 		</section>
 	</div>
 
-	<div id="top-lists" class="grid-2col">
+	<div id="top-lists" class="grid-2col" use:reveal>
 		<section class="card">
 			<h2>Top Artists</h2>
 			<TopList items={stats.topArtists} clickable onItemClick={filterByArtist} />
@@ -387,7 +388,7 @@
 		</section>
 	</div>
 
-	<div class="grid-2col">
+	<div class="grid-2col" use:reveal>
 		<section class="card">
 			<h2>Collection Highlights</h2>
 			<p class="section-subtitle">A random selection from your collection</p>
@@ -400,13 +401,13 @@
 		</section>
 	</div>
 
-	<section id="collection" class="card">
+	<section id="collection" class="card" use:reveal>
 		<h2>Full Collection</h2>
 		<p class="section-subtitle">Browse, search, and filter the entire collection</p>
 		<CollectionBrowser items={collection.items} />
 	</section>
 
-	<div class="grid-2col">
+	<div class="grid-2col" use:reveal>
 		<section class="card">
 			<h2>Collection Quiz</h2>
 			<CollectionQuiz items={collection.items} />
@@ -419,20 +420,26 @@
 	</div>
 
 	{#if stats.ratedCount > 0}
-		<section class="card">
+		<section class="card" use:reveal>
 			<h2>Your Ratings</h2>
 			<RatingsOverview {stats} />
 		</section>
 	{/if}
 
 	{#if stats.addedByMonth.length > 1}
-		<section class="card">
+		<section class="card" use:reveal>
 			<h2>Collection Growth</h2>
 			<TimelineChart data={stats.addedByMonth} />
 		</section>
 	{/if}
 
-	<div id="charts" class="grid-2col">
+	<section class="card" use:reveal>
+		<h2>Collection Timeline</h2>
+		<p class="section-subtitle">Your additions month by month</p>
+		<CollectionTimeline items={collection.items} />
+	</section>
+
+	<div id="charts" class="grid-2col" use:reveal>
 		<section class="card">
 			<h2>By Decade</h2>
 			<BarChart data={decadeData} colorful clickable onItemClick={filterByDecade} />
@@ -444,7 +451,7 @@
 		</section>
 	</div>
 
-	<div class="grid-2col">
+	<div class="grid-2col" use:reveal>
 		<section class="card">
 			<h2>Release Years</h2>
 			<YearHeatmap data={stats.yearBreakdown} onYearClick={filterByYear} />
@@ -464,8 +471,9 @@
 		</section>
 
 		<section class="card">
-			<h2>Format Details</h2>
-			<BarChart data={formatDetailData} horizontal colorful clickable onItemClick={filterByFormatDetail} />
+			<h2>Format Drill-Down</h2>
+			<p class="section-subtitle">Expand to see sub-formats</p>
+			<FormatDrilldown items={collection.items} onFilter={(title, filtered) => openDrawer(title, filtered)} />
 		</section>
 	</div>
 
@@ -474,46 +482,64 @@
 		<BarChart data={styleData} horizontal colorful clickable onItemClick={filterByStyle} />
 	</section>
 
-	<div class="grid-2col">
-		<section class="card">
-			<h2>Genre Evolution</h2>
-			<p class="section-subtitle">How your taste has evolved over time</p>
-			<GenreEvolution items={collection.items} />
-		</section>
+	<LazySection height="300px">
+		<div class="grid-2col">
+			<section class="card">
+				<h2>Genre Evolution</h2>
+				<p class="section-subtitle">How your taste has evolved over time</p>
+				<GenreEvolution items={collection.items} />
+			</section>
 
-		<section class="card">
-			<h2>New vs Vintage</h2>
-			<p class="section-subtitle">Are you buying new releases or digging for classics?</p>
-			<NewVsVintage items={collection.items} />
-		</section>
-	</div>
+			<section class="card">
+				<h2>New vs Vintage</h2>
+				<p class="section-subtitle">Are you buying new releases or digging for classics?</p>
+				<NewVsVintage items={collection.items} />
+			</section>
+		</div>
+	</LazySection>
 
-	<section id="activity" class="card">
-		<h2>Collecting Calendar</h2>
-		<p class="section-subtitle">Your activity over the past year</p>
-		<CollectingCalendar items={collection.items} />
-	</section>
-
-	<div class="grid-2col">
-		<section class="card">
-			<h2>Day Patterns</h2>
-			<DayPatterns items={collection.items} />
+	<LazySection height="250px">
+		<section id="activity" class="card">
+			<h2>Collecting Calendar</h2>
+			<p class="section-subtitle">Your activity over the past year</p>
+			<CollectingCalendar items={collection.items} />
 		</section>
+	</LazySection>
 
-		<section class="card">
-			<h2>Collecting Activity</h2>
-			<CollectingActivity items={collection.items} />
-		</section>
-	</div>
+	<LazySection height="250px">
+		<div class="grid-2col">
+			<section class="card">
+				<h2>Day Patterns</h2>
+				<DayPatterns items={collection.items} />
+			</section>
+
+			<section class="card">
+				<h2>Collecting Activity</h2>
+				<CollectingActivity items={collection.items} />
+			</section>
+		</div>
+	</LazySection>
 
 	<section id="share" class="card">
 		<h2>Share Your Stats</h2>
 		<ShareableCard username={profile.username} {stats} {badges} />
 	</section>
 
-	<section class="card">
+	<section class="card" use:reveal>
 		<h2>Collection Value</h2>
 		<ValueEstimate items={collection.items} username={profile.username} />
+	</section>
+
+	<section class="card" use:reveal>
+		<h2>Export Collection</h2>
+		<p class="section-subtitle">Download your collection data</p>
+		<CollectionExport items={collection.items} username={profile.username} />
+	</section>
+
+	<section class="card" use:reveal>
+		<h2>Explore More</h2>
+		<p class="section-subtitle">Recommendations based on your collection</p>
+		<Recommendations {stats} />
 	</section>
 
 	{#if stats.oldestRelease || stats.newestRelease}

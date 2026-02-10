@@ -18,6 +18,10 @@
 
 <svelte:head>
 	<title>{user1.profile.username} vs {user2.profile.username} - Record Shelf</title>
+	<meta name="description" content="Compare the record collections of {user1.profile.username} and {user2.profile.username}" />
+	<meta property="og:title" content="{user1.profile.username} vs {user2.profile.username}" />
+	<meta property="og:description" content="Head-to-head collection comparison on Record Shelf" />
+	<meta property="og:type" content="website" />
 </svelte:head>
 
 <main class="compare-results">
@@ -507,12 +511,55 @@
 	}
 
 	@media (max-width: 600px) {
+		.compare-results {
+			padding: 1rem;
+		}
+
 		.matchup {
 			flex-direction: column;
 		}
 
 		.vs-badge {
 			order: -1;
+		}
+
+		.stats-row {
+			flex-direction: column;
+		}
+
+		.stat-card {
+			padding: 0.75rem 1rem;
+		}
+
+		.genre-row {
+			grid-template-columns: 1fr 60px 1fr;
+		}
+
+		.genre-name {
+			font-size: 0.6875rem;
+			min-width: 60px;
+		}
+
+		.bar-label {
+			font-size: 0.5625rem;
+		}
+
+		.decade-chart {
+			height: 140px;
+			gap: 0.25rem;
+			overflow-x: auto;
+		}
+
+		.decade-col {
+			min-width: 36px;
+		}
+
+		.decade-bars {
+			height: 110px;
+		}
+
+		.decade-label {
+			font-size: 0.5625rem;
 		}
 	}
 </style>
