@@ -106,9 +106,9 @@ export async function fetchUserCollection(
 
 		page++;
 
-		// Small delay to be nice to the API
+		// Respect Discogs rate limit (~60 req/min for authenticated users)
 		if (page <= totalPages) {
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			await new Promise((resolve) => setTimeout(resolve, 1100));
 		}
 	}
 
@@ -134,7 +134,7 @@ export async function fetchUserWantlist(
 		page++;
 
 		if (page <= totalPages) {
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			await new Promise((resolve) => setTimeout(resolve, 1100));
 		}
 	}
 
