@@ -13,15 +13,17 @@
 		isSpinning = true;
 		spinCount = 0;
 		const totalSpins = 15 + Math.floor(Math.random() * 10);
-		const spinInterval = setInterval(() => {
+
+		function spin() {
 			picked = items[Math.floor(Math.random() * items.length)];
 			spinCount++;
-
 			if (spinCount >= totalSpins) {
-				clearInterval(spinInterval);
 				isSpinning = false;
+			} else {
+				setTimeout(spin, 80 + spinCount * 8);
 			}
-		}, 80 + spinCount * 8);
+		}
+		spin();
 	}
 
 	function getArtistNames(item: DiscogsCollectionItem): string {

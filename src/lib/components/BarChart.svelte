@@ -14,7 +14,7 @@
 		'#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6',
 	];
 
-	let maxValue = $derived(Math.max(...data.map((d) => d.value)));
+	let maxValue = $derived(data.length > 0 ? Math.max(...data.map((d) => d.value)) : 1);
 	let coloredData = $derived(data.map((d, i) => ({
 		...d,
 		color: d.color || (colorful ? colors[i % colors.length] : 'var(--bar-color, #6366f1)')

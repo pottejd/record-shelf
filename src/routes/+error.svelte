@@ -31,7 +31,8 @@
 
 	let status = $derived($page.status);
 	let info = $derived(errorInfo[status] || errorInfo[500]);
-	let message = $derived($page.error?.message || 'Something went wrong');
+	let rawMessage = $derived($page.error?.message || 'Something went wrong');
+	let message = $derived(rawMessage === info.title ? '' : rawMessage);
 </script>
 
 <svelte:head>
@@ -42,7 +43,9 @@
 	<div class="error-icon">{info.icon}</div>
 	<h1>{status}</h1>
 	<p class="title">{info.title}</p>
-	<p class="message">{message}</p>
+	{#if message}
+		<p class="message">{message}</p>
+	{/if}
 	<p class="suggestion">{info.suggestion}</p>
 	<div class="actions">
 		<a href="/" class="btn primary">Back to Home</a>

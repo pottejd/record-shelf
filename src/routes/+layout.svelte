@@ -20,7 +20,7 @@
 </script>
 
 <svelte:head>
-	<meta name="theme-color" content={$theme === 'dark' ? '#0a0a0a' : '#1a1a1a'} />
+	<meta name="theme-color" content={$theme === 'dark' ? '#0a0a0a' : '#fafafa'} />
 </svelte:head>
 
 {#if $navigating}

@@ -1,10 +1,11 @@
 <script lang="ts">
 	let { data, height = 120 }: { data: Array<{ date: string; count: number }>; height?: number } = $props();
 
-	let maxCount = $derived(Math.max(...data.map((d) => d.count)));
+	let maxCount = $derived(Math.max(1, ...data.map((d) => d.count)));
+	let divisor = $derived(Math.max(1, data.length - 1));
 	let points = $derived(data
 		.map((d, i) => {
-			const x = (i / (data.length - 1)) * 100;
+			const x = (i / divisor) * 100;
 			const y = 100 - (d.count / maxCount) * 100;
 			return `${x},${y}`;
 		})
@@ -12,7 +13,7 @@
 
 	let areaPath = $derived(`M 0,100 L ${data
 		.map((d, i) => {
-			const x = (i / (data.length - 1)) * 100;
+			const x = (i / divisor) * 100;
 			const y = 100 - (d.count / maxCount) * 100;
 			return `${x},${y}`;
 		})
@@ -36,7 +37,7 @@
 		<path d={areaPath} fill="url(#areaGradient)" />
 		<polyline points={points} fill="none" stroke="#6366f1" stroke-width="2" vector-effect="non-scaling-stroke" />
 		{#each data as d, i}
-			{@const x = (i / (data.length - 1)) * 100}
+			{@const x = (i / divisor) * 100}
 			{@const y = 100 - (d.count / maxCount) * 100}
 			<circle cx={x} cy={y} r="3" fill="#6366f1" vector-effect="non-scaling-stroke" class="dot">
 				<title>{d.date}: {d.count} added</title>

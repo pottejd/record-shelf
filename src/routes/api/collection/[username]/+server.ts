@@ -5,7 +5,7 @@ import { env } from '$env/dynamic/private';
 import { USER_AGENT } from '$lib/constants';
 import { readCache, writeCache, invalidateCache } from '$lib/server/cache';
 
-export const GET: RequestHandler = async ({ params, platform }) => {
+export const GET: RequestHandler = async ({ params, platform, cookies }) => {
 	const { username } = params;
 
 	if (!username) {
@@ -24,7 +24,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 
 	// Fetch fresh data from Discogs
 	try {
-		const token = env.DISCOGS_TOKEN;
+		const token = cookies.get('discogs_token') || env.DISCOGS_TOKEN;
 		const collection = await fetchFullUserCollection(username, {
 			userAgent: USER_AGENT,
 			token

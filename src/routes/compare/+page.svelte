@@ -4,16 +4,29 @@
 	let username1 = $state('');
 	let username2 = $state('');
 	let isLoading = $state(false);
+	let sameUserError = $state(false);
 
 	afterNavigate(() => {
 		isLoading = false;
 	});
 
+	let isSameUser = $derived(
+		username1.trim() !== '' &&
+		username2.trim() !== '' &&
+		username1.trim().toLowerCase() === username2.trim().toLowerCase()
+	);
+
 	function compare() {
-		if (username1.trim() && username2.trim() && !isLoading) {
-			isLoading = true;
-			goto(`/compare/${encodeURIComponent(username1.trim())}/${encodeURIComponent(username2.trim())}`);
+		const u1 = username1.trim();
+		const u2 = username2.trim();
+		if (!u1 || !u2 || isLoading) return;
+		if (u1.toLowerCase() === u2.toLowerCase()) {
+			sameUserError = true;
+			return;
 		}
+		sameUserError = false;
+		isLoading = true;
+		goto(`/compare/${encodeURIComponent(u1)}/${encodeURIComponent(u2)}`);
 	}
 </script>
 
@@ -61,7 +74,11 @@
 			</div>
 		</div>
 
-		<button class="compare-btn" onclick={compare} disabled={!username1.trim() || !username2.trim() || isLoading}>
+		{#if isSameUser || sameUserError}
+			<p class="error-message">Enter two different usernames to compare</p>
+		{/if}
+
+		<button class="compare-btn" onclick={compare} disabled={!username1.trim() || !username2.trim() || isLoading || isSameUser}>
 			{#if isLoading}
 				<span class="spinner"></span>
 				Comparing...
@@ -149,7 +166,8 @@
 	}
 
 	.input-group input:focus {
-		outline: none;
+		outline: 2px solid var(--color-primary);
+		outline-offset: -2px;
 		border-color: var(--color-primary);
 	}
 
@@ -180,6 +198,12 @@
 	.compare-btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	.error-message {
+		color: #ef4444;
+		font-size: 0.875rem;
+		margin: 0 0 1rem;
 	}
 
 	.spinner {

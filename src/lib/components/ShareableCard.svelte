@@ -17,7 +17,7 @@
 			const text = `${username}'s Record Collection
 ${stats.totalItems} Records | ${stats.totalArtists} Artists | ${stats.totalLabels} Labels
 Top Genre: ${stats.dominantGenre || 'Various'}
-Dominant Era: ${stats.dominantDecade ? stats.dominantDecade + 's' : 'Mixed'}
+Dominant Era: ${stats.dominantDecade || 'Mixed'}
 recordshelf.app/u/${username}`;
 
 			await navigator.clipboard.writeText(text);
@@ -35,7 +35,8 @@ recordshelf.app/u/${username}`;
 		const canvas = document.createElement('canvas');
 		canvas.width = w * scale;
 		canvas.height = h * scale;
-		const ctx = canvas.getContext('2d')!;
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
 		ctx.scale(scale, scale);
 
 		// Background gradient
@@ -113,7 +114,7 @@ recordshelf.app/u/${username}`;
 		// Highlights
 		const highlights = [
 			stats.dominantGenre ? ['Top Genre', stats.dominantGenre] : null,
-			stats.dominantDecade ? ['Favorite Era', stats.dominantDecade + 's'] : null,
+			stats.dominantDecade ? ['Favorite Era', stats.dominantDecade] : null,
 			stats.collectionSpan ? ['Year Span', stats.collectionSpan + ' years'] : null,
 			stats.averageYear ? ['Avg. Year', String(stats.averageYear)] : null
 		].filter(Boolean) as string[][];
@@ -203,7 +204,7 @@ recordshelf.app/u/${username}`;
 			{#if stats.dominantDecade}
 				<div class="highlight-item">
 					<span class="highlight-label">Favorite Era</span>
-					<span class="highlight-value">{stats.dominantDecade}s</span>
+					<span class="highlight-value">{stats.dominantDecade}</span>
 				</div>
 			{/if}
 			{#if stats.collectionSpan}

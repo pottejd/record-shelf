@@ -11,6 +11,7 @@
 		type="text"
 		bind:value
 		{placeholder}
+		aria-label={placeholder || 'Search'}
 	/>
 	{#if value}
 		<button class="clear-search" onclick={() => value = ''} aria-label="Clear search">
@@ -50,7 +51,8 @@
 	}
 
 	.search-box input:focus {
-		outline: none;
+		outline: 2px solid var(--color-primary);
+		outline-offset: -2px;
 		border-color: var(--color-primary);
 	}
 

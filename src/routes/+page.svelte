@@ -69,6 +69,7 @@
 					type="text"
 					bind:value={username}
 					placeholder="Enter a Discogs username"
+					aria-label="Discogs username"
 					disabled={isLoading}
 					class:error={!!error}
 				/>
@@ -267,7 +268,8 @@
 	}
 
 	input:focus {
-		outline: none;
+		outline: 2px solid var(--color-primary);
+		outline-offset: -2px;
 		background: var(--color-bg-secondary);
 	}
 

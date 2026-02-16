@@ -14,7 +14,7 @@
 	];
 
 	let displayItems = $derived(items.slice(0, limit));
-	let maxCount = $derived(Math.max(...displayItems.map((i) => i.count)));
+	let maxCount = $derived(displayItems.length > 0 ? Math.max(...displayItems.map((i) => i.count)) : 1);
 </script>
 
 <ol class="top-list" class:clickable>
