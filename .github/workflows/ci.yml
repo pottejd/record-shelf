@@ -29,7 +29,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm test
+      - run: npx vitest run --coverage
 
   build:
     name: Build
@@ -55,3 +55,25 @@ jobs:
       - run: npm ci
       - run: npx playwright install chromium
       - run: npm run test:e2e
+
+  lighthouse:
+    name: Lighthouse CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm install -g @lhci/cli
+      - name: Run Lighthouse CI
+        run: |
+          npx vite preview --port 4173 &
+          sleep 5
+          lhci autorun --collect.url=http://localhost:4173 \
+            --collect.numberOfRuns=1 \
+            --assert.assertions.categories:accessibility="error; minScore=0.9" \
+            --assert.assertions.categories:best-practices="error; minScore=0.9"
+

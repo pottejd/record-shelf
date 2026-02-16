@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest';
-import { computeCollectionStats, DiscogsAPIError } from './discogs';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+	computeCollectionStats,
+	DiscogsAPIError,
+	fetchCollectionPage,
+	fetchUserCollection,
+	fetchUserProfile
+} from './discogs';
 import type { DiscogsCollectionItem } from '$lib/types/discogs';
 
 function makeItem(overrides: Partial<{
@@ -253,5 +259,192 @@ describe('DiscogsAPIError', () => {
 	it('works without code', () => {
 		const err = new DiscogsAPIError('Server error', 500);
 		expect(err.code).toBeUndefined();
+	});
+});
+
+describe('fetch functions', () => {
+	let mockFetch: ReturnType<typeof vi.fn>;
+	const opts = { userAgent: 'TestAgent/1.0', token: 'test-token' };
+
+	function mockResponse(data: unknown, status = 200) {
+		return {
+			ok: status >= 200 && status < 300,
+			status,
+			statusText: status === 200 ? 'OK' : 'Error',
+			headers: new Headers(),
+			json: async () => data
+		};
+	}
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		mockFetch = vi.fn();
+		vi.stubGlobal('fetch', mockFetch);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+	});
+
+	describe('fetchDiscogs (via fetchUserProfile)', () => {
+		it('returns parsed JSON on success', async () => {
+			mockFetch.mockResolvedValue(mockResponse({ username: 'testuser', id: 1 }));
+
+			const result = await fetchUserProfile('testuser', opts);
+			expect(result.username).toBe('testuser');
+			expect(mockFetch).toHaveBeenCalledWith(
+				'https://api.discogs.com/users/testuser',
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						Authorization: 'Discogs token=test-token'
+					})
+				})
+			);
+		});
+
+		it('throws NOT_FOUND on 404', async () => {
+			mockFetch.mockResolvedValue(mockResponse(null, 404));
+
+			await expect(fetchUserProfile('ghost', opts))
+				.rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 });
+		});
+
+		it('throws PRIVATE on 403', async () => {
+			mockFetch.mockResolvedValue(mockResponse(null, 403));
+
+			await expect(fetchUserProfile('private', opts))
+				.rejects.toMatchObject({ code: 'PRIVATE', status: 403 });
+		});
+
+		it('retries on 429 with exponential backoff', async () => {
+			mockFetch
+				.mockResolvedValueOnce(mockResponse(null, 429))
+				.mockResolvedValueOnce(mockResponse({ username: 'testuser', id: 1 }));
+
+			const promise = fetchUserProfile('testuser', opts);
+			// First attempt gets 429, retry after BASE_DELAY_MS * 2^0 = 1000ms
+			await vi.advanceTimersByTimeAsync(1100);
+			const result = await promise;
+
+			expect(result.username).toBe('testuser');
+			expect(mockFetch).toHaveBeenCalledTimes(2);
+		});
+
+		it('respects Retry-After header on 429', async () => {
+			const headers429 = new Headers({ 'Retry-After': '2' });
+			mockFetch
+				.mockResolvedValueOnce({ ok: false, status: 429, headers: headers429, statusText: 'Too Many Requests' })
+				.mockResolvedValueOnce(mockResponse({ username: 'testuser', id: 1 }));
+
+			const promise = fetchUserProfile('testuser', opts);
+			// Retry-After: 2 → 2000ms delay
+			await vi.advanceTimersByTimeAsync(2100);
+			const result = await promise;
+
+			expect(result.username).toBe('testuser');
+			expect(mockFetch).toHaveBeenCalledTimes(2);
+		});
+
+		it('throws RATE_LIMITED after max retries on 429', async () => {
+			mockFetch.mockResolvedValue(mockResponse(null, 429));
+
+			const promise = fetchUserProfile('testuser', opts);
+			// Attach handler before advancing to prevent unhandled rejection
+			const assertion = expect(promise).rejects.toMatchObject({ code: 'RATE_LIMITED', status: 429 });
+			// 4 attempts (0,1,2,3), delays: 1000, 2000, 4000 = 7000ms
+			await vi.advanceTimersByTimeAsync(8000);
+
+			await assertion;
+			expect(mockFetch).toHaveBeenCalledTimes(4);
+		});
+
+		it('works without auth token', async () => {
+			mockFetch.mockResolvedValue(mockResponse({ username: 'testuser', id: 1 }));
+
+			await fetchUserProfile('testuser', { userAgent: 'TestAgent/1.0' });
+			const callHeaders = mockFetch.mock.calls[0][1].headers;
+			expect(callHeaders.Authorization).toBeUndefined();
+		});
+	});
+
+	describe('fetchCollectionPage', () => {
+		it('returns items and pagination', async () => {
+			const apiResponse = {
+				releases: [{ id: 1, basic_information: { title: 'Album' } }],
+				pagination: { page: 1, pages: 3, per_page: 100, items: 250, urls: {} }
+			};
+			mockFetch.mockResolvedValue(mockResponse(apiResponse));
+
+			const result = await fetchCollectionPage('testuser', 1, opts);
+
+			expect(result.items).toEqual(apiResponse.releases);
+			expect(result.pagination.pages).toBe(3);
+			expect(mockFetch).toHaveBeenCalledWith(
+				expect.stringContaining('page=1&per_page=100'),
+				expect.any(Object)
+			);
+		});
+	});
+
+	describe('fetchUserCollection', () => {
+		function makePageResponse(page: number, totalPages: number, items: unknown[]) {
+			return mockResponse({
+				releases: items,
+				pagination: { page, pages: totalPages, per_page: 100, items: totalPages * 100, urls: {} }
+			});
+		}
+
+		it('paginates through all pages', async () => {
+			mockFetch
+				.mockResolvedValueOnce(makePageResponse(1, 2, [{ id: 1 }]))
+				.mockResolvedValueOnce(makePageResponse(2, 2, [{ id: 2 }]));
+
+			const promise = fetchUserCollection('testuser', opts);
+			// Pagination delay between pages: 1100ms
+			await vi.advanceTimersByTimeAsync(1200);
+			const result = await promise;
+
+			expect(result.items).toHaveLength(2);
+			expect(result.totalPages).toBe(2);
+			expect(mockFetch).toHaveBeenCalledTimes(2);
+		});
+
+		it('respects maxPages limit', async () => {
+			mockFetch
+				.mockResolvedValueOnce(makePageResponse(1, 5, [{ id: 1 }]))
+				.mockResolvedValueOnce(makePageResponse(2, 5, [{ id: 2 }]));
+
+			const promise = fetchUserCollection('testuser', opts, 2);
+			await vi.advanceTimersByTimeAsync(1200);
+			const result = await promise;
+
+			expect(result.items).toHaveLength(2);
+			expect(mockFetch).toHaveBeenCalledTimes(2);
+		});
+
+		it('calls progress callback', async () => {
+			mockFetch
+				.mockResolvedValueOnce(makePageResponse(1, 2, [{ id: 1 }]))
+				.mockResolvedValueOnce(makePageResponse(2, 2, [{ id: 2 }]));
+
+			const onProgress = vi.fn();
+			const promise = fetchUserCollection('testuser', opts, undefined, onProgress);
+			await vi.advanceTimersByTimeAsync(1200);
+			await promise;
+
+			expect(onProgress).toHaveBeenCalledTimes(2);
+			expect(onProgress).toHaveBeenCalledWith(1, 200); // after page 1
+			expect(onProgress).toHaveBeenCalledWith(2, 200); // after page 2
+		});
+
+		it('handles single page collection without delay', async () => {
+			mockFetch.mockResolvedValueOnce(makePageResponse(1, 1, [{ id: 1 }]));
+
+			const result = await fetchUserCollection('testuser', opts);
+
+			expect(result.items).toHaveLength(1);
+			expect(mockFetch).toHaveBeenCalledTimes(1);
+		});
 	});
 });
