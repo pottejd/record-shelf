@@ -51,7 +51,7 @@
 
 	.chart:not(.horizontal) {
 		flex-direction: row;
-		align-items: flex-end;
+		align-items: stretch;
 		justify-content: space-around;
 		height: 200px;
 		gap: 0.25rem;
@@ -158,5 +158,6 @@
 		transform: rotate(180deg);
 		max-height: 80px;
 		overflow: hidden;
+		order: 1;
 	}
 </style>
