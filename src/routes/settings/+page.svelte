@@ -213,7 +213,7 @@
 	<section class="card about">
 		<h2>About Record Shelf</h2>
 		<p>
-			Record Shelf visualizes your Discogs collection with beautiful charts and statistics.
+			Record Shelf visualizes any public Discogs collection with beautiful charts and statistics.
 			Enter any public Discogs username to explore their collection.
 		</p>
 		<p class="version">Version {version}</p>

@@ -52,7 +52,7 @@
 
 	<div class="pattern-insights">
 		{#if dayStats[0].count + dayStats[6].count > dayStats.slice(1, 6).reduce((a, b) => a + b.count, 0) / 5 * 2}
-			<span class="insight">Weekend warrior - you add most records on weekends</span>
+			<span class="insight">Weekend warrior - most records added on weekends</span>
 		{:else if dayStats.slice(1, 6).reduce((a, b) => a + b.count, 0) > (dayStats[0].count + dayStats[6].count) * 3}
 			<span class="insight">Weekday collector - most additions happen during the week</span>
 		{/if}

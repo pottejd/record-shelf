@@ -448,7 +448,7 @@
 	<div class="grid-2col" use:reveal>
 		<section class="card">
 			<h2>Collection Highlights</h2>
-			<p class="section-subtitle">A random selection from your collection</p>
+			<p class="section-subtitle">A random selection from the collection</p>
 			<CoverGrid items={randomHighlights} />
 		</section>
 
@@ -478,7 +478,7 @@
 
 	{#if stats.ratedCount > 0}
 		<section class="card" use:reveal>
-			<h2>Your Ratings</h2>
+			<h2>Ratings</h2>
 			<RatingsOverview {stats} />
 		</section>
 	{/if}
@@ -492,7 +492,7 @@
 
 	<section class="card" use:reveal>
 		<h2>Collection Timeline</h2>
-		<p class="section-subtitle">Your additions month by month</p>
+		<p class="section-subtitle">Additions month by month</p>
 		<CollectionTimeline items={items} />
 	</section>
 
@@ -516,7 +516,7 @@
 
 		<section class="card">
 			<h2>Artist Loyalty</h2>
-			<p class="section-subtitle">Artists you keep coming back to</p>
+			<p class="section-subtitle">Artists that keep showing up</p>
 			<ArtistLoyalty items={items} />
 		</section>
 	</div>
@@ -543,13 +543,13 @@
 		<div class="grid-2col">
 			<section class="card">
 				<h2>Genre Evolution</h2>
-				<p class="section-subtitle">How your taste has evolved over time</p>
+				<p class="section-subtitle">How taste has evolved over time</p>
 				<GenreEvolution items={items} />
 			</section>
 
 			<section class="card">
 				<h2>New vs Vintage</h2>
-				<p class="section-subtitle">Are you buying new releases or digging for classics?</p>
+				<p class="section-subtitle">New releases or digging for classics?</p>
 				<NewVsVintage items={items} />
 			</section>
 		</div>
@@ -558,7 +558,7 @@
 	<LazySection height="250px">
 		<section id="activity" class="card">
 			<h2>Collecting Calendar</h2>
-			<p class="section-subtitle">Your activity over the past year</p>
+			<p class="section-subtitle">Activity over the past year</p>
 			<CollectingCalendar items={items} />
 		</section>
 	</LazySection>
@@ -578,7 +578,7 @@
 	</LazySection>
 
 	<section id="share" class="card">
-		<h2>Share Your Stats</h2>
+		<h2>Share Stats</h2>
 		<ShareableCard username={profile.username} {stats} {badges} />
 	</section>
 
@@ -589,13 +589,13 @@
 
 	<section class="card" use:reveal>
 		<h2>Export Collection</h2>
-		<p class="section-subtitle">Download your collection data</p>
+		<p class="section-subtitle">Download collection data</p>
 		<CollectionExport items={items} username={profile.username} />
 	</section>
 
 	<section class="card" use:reveal>
 		<h2>Explore More</h2>
-		<p class="section-subtitle">Recommendations based on your collection</p>
+		<p class="section-subtitle">Recommendations based on this collection</p>
 		<Recommendations {stats} />
 	</section>
 

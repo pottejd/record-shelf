@@ -71,7 +71,7 @@
 		</div>
 	{:else}
 		<div class="value-prompt">
-			<p>Get a rough estimate of your collection's market value based on Discogs marketplace data.</p>
+			<p>Get a rough estimate of this collection's market value based on Discogs marketplace data.</p>
 			{#if errorMsg}
 				<p class="error">{errorMsg}</p>
 			{/if}

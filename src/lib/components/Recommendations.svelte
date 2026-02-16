@@ -20,7 +20,7 @@
 			result.push({
 				label: style.name,
 				query: encodeURIComponent(style.name),
-				reason: `You have ${style.count} ${style.name} records`
+				reason: `${style.count} ${style.name} records in the collection`
 			});
 		}
 
@@ -30,7 +30,7 @@
 			result.push({
 				label: `More by ${artist.name}`,
 				query: encodeURIComponent(artist.name),
-				reason: `${artist.count} releases in your collection`
+				reason: `${artist.count} releases in the collection`
 			});
 		}
 
@@ -42,7 +42,7 @@
 				result.push({
 					label: `${decade}s ${topGenre}`,
 					query: encodeURIComponent(`${topGenre} ${decade}s`),
-					reason: `Your sweet spot: ${topGenre} from the ${decade}s`
+					reason: `Sweet spot: ${topGenre} from the ${decade}s`
 				});
 			}
 		}

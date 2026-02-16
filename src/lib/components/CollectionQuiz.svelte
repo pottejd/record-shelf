@@ -130,7 +130,7 @@
 					<line x1="12" y1="17" x2="12.01" y2="17" />
 				</svg>
 			</div>
-			<p class="quiz-description">Test your knowledge of your own collection!</p>
+			<p class="quiz-description">Test how well you know this collection!</p>
 			{#if questionsAnswered > 0}
 				<p class="last-score">Last score: {score}/{questionsAnswered}</p>
 			{/if}

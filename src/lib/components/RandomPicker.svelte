@@ -96,7 +96,7 @@
 					<circle cx="24" cy="24" r="14" stroke="currentColor" stroke-width="1.5" opacity="0.2"/>
 					<circle cx="24" cy="24" r="4" fill="currentColor" opacity="0.3"/>
 				</svg>
-				<p>Spin to discover something from your collection</p>
+				<p>Spin to discover something from the collection</p>
 			</div>
 		</div>
 	{/if}

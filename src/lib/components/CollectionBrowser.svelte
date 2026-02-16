@@ -181,7 +181,7 @@
 
 	{#if filteredItems.length === 0}
 		<div class="no-results">
-			<p>No records found matching your search.</p>
+			<p>No records found matching the search.</p>
 			<button onclick={clearFilters}>Clear Filters</button>
 		</div>
 	{/if}

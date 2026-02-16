@@ -89,13 +89,13 @@
 		const classicVintage = (categories[2]?.percentage || 0) + (categories[3]?.percentage || 0);
 
 		if (newRecent > 70) {
-			return { label: 'Trend Follower', description: 'You mostly buy new and recent releases' };
+			return { label: 'Trend Follower', description: 'Mostly new and recent releases' };
 		} else if (classicVintage > 70) {
-			return { label: 'Crate Digger', description: 'You love hunting for older releases' };
+			return { label: 'Crate Digger', description: 'Lots of older releases' };
 		} else if (categories[3]?.percentage > 40) {
-			return { label: 'Vintage Hunter', description: 'You specialize in records 20+ years old' };
+			return { label: 'Vintage Hunter', description: 'Specializes in records 20+ years old' };
 		} else {
-			return { label: 'Balanced Collector', description: 'You collect across all eras' };
+			return { label: 'Balanced Collector', description: 'A mix across all eras' };
 		}
 	}
 </script>

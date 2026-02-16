@@ -24,7 +24,7 @@
 </script>
 
 <svelte:head>
-	<title>Record Shelf - Visualize Your Record Collection</title>
+	<title>Record Shelf - Visualize Any Record Collection</title>
 	<meta
 		name="description"
 		content="See beautiful stats and visualizations of any public Discogs collection"
@@ -34,7 +34,7 @@
 	<meta property="og:type" content="website" />
 	<meta name="twitter:card" content="summary" />
 	<meta name="twitter:title" content="Record Shelf" />
-	<meta name="twitter:description" content="Visualize your Discogs record collection with beautiful charts and stats" />
+	<meta name="twitter:description" content="Visualize any Discogs record collection with beautiful charts and stats" />
 </svelte:head>
 
 {#if isLoading}
@@ -130,7 +130,7 @@
 				</svg>
 			</div>
 			<h3>Top Artists & Labels</h3>
-			<p>See who dominates your shelves</p>
+			<p>See who dominates the shelves</p>
 		</div>
 		<div class="feature">
 			<div class="feature-icon" style="--accent: #f97316;">
@@ -138,8 +138,8 @@
 					<path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/>
 				</svg>
 			</div>
-			<h3>Share Your Taste</h3>
-			<p>Shareable link to show off your collection</p>
+			<h3>Share the Taste</h3>
+			<p>Shareable link to show off any collection</p>
 		</div>
 	</section>
 
