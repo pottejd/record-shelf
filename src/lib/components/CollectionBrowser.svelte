@@ -30,8 +30,6 @@
 	let showFilters = $state(false);
 	let page = $state(parseInt(getInitialParam('page', '1'), 10) || 1);
 	const perPage = 24;
-	let loadMoreEl: HTMLDivElement | undefined = $state();
-
 	// Sync filter state to URL params
 	$effect(() => {
 		if (!browser) return;
@@ -130,21 +128,6 @@
 		page = 1;
 	});
 
-	// Infinite scroll: auto-load more when sentinel enters viewport
-	$effect(() => {
-		if (!browser || !loadMoreEl) return;
-		const observer = new IntersectionObserver(
-			([entry]) => {
-				if (entry.isIntersecting && hasMore) {
-					page = page + 1;
-				}
-			},
-			{ rootMargin: '200px' }
-		);
-		observer.observe(loadMoreEl);
-		return () => observer.disconnect();
-	});
-
 	function clearFilters() {
 		searchQuery = '';
 		debouncedQuery = '';
@@ -204,7 +187,7 @@
 	{/if}
 
 	{#if hasMore}
-		<div class="load-more" bind:this={loadMoreEl}>
+		<div class="load-more">
 			<button onclick={() => page = page + 1}>
 				Show more ({filteredItems.length - visibleCount} remaining)
 			</button>
