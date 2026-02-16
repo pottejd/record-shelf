@@ -82,11 +82,16 @@ export const GET: RequestHandler = async ({ params, platform, cookies, url }) =>
 	}
 };
 
-export const DELETE: RequestHandler = async ({ params, platform }) => {
+export const DELETE: RequestHandler = async ({ params, platform, cookies }) => {
 	const { username } = params;
 
 	if (!username) {
 		throw error(400, 'Username is required');
+	}
+
+	const token = cookies.get('discogs_token') || env.DISCOGS_TOKEN;
+	if (!token) {
+		throw error(401, 'Authentication required to invalidate cache');
 	}
 
 	await invalidateCache(platform, username);

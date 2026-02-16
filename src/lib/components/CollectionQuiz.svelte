@@ -124,7 +124,7 @@
 	{#if !quizActive}
 		<div class="quiz-start">
 			<div class="quiz-icon">
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<circle cx="12" cy="12" r="10" />
 					<path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
 					<line x1="12" y1="17" x2="12.01" y2="17" />

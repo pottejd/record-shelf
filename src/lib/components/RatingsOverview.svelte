@@ -47,7 +47,7 @@
 					<a
 						href="https://www.discogs.com/release/{item.basic_information.id}"
 						target="_blank"
-						rel="noopener"
+						rel="noopener noreferrer"
 						class="top-rated-item"
 					>
 						<img

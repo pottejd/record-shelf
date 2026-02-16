@@ -14,7 +14,7 @@
 		<a
 			href="https://www.discogs.com/release/{item.basic_information.id}"
 			target="_blank"
-			rel="noopener"
+			rel="noopener noreferrer"
 			class="cover"
 			title="{getArtistNames(item)} - {item.basic_information.title}"
 		>

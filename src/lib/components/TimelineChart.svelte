@@ -27,7 +27,7 @@
 		<span class="total">{totalAdded.toLocaleString()} records added</span>
 		<span class="period">Last {data.length} months</span>
 	</div>
-	<svg viewBox="0 0 100 100" preserveAspectRatio="none" style:height="{height}px">
+	<svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" style:height="{height}px">
 		<defs>
 			<linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
 				<stop offset="0%" stop-color="#6366f1" stop-opacity="0.3" />

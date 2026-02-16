@@ -67,12 +67,12 @@
 			<a
 				href="https://www.discogs.com/search/?q={suggestion.query}&type=release"
 				target="_blank"
-				rel="noopener"
+				rel="noopener noreferrer"
 				class="suggestion-card"
 			>
 				<span class="suggestion-label">{suggestion.label}</span>
 				<span class="suggestion-reason">{suggestion.reason}</span>
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="arrow">
+				<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="arrow">
 					<path d="M7 17l9.2-9.2M17 17V7H7" />
 				</svg>
 			</a>

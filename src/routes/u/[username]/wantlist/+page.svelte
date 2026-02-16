@@ -49,7 +49,7 @@
 <main class="wantlist-page">
 	<nav class="nav-bar">
 		<a href="/u/{profile.username}" class="back-link">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<polyline points="15 18 9 12 15 6" />
 			</svg>
 			Back to Collection
@@ -101,7 +101,7 @@
 			<a
 				href="https://www.discogs.com/release/{item.basic_information.id}"
 				target="_blank"
-				rel="noopener"
+				rel="noopener noreferrer"
 				class="want-card"
 			>
 				<div class="want-cover">
@@ -133,7 +133,7 @@
 				<p class="empty-desc">No items match "{searchQuery}"</p>
 				<button class="clear-btn" onclick={() => searchQuery = ''}>Clear search</button>
 			{:else}
-				<svg class="empty-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
+				<svg aria-hidden="true" class="empty-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
 					<circle cx="32" cy="32" r="24" opacity="0.3" />
 					<circle cx="32" cy="32" r="16" opacity="0.2" />
 					<circle cx="32" cy="32" r="4" fill="currentColor" opacity="0.4" />

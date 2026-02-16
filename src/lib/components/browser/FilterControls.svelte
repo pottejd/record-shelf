@@ -26,7 +26,7 @@
 </script>
 
 <button class="filter-toggle" class:active={visible} onclick={onToggle}>
-	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+	<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 		<path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
 	</svg>
 	Filters

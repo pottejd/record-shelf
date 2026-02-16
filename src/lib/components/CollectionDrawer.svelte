@@ -10,13 +10,38 @@
 		onClose: () => void;
 	} = $props();
 
+	let backdropEl: HTMLDivElement | undefined = $state();
+
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') onClose();
+		if (e.key === 'Tab' && backdropEl) {
+			const focusable = backdropEl.querySelectorAll<HTMLElement>(
+				'a[href], button:not(:disabled), input, select, textarea, [tabindex]:not([tabindex="-1"])'
+			);
+			if (focusable.length === 0) return;
+			const first = focusable[0];
+			const last = focusable[focusable.length - 1];
+			if (e.shiftKey && document.activeElement === first) {
+				e.preventDefault();
+				last.focus();
+			} else if (!e.shiftKey && document.activeElement === last) {
+				e.preventDefault();
+				first.focus();
+			}
+		}
 	}
 
 	function handleBackdropClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) onClose();
 	}
+
+	// Auto-focus close button when drawer opens
+	$effect(() => {
+		if (open && backdropEl) {
+			const closeBtn = backdropEl.querySelector<HTMLElement>('.close-btn');
+			if (closeBtn) closeBtn.focus();
+		}
+	});
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -25,6 +50,7 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
 	<div
 		class="drawer-backdrop"
+		bind:this={backdropEl}
 		onclick={handleBackdropClick}
 		role="dialog"
 		aria-modal="true"
@@ -38,7 +64,7 @@
 					<p class="item-count">{items.length} {items.length === 1 ? 'record' : 'records'}</p>
 				</div>
 				<button class="close-btn" onclick={onClose} aria-label="Close">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<path d="M18 6L6 18M6 6l12 12" />
 					</svg>
 				</button>
@@ -81,11 +107,11 @@
 								<a
 									href="https://www.discogs.com/release/{item.basic_information.id}"
 									target="_blank"
-									rel="noopener"
+									rel="noopener noreferrer"
 									class="discogs-btn"
 									aria-label="View on Discogs"
 								>
-									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 										<path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
 									</svg>
 								</a>

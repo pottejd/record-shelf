@@ -15,22 +15,49 @@ interface CachedPrice {
 	timestamp: number;
 }
 
-// In-memory price cache (survives across requests, cleared on redeploy)
+// LRU price cache (survives across requests, cleared on redeploy)
+const MAX_CACHE_SIZE = 2000;
 const priceCache = new Map<number, CachedPrice>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-// Global rate limiter: track last request time
-let lastRequestTime = 0;
+function getCached(key: number): CachedPrice | undefined {
+	const entry = priceCache.get(key);
+	if (!entry) return undefined;
+	// Move to end (most recently used)
+	priceCache.delete(key);
+	priceCache.set(key, entry);
+	return entry;
+}
+
+function setCache(key: number, value: CachedPrice) {
+	priceCache.delete(key); // Remove if exists to refresh position
+	if (priceCache.size >= MAX_CACHE_SIZE) {
+		// Evict oldest (first) entry
+		const oldest = priceCache.keys().next().value;
+		if (oldest !== undefined) priceCache.delete(oldest);
+	}
+	priceCache.set(key, value);
+}
+
+// Serialized rate limiter using a promise chain to prevent race conditions
+let rateLimitChain = Promise.resolve();
 const MIN_DELAY_MS = 1100; // ~54 req/min, safely under Discogs' 60/min limit
 
 async function rateLimitedFetch(url: string, headers: Record<string, string>): Promise<Response> {
-	const now = Date.now();
-	const timeSinceLast = now - lastRequestTime;
-	if (timeSinceLast < MIN_DELAY_MS) {
-		await new Promise((resolve) => setTimeout(resolve, MIN_DELAY_MS - timeSinceLast));
-	}
-	lastRequestTime = Date.now();
-	return fetch(url, { headers });
+	let resolve!: (value: Response) => void;
+	let reject!: (reason: unknown) => void;
+	const result = new Promise<Response>((res, rej) => { resolve = res; reject = rej; });
+
+	rateLimitChain = rateLimitChain.then(async () => {
+		await new Promise((r) => setTimeout(r, MIN_DELAY_MS));
+		try {
+			resolve(await fetch(url, { headers }));
+		} catch (e) {
+			reject(e);
+		}
+	});
+
+	return result;
 }
 
 export const POST: RequestHandler = async ({ params, request }) => {
@@ -63,7 +90,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 	for (const releaseId of ids) {
 		// Check cache first
-		const cached = priceCache.get(releaseId);
+		const cached = getCached(releaseId);
 		if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
 			results.push({ releaseId, lowestPrice: cached.lowestPrice, currency: cached.currency });
 			continue;
@@ -87,7 +114,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 					currency: ref?.currency ?? 'USD'
 				};
 				results.push(result);
-				priceCache.set(releaseId, {
+				setCache(releaseId, {
 					lowestPrice: result.lowestPrice,
 					currency: result.currency,
 					timestamp: Date.now()

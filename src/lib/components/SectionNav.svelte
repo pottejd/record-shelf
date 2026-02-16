@@ -71,6 +71,7 @@
 				href="#{section.id}"
 				class="nav-item"
 				class:active={activeSection === section.id}
+				aria-current={activeSection === section.id ? "true" : undefined}
 			>
 				{section.label}
 			</a>

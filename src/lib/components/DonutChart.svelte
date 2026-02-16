@@ -60,7 +60,7 @@
 </script>
 
 <div class="donut-chart" class:clickable>
-	<svg width={size} height={size} viewBox="0 0 {size} {size}">
+	<svg aria-hidden="true" width={size} height={size} viewBox="0 0 {size} {size}">
 		{#each segments as segment}
 			{#if clickable}
 				<!-- svelte-ignore a11y_click_events_have_key_events -->

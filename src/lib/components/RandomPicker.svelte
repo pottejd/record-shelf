@@ -52,7 +52,7 @@
 			<a
 				href="https://www.discogs.com/release/{picked.basic_information.id}"
 				target="_blank"
-				rel="noopener"
+				rel="noopener noreferrer"
 				class="picked-record"
 			>
 				<img
@@ -82,7 +82,7 @@
 			<a
 				href="https://www.discogs.com/release/{picked.basic_information.id}"
 				target="_blank"
-				rel="noopener"
+				rel="noopener noreferrer"
 				class="view-link"
 			>
 				View on Discogs
@@ -91,7 +91,7 @@
 	{:else}
 		<div class="picker-display empty" class:spinning={isSpinning}>
 			<div class="picker-placeholder">
-				<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+				<svg aria-hidden="true" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2" opacity="0.3"/>
 					<circle cx="24" cy="24" r="14" stroke="currentColor" stroke-width="1.5" opacity="0.2"/>
 					<circle cx="24" cy="24" r="4" fill="currentColor" opacity="0.3"/>
@@ -104,7 +104,7 @@
 	<button class="spin-btn" onclick={pickRandom} disabled={isSpinning || items.length === 0}>
 		{#if isSpinning}
 			<span class="spin-icon spinning">
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path d="M23 4v6h-6M1 20v-6h6" />
 					<path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
 				</svg>
@@ -112,7 +112,7 @@
 			Spinning...
 		{:else}
 			<span class="spin-icon">
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path d="M23 4v6h-6M1 20v-6h6" />
 					<path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
 				</svg>

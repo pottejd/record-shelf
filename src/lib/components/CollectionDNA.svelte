@@ -80,7 +80,7 @@
 
 <div class="collection-dna">
 	<div class="dna-visual">
-		<svg viewBox="0 0 200 200" class="dna-ring">
+		<svg aria-hidden="true" viewBox="0 0 200 200" class="dna-ring">
 			<!-- Background ring -->
 			<circle cx="100" cy="100" r="85" fill="none" stroke="var(--color-bg-tertiary)" stroke-width="20" />
 

@@ -27,7 +27,7 @@
 <main class="compare-results">
 	<nav class="nav-bar">
 		<a href="/" class="home-link">
-			<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+			<svg aria-hidden="true" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
 				<circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="2"/>
 				<circle cx="24" cy="24" r="12" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
 				<circle cx="24" cy="24" r="3" fill="currentColor"/>

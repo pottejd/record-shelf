@@ -52,7 +52,7 @@
 						<a
 							href="https://www.discogs.com/release/{info.id}"
 							target="_blank"
-							rel="noopener"
+							rel="noopener noreferrer"
 							class="cover-link"
 							title="{info.artists.map(a => a.name.replace(/\s*\(\d+\)$/, '')).join(', ')} – {info.title}"
 						>

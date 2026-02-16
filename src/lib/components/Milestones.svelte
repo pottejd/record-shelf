@@ -86,7 +86,7 @@
 					{/if}
 				</div>
 				{#if milestone.reached}
-					<svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+					<svg aria-hidden="true" class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
 						<polyline points="20 6 9 17 4 12" />
 					</svg>
 				{/if}

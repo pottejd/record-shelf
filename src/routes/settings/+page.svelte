@@ -75,7 +75,7 @@
 <main class="settings">
 	<header class="settings-header">
 		<a href="/" class="back-link">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<path d="M19 12H5M12 19l-7-7 7-7" />
 			</svg>
 			Back
@@ -85,7 +85,7 @@
 
 	{#if showRedirectNotice}
 		<div class="redirect-notice">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
 			</svg>
 			<p>You need to set up a Discogs API token to view collections. Follow the steps below to get started.</p>
@@ -123,12 +123,12 @@
 					aria-label={showToken ? 'Hide token' : 'Show token'}
 				>
 					{#if showToken}
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 							<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
 							<line x1="1" y1="1" x2="23" y2="23" />
 						</svg>
 					{:else}
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 							<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
 							<circle cx="12" cy="12" r="3" />
 						</svg>
@@ -160,12 +160,12 @@
 		{#if testResult}
 			<div class="test-result" class:success={testResult.success} class:error={!testResult.success}>
 				{#if testResult.success}
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
 						<polyline points="22 4 12 14.01 9 11.01" />
 					</svg>
 				{:else}
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<circle cx="12" cy="12" r="10" />
 						<line x1="15" y1="9" x2="9" y2="15" />
 						<line x1="9" y1="9" x2="15" y2="15" />
@@ -181,7 +181,7 @@
 		<ol>
 			<li>
 				<strong>Go to Discogs</strong>
-				<p>Visit <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener">discogs.com/settings/developers</a></p>
+				<p>Visit <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener noreferrer">discogs.com/settings/developers</a></p>
 			</li>
 			<li>
 				<strong>Sign in</strong>
@@ -198,7 +198,7 @@
 		</ol>
 
 		<div class="note">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<circle cx="12" cy="12" r="10" />
 				<line x1="12" y1="16" x2="12" y2="12" />
 				<line x1="12" y1="8" x2="12.01" y2="8" />
