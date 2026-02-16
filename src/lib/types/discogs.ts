@@ -135,6 +135,7 @@ export interface UserCollection {
 	items: DiscogsCollectionItem[];
 	stats: CollectionStats;
 	fetchedAt: number;
+	totalDiscogsItems: number;
 }
 
 export interface DiscogsWantlistItem {

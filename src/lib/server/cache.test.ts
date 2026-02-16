@@ -83,7 +83,8 @@ const mockCollection: UserCollection = {
 		ratedCount: 0,
 		topRatedItems: []
 	},
-	fetchedAt: Date.now()
+	fetchedAt: Date.now(),
+	totalDiscogsItems: 0
 };
 
 describe('cache utility', () => {

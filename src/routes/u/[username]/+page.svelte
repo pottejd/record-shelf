@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import type { DiscogsCollectionItem, CollectionStats } from '$lib/types/discogs';
 	import StatCard from '$lib/components/StatCard.svelte';
 	import BarChart from '$lib/components/BarChart.svelte';
 	import DonutChart from '$lib/components/DonutChart.svelte';
@@ -30,6 +30,7 @@
 	import FormatDrilldown from '$lib/components/FormatDrilldown.svelte';
 	import CollectionTimeline from '$lib/components/CollectionTimeline.svelte';
 	import LazySection from '$lib/components/LazySection.svelte';
+	import { computeCollectionStats } from '$lib/api/discogs';
 	import { invalidateAll } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { reveal } from '$lib/actions/reveal';
@@ -45,9 +46,54 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let collection = $derived(data.collection);
-	let profile = $derived(collection.profile);
-	let stats = $derived(collection.stats);
+	let profile = $derived(data.collection.profile);
+	let totalDiscogsItems = $derived(data.collection.totalDiscogsItems);
+
+	// Mutable items array for progressive loading
+	let items: DiscogsCollectionItem[] = $state(data.collection.items);
+	let isLoadingMore = $state(false);
+	let loadProgress = $state(0);
+
+	// Recompute stats reactively as more items load
+	let stats = $derived(computeCollectionStats(items));
+
+	// Reset items when navigating to a different user
+	$effect(() => {
+		items = data.collection.items;
+	});
+
+	// Progressive loading: fetch remaining pages client-side
+	$effect(() => {
+		if (!browser) return;
+		const initialItems = data.collection.items;
+		const total = data.collection.totalDiscogsItems;
+		if (initialItems.length >= total) return;
+
+		let cancelled = false;
+		isLoadingMore = true;
+
+		async function loadRemaining() {
+			let nextPage = 2;
+			while (!cancelled) {
+				try {
+					const response = await fetch(`/api/collection/${data.collection.profile.username}?page=${nextPage}`);
+					if (!response.ok || cancelled) break;
+					const pageData = await response.json();
+					if (!pageData.items?.length || cancelled) break;
+					items = [...items, ...pageData.items];
+					loadProgress = Math.min(items.length / data.collection.totalDiscogsItems, 1);
+					if (pageData.pagination.page >= pageData.pagination.pages) break;
+					nextPage++;
+				} catch {
+					break;
+				}
+			}
+			if (!cancelled) isLoadingMore = false;
+		}
+
+		loadRemaining();
+		return () => { cancelled = true; };
+	});
 
 	// Refresh state
 	let refreshing = $state(false);
@@ -125,7 +171,7 @@
 	function filterByDecade(label: string) {
 		const decade = label.replace('s', '');
 		const decadeStart = parseInt(decade);
-		const filtered = collection.items.filter((item) => {
+		const filtered = items.filter((item) => {
 			const year = item.basic_information.year;
 			return year >= decadeStart && year < decadeStart + 10;
 		});
@@ -133,42 +179,42 @@
 	}
 
 	function filterByGenre(genre: string) {
-		const filtered = collection.items.filter((item) =>
+		const filtered = items.filter((item) =>
 			item.basic_information.genres?.includes(genre)
 		);
 		openDrawer(genre, filtered);
 	}
 
 	function filterByFormat(format: string) {
-		const filtered = collection.items.filter((item) =>
+		const filtered = items.filter((item) =>
 			item.basic_information.formats?.some((f) => f.name === format)
 		);
 		openDrawer(format, filtered);
 	}
 
 	function filterByStyle(style: string) {
-		const filtered = collection.items.filter((item) =>
+		const filtered = items.filter((item) =>
 			item.basic_information.styles?.includes(style)
 		);
 		openDrawer(style, filtered);
 	}
 
 	function filterByArtist(artistName: string) {
-		const filtered = collection.items.filter((item) =>
+		const filtered = items.filter((item) =>
 			item.basic_information.artists.some((a) => a.name === artistName)
 		);
 		openDrawer(artistName, filtered);
 	}
 
 	function filterByLabel(labelName: string) {
-		const filtered = collection.items.filter((item) =>
+		const filtered = items.filter((item) =>
 			item.basic_information.labels?.some((l) => l.name === labelName)
 		);
 		openDrawer(labelName, filtered);
 	}
 
 	function filterByYear(year: number) {
-		const filtered = collection.items.filter((item) =>
+		const filtered = items.filter((item) =>
 			item.basic_information.year === year
 		);
 		openDrawer(String(year), filtered);
@@ -202,7 +248,7 @@
 		return shuffled;
 	}
 
-	let randomHighlights = $derived(shuffleArray(collection.items).slice(0, 12));
+	let randomHighlights = $derived(shuffleArray(items).slice(0, 12));
 
 	// Calculate fun personality badges
 	interface Badge {
@@ -210,9 +256,9 @@
 		style: 'primary' | 'era' | 'format' | 'size' | 'special';
 	}
 
-	let badges = $derived(calculateBadges(stats, collection.items));
+	let badges = $derived(calculateBadges(stats));
 
-	function calculateBadges(s: typeof stats, items: typeof collection.items): Badge[] {
+	function calculateBadges(s: CollectionStats): Badge[] {
 		const result: Badge[] = [];
 
 		// Collector type (Explorer, Devotee, Eclectic, Curator)
@@ -355,6 +401,17 @@
 
 	<SectionNav sections={navSections} />
 
+	{#if isLoadingMore}
+		<div class="loading-banner">
+			<div class="loading-text">
+				Loading collection: {items.length} of {totalDiscogsItems} items...
+			</div>
+			<div class="progress-track">
+				<div class="progress-fill" style="width: {loadProgress * 100}%"></div>
+			</div>
+		</div>
+	{/if}
+
 	<section id="overview" class="stats-overview">
 		<StatCard label="Records" value={stats.totalItems} />
 		<StatCard label="Artists" value={stats.totalArtists} />
@@ -372,7 +429,7 @@
 
 		<section class="card">
 			<h2>What Should I Listen To?</h2>
-			<RandomPicker items={collection.items} />
+			<RandomPicker items={items} />
 		</section>
 	</div>
 
@@ -404,18 +461,18 @@
 	<section id="collection" class="card" use:reveal>
 		<h2>Full Collection</h2>
 		<p class="section-subtitle">Browse, search, and filter the entire collection</p>
-		<CollectionBrowser items={collection.items} />
+		<CollectionBrowser items={items} />
 	</section>
 
 	<div class="grid-2col" use:reveal>
 		<section class="card">
 			<h2>Collection Quiz</h2>
-			<CollectionQuiz items={collection.items} />
+			<CollectionQuiz items={items} />
 		</section>
 
 		<section class="card">
 			<h2>Milestones</h2>
-			<Milestones items={collection.items} />
+			<Milestones items={items} />
 		</section>
 	</div>
 
@@ -436,7 +493,7 @@
 	<section class="card" use:reveal>
 		<h2>Collection Timeline</h2>
 		<p class="section-subtitle">Your additions month by month</p>
-		<CollectionTimeline items={collection.items} />
+		<CollectionTimeline items={items} />
 	</section>
 
 	<div id="charts" class="grid-2col" use:reveal>
@@ -460,7 +517,7 @@
 		<section class="card">
 			<h2>Artist Loyalty</h2>
 			<p class="section-subtitle">Artists you keep coming back to</p>
-			<ArtistLoyalty items={collection.items} />
+			<ArtistLoyalty items={items} />
 		</section>
 	</div>
 
@@ -473,7 +530,7 @@
 		<section class="card">
 			<h2>Format Drill-Down</h2>
 			<p class="section-subtitle">Expand to see sub-formats</p>
-			<FormatDrilldown items={collection.items} onFilter={(title, filtered) => openDrawer(title, filtered)} />
+			<FormatDrilldown items={items} onFilter={(title, filtered) => openDrawer(title, filtered)} />
 		</section>
 	</div>
 
@@ -487,13 +544,13 @@
 			<section class="card">
 				<h2>Genre Evolution</h2>
 				<p class="section-subtitle">How your taste has evolved over time</p>
-				<GenreEvolution items={collection.items} />
+				<GenreEvolution items={items} />
 			</section>
 
 			<section class="card">
 				<h2>New vs Vintage</h2>
 				<p class="section-subtitle">Are you buying new releases or digging for classics?</p>
-				<NewVsVintage items={collection.items} />
+				<NewVsVintage items={items} />
 			</section>
 		</div>
 	</LazySection>
@@ -502,7 +559,7 @@
 		<section id="activity" class="card">
 			<h2>Collecting Calendar</h2>
 			<p class="section-subtitle">Your activity over the past year</p>
-			<CollectingCalendar items={collection.items} />
+			<CollectingCalendar items={items} />
 		</section>
 	</LazySection>
 
@@ -510,12 +567,12 @@
 		<div class="grid-2col">
 			<section class="card">
 				<h2>Day Patterns</h2>
-				<DayPatterns items={collection.items} />
+				<DayPatterns items={items} />
 			</section>
 
 			<section class="card">
 				<h2>Collecting Activity</h2>
-				<CollectingActivity items={collection.items} />
+				<CollectingActivity items={items} />
 			</section>
 		</div>
 	</LazySection>
@@ -527,13 +584,13 @@
 
 	<section class="card" use:reveal>
 		<h2>Collection Value</h2>
-		<ValueEstimate items={collection.items} username={profile.username} />
+		<ValueEstimate items={items} username={profile.username} />
 	</section>
 
 	<section class="card" use:reveal>
 		<h2>Export Collection</h2>
 		<p class="section-subtitle">Download your collection data</p>
-		<CollectionExport items={collection.items} username={profile.username} />
+		<CollectionExport items={items} username={profile.username} />
 	</section>
 
 	<section class="card" use:reveal>
@@ -769,6 +826,34 @@
 	.settings-btn svg {
 		width: 18px;
 		height: 18px;
+	}
+
+	.loading-banner {
+		margin-bottom: 1.5rem;
+		padding: 0.75rem 1rem;
+		background: var(--color-bg-card);
+		border: 1px solid var(--color-border);
+		border-radius: 12px;
+	}
+
+	.loading-text {
+		font-size: 0.8125rem;
+		color: var(--color-text-secondary);
+		margin-bottom: 0.5rem;
+	}
+
+	.progress-track {
+		height: 4px;
+		background: var(--color-bg-secondary);
+		border-radius: 2px;
+		overflow: hidden;
+	}
+
+	.progress-fill {
+		height: 100%;
+		background: linear-gradient(135deg, #6366f1, #8b5cf6);
+		border-radius: 2px;
+		transition: width 0.3s ease;
 	}
 
 	.stats-overview {

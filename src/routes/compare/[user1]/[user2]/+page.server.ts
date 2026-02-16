@@ -35,7 +35,7 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 
 		// Fetch fresh using shared API module
 		const profile = await fetchUserProfile(username, fetchOptions);
-		const items = await fetchUserCollection(username, fetchOptions);
+		const { items, totalItems } = await fetchUserCollection(username, fetchOptions);
 
 		// Cache the full collection for reuse
 		const stats = computeCollectionStats(items);
@@ -43,7 +43,8 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			profile,
 			items,
 			stats,
-			fetchedAt: Date.now()
+			fetchedAt: Date.now(),
+			totalDiscogsItems: totalItems
 		});
 
 		return {

@@ -30,14 +30,17 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 		};
 	}
 
-	// Fetch fresh
+	// Fetch fresh — only first page for fast initial render
 	try {
 		const collection = await fetchFullUserCollection(username, {
 			userAgent: USER_AGENT,
 			token
-		});
+		}, 1);
 
-		await writeCache(platform, username, collection);
+		// Only cache complete collections
+		if (collection.items.length >= collection.totalDiscogsItems) {
+			await writeCache(platform, username, collection);
+		}
 
 		return {
 			collection,

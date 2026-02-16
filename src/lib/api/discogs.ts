@@ -1,6 +1,7 @@
 import type {
 	DiscogsCollectionResponse,
 	DiscogsCollectionItem,
+	DiscogsPagination,
 	DiscogsUserProfile,
 	DiscogsWantlistItem,
 	DiscogsWantlistResponse,
@@ -82,16 +83,31 @@ export async function fetchUserProfile(
 	return fetchDiscogs<DiscogsUserProfile>(`/users/${username}`, options);
 }
 
+export async function fetchCollectionPage(
+	username: string,
+	page: number,
+	options: FetchOptions
+): Promise<{ items: DiscogsCollectionItem[]; pagination: DiscogsPagination }> {
+	const response = await fetchDiscogs<DiscogsCollectionResponse>(
+		`/users/${username}/collection/folders/0/releases?page=${page}&per_page=${PER_PAGE}&sort=added&sort_order=desc`,
+		options
+	);
+	return { items: response.releases, pagination: response.pagination };
+}
+
 export async function fetchUserCollection(
 	username: string,
 	options: FetchOptions,
+	maxPages?: number,
 	onProgress?: (fetched: number, total: number) => void
-): Promise<DiscogsCollectionItem[]> {
+): Promise<{ items: DiscogsCollectionItem[]; totalItems: number; totalPages: number }> {
 	const allItems: DiscogsCollectionItem[] = [];
 	let page = 1;
 	let totalPages = 1;
+	let totalItems = 0;
+	const pageLimit = maxPages ?? Infinity;
 
-	while (page <= totalPages) {
+	while (page <= totalPages && page <= pageLimit) {
 		const response = await fetchDiscogs<DiscogsCollectionResponse>(
 			`/users/${username}/collection/folders/0/releases?page=${page}&per_page=${PER_PAGE}&sort=added&sort_order=desc`,
 			options
@@ -99,20 +115,21 @@ export async function fetchUserCollection(
 
 		allItems.push(...response.releases);
 		totalPages = response.pagination.pages;
+		totalItems = response.pagination.items;
 
 		if (onProgress) {
-			onProgress(allItems.length, response.pagination.items);
+			onProgress(allItems.length, totalItems);
 		}
 
 		page++;
 
 		// Respect Discogs rate limit (~60 req/min for authenticated users)
-		if (page <= totalPages) {
+		if (page <= totalPages && page <= pageLimit) {
 			await new Promise((resolve) => setTimeout(resolve, 1100));
 		}
 	}
 
-	return allItems;
+	return { items: allItems, totalItems, totalPages };
 }
 
 export async function fetchUserWantlist(
@@ -316,16 +333,18 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 export async function fetchFullUserCollection(
 	username: string,
 	options: FetchOptions,
+	maxPages?: number,
 	onProgress?: (fetched: number, total: number) => void
 ): Promise<UserCollection> {
 	const profile = await fetchUserProfile(username, options);
-	const items = await fetchUserCollection(username, options, onProgress);
+	const { items, totalItems } = await fetchUserCollection(username, options, maxPages, onProgress);
 	const stats = computeCollectionStats(items);
 
 	return {
 		profile,
 		items,
 		stats,
-		fetchedAt: Date.now()
+		fetchedAt: Date.now(),
+		totalDiscogsItems: totalItems
 	};
 }

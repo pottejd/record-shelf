@@ -1,17 +1,47 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { fetchFullUserCollection, DiscogsAPIError } from '$lib/api/discogs';
+import { fetchFullUserCollection, fetchCollectionPage, DiscogsAPIError } from '$lib/api/discogs';
 import { env } from '$env/dynamic/private';
 import { USER_AGENT } from '$lib/constants';
 import { readCache, writeCache, invalidateCache } from '$lib/server/cache';
 
-export const GET: RequestHandler = async ({ params, platform, cookies }) => {
+export const GET: RequestHandler = async ({ params, platform, cookies, url }) => {
 	const { username } = params;
 
 	if (!username) {
 		throw error(400, 'Username is required');
 	}
 
+	const token = cookies.get('discogs_token') || env.DISCOGS_TOKEN;
+	if (!token) {
+		throw error(401, 'Discogs token required');
+	}
+
+	// Single-page fetch for progressive loading
+	const pageParam = url.searchParams.get('page');
+	if (pageParam) {
+		const page = parseInt(pageParam, 10);
+		if (isNaN(page) || page < 1) {
+			throw error(400, 'Invalid page number');
+		}
+		try {
+			const result = await fetchCollectionPage(username, page, {
+				userAgent: USER_AGENT,
+				token
+			});
+			return json(result);
+		} catch (e) {
+			if (e instanceof DiscogsAPIError) {
+				if (e.code === 'RATE_LIMITED') {
+					throw error(429, 'Rate limited by Discogs API. Please try again in a minute.');
+				}
+				throw error(e.status, e.message);
+			}
+			throw error(500, 'Failed to fetch collection page');
+		}
+	}
+
+	// Full collection fetch (used by cache refresh, etc.)
 	// Try cache first
 	const cached = await readCache(platform, username);
 	if (cached) {
@@ -22,9 +52,7 @@ export const GET: RequestHandler = async ({ params, platform, cookies }) => {
 		});
 	}
 
-	// Fetch fresh data from Discogs
 	try {
-		const token = cookies.get('discogs_token') || env.DISCOGS_TOKEN;
 		const collection = await fetchFullUserCollection(username, {
 			userAgent: USER_AGENT,
 			token
