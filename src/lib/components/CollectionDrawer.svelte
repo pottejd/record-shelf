@@ -10,6 +10,11 @@
 		onClose: () => void;
 	} = $props();
 
+	const PAGE_SIZE = 50;
+	let visibleCount = $state(PAGE_SIZE);
+	let visibleItems = $derived(items.slice(0, visibleCount));
+	let hasMore = $derived(visibleCount < items.length);
+
 	let backdropEl: HTMLDivElement | undefined = $state();
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -34,6 +39,14 @@
 	function handleBackdropClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) onClose();
 	}
+
+	// Reset visible count when items change
+	$effect(() => {
+		// Track title and items.length to detect drawer content changes
+		title;
+		items.length;
+		visibleCount = PAGE_SIZE;
+	});
 
 	// Auto-focus close button when drawer opens
 	$effect(() => {
@@ -75,7 +88,7 @@
 					<p class="empty">No records found</p>
 				{:else}
 					<ul class="record-list">
-						{#each items as item}
+						{#each visibleItems as item}
 							<li class="record-item">
 								<img
 									src={item.basic_information.thumb || '/placeholder.svg'}
@@ -118,6 +131,11 @@
 							</li>
 						{/each}
 					</ul>
+					{#if hasMore}
+						<button class="show-more-btn" onclick={() => visibleCount += PAGE_SIZE}>
+							Show more ({items.length - visibleCount} remaining)
+						</button>
+					{/if}
 				{/if}
 			</div>
 		</aside>
@@ -290,6 +308,26 @@
 	.discogs-btn svg {
 		width: 100%;
 		height: 100%;
+	}
+
+	.show-more-btn {
+		display: block;
+		width: 100%;
+		margin-top: 1rem;
+		padding: 0.75rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: var(--color-primary, #6366f1);
+		background: var(--color-bg-secondary, #f5f5f5);
+		border: 1px solid var(--color-border, #e0e0e0);
+		border-radius: 10px;
+		cursor: pointer;
+		transition: background-color 0.15s, border-color 0.15s;
+	}
+
+	.show-more-btn:hover {
+		background: var(--color-bg-tertiary, #e5e5e5);
+		border-color: var(--color-primary, #6366f1);
 	}
 
 	@media (max-width: 500px) {

@@ -40,7 +40,7 @@
 {#if isLoading}
 	<SkeletonProfile />
 {:else}
-<main class="home">
+<main id="main-content" class="home">
 	<a href="/settings" class="settings-link" aria-label="Settings">
 		<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 			<circle cx="12" cy="12" r="3" />

@@ -34,7 +34,7 @@
 	<title>Compare Collections - Record Shelf</title>
 </svelte:head>
 
-<main class="compare-page">
+<main id="main-content" class="compare-page">
 	<nav class="nav-bar">
 		<a href="/" class="home-link">
 			<svg aria-hidden="true" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">

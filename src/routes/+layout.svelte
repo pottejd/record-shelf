@@ -3,8 +3,13 @@
 	import { theme, applyTheme } from '$lib/stores/theme';
 	import { navigating } from '$app/stores';
 	import { browser } from '$app/environment';
+	import SkeletonWantlist from '$lib/components/SkeletonWantlist.svelte';
 
 	let { children } = $props();
+
+	let isNavigatingToWantlist = $derived(
+		$navigating?.to?.url.pathname.match(/^\/u\/[^/]+\/wantlist$/) != null
+	);
 
 	// Apply saved theme on mount
 	if (browser) {
@@ -22,6 +27,8 @@
 <svelte:head>
 	<meta name="theme-color" content={$theme === 'dark' ? '#0a0a0a' : '#fafafa'} />
 </svelte:head>
+
+<a href="#main-content" class="skip-link">Skip to content</a>
 
 {#if $navigating}
 	<div class="loading-bar"></div>
@@ -53,7 +60,11 @@
 	{/if}
 </button>
 
-{@render children()}
+{#if isNavigatingToWantlist}
+	<SkeletonWantlist />
+{:else}
+	{@render children()}
+{/if}
 
 <style>
 	.loading-bar {

@@ -11,7 +11,7 @@
 </script>
 
 <div class="browser-toolbar">
-	<span class="result-count">
+	<span class="result-count" aria-live="polite" role="status">
 		{resultCount} {resultCount === 1 ? 'record' : 'records'}
 		{#if resultCount !== totalCount}
 			<span class="filtered-note">(filtered from {totalCount})</span>

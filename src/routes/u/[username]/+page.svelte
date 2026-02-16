@@ -342,7 +342,7 @@
 	<meta name="twitter:description" content="{stats.totalItems} records across {stats.totalArtists} artists on Record Shelf" />
 </svelte:head>
 
-<main class="profile">
+<main id="main-content" class="profile">
 	<nav class="nav-bar">
 		<a href="/" class="home-link">
 			<svg aria-hidden="true" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">

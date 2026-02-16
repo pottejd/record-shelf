@@ -24,7 +24,7 @@
 	<meta property="og:type" content="website" />
 </svelte:head>
 
-<main class="compare-results">
+<main id="main-content" class="compare-results">
 	<nav class="nav-bar">
 		<a href="/" class="home-link">
 			<svg aria-hidden="true" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">

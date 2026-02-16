@@ -39,7 +39,7 @@
 	<title>{info.title} - Record Shelf</title>
 </svelte:head>
 
-<main class="error-page">
+<main id="main-content" class="error-page">
 	<div class="error-icon">{info.icon}</div>
 	<h1>{status}</h1>
 	<p class="title">{info.title}</p>

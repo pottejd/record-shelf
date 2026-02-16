@@ -72,7 +72,7 @@
 	<title>Settings - Record Shelf</title>
 </svelte:head>
 
-<main class="settings">
+<main id="main-content" class="settings">
 	<header class="settings-header">
 		<a href="/" class="back-link">
 			<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

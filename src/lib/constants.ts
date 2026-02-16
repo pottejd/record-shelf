@@ -1,4 +1,4 @@
-export const USER_AGENT = 'RecordShelf/0.1.0 +https://github.com/record-shelf/record-shelf';
+export const USER_AGENT = 'RecordShelf/0.8.0 +https://github.com/pottejd/record-shelf';
 
 export const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour in milliseconds
 export const CACHE_TTL_SECONDS = Math.ceil(CACHE_TTL_MS / 1000); // 1 hour in seconds (for KV)

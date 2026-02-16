@@ -46,7 +46,7 @@
 	<meta property="og:type" content="website" />
 </svelte:head>
 
-<main class="wantlist-page">
+<main id="main-content" class="wantlist-page">
 	<nav class="nav-bar">
 		<a href="/u/{profile.username}" class="back-link">
 			<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -76,7 +76,7 @@
 				placeholder="Search wantlist..."
 			/>
 			{#if searchQuery}
-				<span class="result-count">{filteredItems.length} results</span>
+				<span class="result-count" aria-live="polite" role="status">{filteredItems.length} results</span>
 			{/if}
 		</div>
 		<div class="sort-bar">
