@@ -2,7 +2,6 @@ FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
-RUN npm i @sveltejs/adapter-node
 COPY . .
 COPY svelte.config.docker.js svelte.config.js
 RUN npm run build
