@@ -37,9 +37,18 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			token
 		}, 1);
 
-		// Only cache complete collections
 		if (collection.items.length >= collection.totalDiscogsItems) {
+			// Complete on the first page — cache it synchronously.
 			await writeCache(platform, username, collection);
+		} else if (platform?.context?.waitUntil) {
+			// Large collection: the first page is enough to render now, but fetch the
+			// remaining pages in the background and cache the full set so the next
+			// visit is a cache hit instead of re-fetching everything from Discogs.
+			platform.context.waitUntil(
+				fetchFullUserCollection(username, { userAgent: USER_AGENT, token })
+					.then((full) => writeCache(platform, username, full))
+					.catch((err) => console.error('Background full-collection cache failed:', err))
+			);
 		}
 
 		return {
