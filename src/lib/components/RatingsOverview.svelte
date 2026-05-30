@@ -1,12 +1,13 @@
 <script lang="ts">
 	import type { CollectionStats, DiscogsCollectionItem } from '$lib/types/discogs';
+	import { formatArtists } from '$lib/utils/discogs';
 
 	let { stats }: { stats: CollectionStats } = $props();
 
 	let maxRatingCount = $derived(Math.max(...Object.values(stats.ratingBreakdown), 1));
 
 	function getArtistName(item: DiscogsCollectionItem): string {
-		return item.basic_information.artists.map(a => a.name.replace(/\s*\(\d+\)$/, '')).join(', ');
+		return formatArtists(item.basic_information.artists);
 	}
 </script>
 

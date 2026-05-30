@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { DiscogsUserProfile, DiscogsWantlistItem } from '$lib/types/discogs';
+	import { formatArtists } from '$lib/utils/discogs';
 	import LazyImage from '$lib/components/LazyImage.svelte';
 
 	let { data }: { data: { profile: DiscogsUserProfile; wantlist: DiscogsWantlistItem[] } } = $props();
@@ -34,7 +35,7 @@
 	);
 
 	function getArtistName(artists: Array<{ name: string }>): string {
-		return artists.map(a => a.name.replace(/\s*\(\d+\)$/, '')).join(', ');
+		return formatArtists(artists);
 	}
 </script>
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import { formatArtists } from '$lib/utils/discogs';
 
 	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
@@ -18,7 +19,7 @@
 	}
 
 	function getArtistNames(item: DiscogsCollectionItem): string {
-		return item.basic_information.artists.map((a) => a.name.replace(/\s*\(\d+\)$/, '')).join(', ');
+		return formatArtists(item.basic_information.artists);
 	}
 </script>
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import { formatArtists } from '$lib/utils/discogs';
 	import LazyImage from '$lib/components/LazyImage.svelte';
 
 	let { items }: { items: DiscogsCollectionItem[] } = $props();
@@ -54,7 +55,7 @@
 							target="_blank"
 							rel="noopener noreferrer"
 							class="cover-link"
-							title="{info.artists.map(a => a.name.replace(/\s*\(\d+\)$/, '')).join(', ')} – {info.title}"
+							title="{formatArtists(info.artists)} – {info.title}"
 						>
 							<LazyImage
 								src={info.cover_image || info.thumb || '/placeholder.svg'}
