@@ -70,7 +70,10 @@ async function fetchDiscogs<T>(
 		if (response.status === 429) {
 			throw new DiscogsAPIError('Rate limited - please try again later', 429, 'RATE_LIMITED');
 		}
-		throw new DiscogsAPIError(`API error: ${response.statusText}`, response.status);
+		// Don't couple our error surface to Discogs': log the real status server-side
+		// and return a generic upstream-failure error to the caller.
+		console.error(`Unexpected Discogs API response: ${response.status} ${response.statusText}`);
+		throw new DiscogsAPIError('Discogs API request failed', 502, 'UPSTREAM_ERROR');
 	}
 
 	throw new DiscogsAPIError('Max retries exceeded', 429, 'RATE_LIMITED');
