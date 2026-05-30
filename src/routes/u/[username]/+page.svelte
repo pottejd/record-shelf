@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import type { DiscogsCollectionItem, CollectionStats } from '$lib/types/discogs';
+	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import StatCard from '$lib/components/StatCard.svelte';
 	import BarChart from '$lib/components/BarChart.svelte';
 	import DonutChart from '$lib/components/DonutChart.svelte';
@@ -34,6 +34,10 @@
 	import { invalidateAll } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { reveal } from '$lib/actions/reveal';
+	import { keyboardNav } from '$lib/actions/keyboardNav';
+	import { shuffleArray } from '$lib/utils/array';
+	import { toChartData } from '$lib/utils/chart';
+	import { calculateBadges } from '$lib/utils/badges';
 	import { CHART_LIMITS, GRID_PREVIEW_LIMIT } from '$lib/constants';
 
 	const navSections = [
@@ -44,6 +48,7 @@
 		{ id: 'activity', label: 'Activity' },
 		{ id: 'share', label: 'Share' }
 	];
+	const navSectionIds = navSections.map((s) => s.id);
 
 	let { data }: { data: PageData } = $props();
 
@@ -124,206 +129,59 @@
 		drawerOpen = false;
 	}
 
-	// Keyboard shortcuts: j/k = next/prev section, / = focus search, Escape = close drawer
-	$effect(() => {
-		if (!browser) return;
-		function handleKeydown(e: KeyboardEvent) {
-			const target = e.target as HTMLElement;
-			const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+	// Filter functions: each opens the drawer with the items matching a predicate.
+	function filterBy(title: string, predicate: (item: DiscogsCollectionItem) => boolean) {
+		openDrawer(title, items.filter(predicate));
+	}
 
-			if (e.key === 'Escape' && drawerOpen) {
-				closeDrawer();
-				return;
-			}
-
-			if (isInput) return;
-
-			if (e.key === '/' || e.key === 's') {
-				e.preventDefault();
-				const searchInput = document.querySelector<HTMLInputElement>('#collection input[type="search"], #collection input[type="text"]');
-				if (searchInput) {
-					searchInput.focus();
-					searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-				}
-				return;
-			}
-
-			if (e.key === 'j' || e.key === 'k') {
-				const sectionIds = navSections.map(s => s.id);
-				const current = sectionIds.findIndex(id => {
-					const el = document.getElementById(id);
-					if (!el) return false;
-					const rect = el.getBoundingClientRect();
-					return rect.top <= 100 && rect.bottom > 100;
-				});
-				const idx = current === -1 ? 0 : current;
-				const next = e.key === 'j'
-					? Math.min(idx + 1, sectionIds.length - 1)
-					: Math.max(idx - 1, 0);
-				const el = document.getElementById(sectionIds[next]);
-				if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-			}
-		}
-		document.addEventListener('keydown', handleKeydown);
-		return () => document.removeEventListener('keydown', handleKeydown);
-	});
-
-	// Filter functions
 	function filterByDecade(label: string) {
-		const decade = label.replace('s', '');
-		const decadeStart = parseInt(decade);
-		const filtered = items.filter((item) => {
+		const decadeStart = parseInt(label.replace('s', ''));
+		filterBy(label, (item) => {
 			const year = item.basic_information.year;
 			return year >= decadeStart && year < decadeStart + 10;
 		});
-		openDrawer(`${label}`, filtered);
 	}
 
 	function filterByGenre(genre: string) {
-		const filtered = items.filter((item) =>
-			item.basic_information.genres?.includes(genre)
-		);
-		openDrawer(genre, filtered);
+		filterBy(genre, (item) => item.basic_information.genres?.includes(genre) ?? false);
 	}
 
 	function filterByFormat(format: string) {
-		const filtered = items.filter((item) =>
-			item.basic_information.formats?.some((f) => f.name === format)
-		);
-		openDrawer(format, filtered);
+		filterBy(format, (item) => item.basic_information.formats?.some((f) => f.name === format) ?? false);
 	}
 
 	function filterByStyle(style: string) {
-		const filtered = items.filter((item) =>
-			item.basic_information.styles?.includes(style)
-		);
-		openDrawer(style, filtered);
+		filterBy(style, (item) => item.basic_information.styles?.includes(style) ?? false);
 	}
 
 	function filterByArtist(artistName: string) {
-		const filtered = items.filter((item) =>
-			item.basic_information.artists.some((a) => a.name === artistName)
-		);
-		openDrawer(artistName, filtered);
+		filterBy(artistName, (item) => item.basic_information.artists?.some((a) => a.name === artistName) ?? false);
 	}
 
 	function filterByLabel(labelName: string) {
-		const filtered = items.filter((item) =>
-			item.basic_information.labels?.some((l) => l.name === labelName)
-		);
-		openDrawer(labelName, filtered);
+		filterBy(labelName, (item) => item.basic_information.labels?.some((l) => l.name === labelName) ?? false);
 	}
 
 	function filterByYear(year: number) {
-		const filtered = items.filter((item) =>
-			item.basic_information.year === year
-		);
-		openDrawer(String(year), filtered);
+		filterBy(String(year), (item) => item.basic_information.year === year);
 	}
 
-	let decadeData = $derived(Object.entries(stats.decadeBreakdown)
-		.map(([decade, count]) => ({ label: `${decade}s`, value: count }))
-		.sort((a, b) => a.label.localeCompare(b.label)));
+	let decadeData = $derived(
+		toChartData(stats.decadeBreakdown, { sort: 'label-asc', labelFn: (d) => `${d}s` })
+	);
+	let genreData = $derived(
+		toChartData(stats.genreBreakdown, { sort: 'value-desc', limit: CHART_LIMITS.TOP_GENRES })
+	);
+	let formatData = $derived(toChartData(stats.formatBreakdown, { sort: 'value-desc' }));
+	let styleData = $derived(
+		toChartData(stats.styleBreakdown, { sort: 'value-desc', limit: CHART_LIMITS.TOP_STYLES })
+	);
 
-	let genreData = $derived(Object.entries(stats.genreBreakdown)
-		.map(([genre, count]) => ({ label: genre, value: count }))
-		.sort((a, b) => b.value - a.value)
-		.slice(0, CHART_LIMITS.TOP_GENRES));
-
-	let formatData = $derived(Object.entries(stats.formatBreakdown)
-		.map(([format, count]) => ({ label: format, value: count }))
-		.sort((a, b) => b.value - a.value));
-
-	let styleData = $derived(Object.entries(stats.styleBreakdown)
-		.map(([style, count]) => ({ label: style, value: count }))
-		.sort((a, b) => b.value - a.value)
-		.slice(0, CHART_LIMITS.TOP_STYLES));
-
-	// Random highlights - shuffle the collection for variety
-	function shuffleArray<T>(array: T[]): T[] {
-		const shuffled = [...array];
-		for (let i = shuffled.length - 1; i > 0; i--) {
-			const j = Math.floor(Math.random() * (i + 1));
-			[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-		}
-		return shuffled;
-	}
-
+	// Random highlights — shuffle the collection for variety
 	let randomHighlights = $derived(shuffleArray(items).slice(0, GRID_PREVIEW_LIMIT));
 
-	// Calculate fun personality badges
-	interface Badge {
-		label: string;
-		style: 'primary' | 'era' | 'format' | 'size' | 'special';
-	}
-
+	// Fun personality badges
 	let badges = $derived(calculateBadges(stats));
-
-	function calculateBadges(s: CollectionStats): Badge[] {
-		const result: Badge[] = [];
-
-		// Collector type (Explorer, Devotee, Eclectic, Curator)
-		if (s.uniqueArtistRatio > 0.8) result.push({ label: 'Explorer', style: 'primary' });
-		else if (s.uniqueArtistRatio < 0.4) result.push({ label: 'Devotee', style: 'primary' });
-		else if (Object.keys(s.genreBreakdown).length > 10) result.push({ label: 'Eclectic', style: 'primary' });
-		else result.push({ label: 'Curator', style: 'primary' });
-
-		// Era badge
-		if (s.dominantDecade) {
-			const decade = parseInt(s.dominantDecade);
-			if (decade >= 2010) result.push({ label: 'Modern era', style: 'era' });
-			else if (decade >= 2000) result.push({ label: 'Y2K era', style: 'era' });
-			else if (decade >= 1990) result.push({ label: '90s kid', style: 'era' });
-			else if (decade >= 1980) result.push({ label: '80s fan', style: 'era' });
-			else if (decade >= 1970) result.push({ label: '70s purist', style: 'era' });
-			else if (decade >= 1960) result.push({ label: '60s head', style: 'era' });
-			else result.push({ label: 'Vintage hunter', style: 'era' });
-		}
-
-		// Collection size badge
-		if (s.totalItems >= 1000) result.push({ label: 'Hoarder', style: 'size' });
-		else if (s.totalItems >= 500) result.push({ label: 'Serious collector', style: 'size' });
-		else if (s.totalItems >= 100) result.push({ label: 'Growing collection', style: 'size' });
-		else if (s.totalItems >= 25) result.push({ label: 'Getting started', style: 'size' });
-
-		// Format badge
-		const vinylCount = s.formatBreakdown['Vinyl'] || 0;
-		const cdCount = s.formatBreakdown['CD'] || 0;
-		const cassetteCount = s.formatBreakdown['Cassette'] || 0;
-		const vinylRatio = vinylCount / s.totalItems;
-		const cdRatio = cdCount / s.totalItems;
-
-		if (vinylRatio > 0.8) result.push({ label: 'Vinyl purist', style: 'format' });
-		else if (vinylRatio > 0.5) result.push({ label: 'Vinyl lover', style: 'format' });
-		else if (cdRatio > 0.5) result.push({ label: 'CD collector', style: 'format' });
-		else if (cassetteCount > 10) result.push({ label: 'Tape head', style: 'format' });
-
-		// Genre focus badge
-		if (s.dominantGenre) {
-			const topGenreCount = s.genreBreakdown[s.dominantGenre] || 0;
-			const genreRatio = topGenreCount / s.totalItems;
-			if (genreRatio > 0.5) {
-				result.push({ label: `${s.dominantGenre} specialist`, style: 'special' });
-			}
-		}
-
-		// Year span badge
-		if (s.collectionSpan && s.collectionSpan >= 50) {
-			result.push({ label: 'Time traveler', style: 'special' });
-		}
-
-		// Oldest release badge
-		if (s.oldestRelease && s.oldestRelease.year && s.oldestRelease.year < 1970) {
-			result.push({ label: 'Crate digger', style: 'special' });
-		}
-
-		// Label diversity
-		if (s.totalLabels > 100) {
-			result.push({ label: 'Label explorer', style: 'special' });
-		}
-
-		return result;
-	}
 </script>
 
 <svelte:head>
@@ -343,7 +201,15 @@
 	<meta name="twitter:description" content="{stats.totalItems} records across {stats.totalArtists} artists on Record Shelf" />
 </svelte:head>
 
-<main id="main-content" class="profile">
+<main
+	id="main-content"
+	class="profile"
+	use:keyboardNav={{
+		sectionIds: navSectionIds,
+		isDrawerOpen: () => drawerOpen,
+		onCloseDrawer: closeDrawer
+	}}
+>
 	<nav class="nav-bar">
 		<a href="/" class="home-link">
 			<svg aria-hidden="true" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
