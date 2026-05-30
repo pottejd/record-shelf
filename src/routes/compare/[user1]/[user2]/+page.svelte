@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import CoverGrid from '$lib/components/CoverGrid.svelte';
+	import { SIMILARITY_THRESHOLDS, SHARED_RECORDS_PREVIEW } from '$lib/constants';
 
 	let { data }: { data: PageData } = $props();
 
@@ -9,9 +10,9 @@
 	let comparison = $derived(data.comparison);
 
 	function getSimilarityLabel(score: number): string {
-		if (score >= 30) return 'Taste twins!';
-		if (score >= 15) return 'Similar vibes';
-		if (score >= 5) return 'Some overlap';
+		if (score >= SIMILARITY_THRESHOLDS.TASTE_TWINS) return 'Taste twins!';
+		if (score >= SIMILARITY_THRESHOLDS.SIMILAR) return 'Similar vibes';
+		if (score >= SIMILARITY_THRESHOLDS.SOME_OVERLAP) return 'Some overlap';
 		return 'Different tastes';
 	}
 </script>
@@ -144,7 +145,7 @@
 	{#if comparison.overlap.length > 0}
 		<section class="card">
 			<h2>Records Both Own</h2>
-			<CoverGrid items={comparison.overlap.slice(0, 30)} />
+			<CoverGrid items={comparison.overlap.slice(0, SHARED_RECORDS_PREVIEW)} />
 		</section>
 	{/if}
 

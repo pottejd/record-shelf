@@ -3,6 +3,28 @@ export const USER_AGENT = 'RecordShelf/0.8.0 +https://github.com/pottejd/record-
 export const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour in milliseconds
 export const CACHE_TTL_SECONDS = Math.ceil(CACHE_TTL_MS / 1000); // 1 hour in seconds (for KV)
 
+// Similarity-score buckets for the head-to-head compare page.
+export const SIMILARITY_THRESHOLDS = {
+	TASTE_TWINS: 30,
+	SIMILAR: 15,
+	SOME_OVERLAP: 5
+} as const;
+
+// Max entries shown in chart breakdowns.
+export const CHART_LIMITS = {
+	TOP_GENRES: 8,
+	TOP_STYLES: 12
+} as const;
+
+// Top artists/labels/styles computed into collection stats.
+export const TOP_LIST_LIMIT = 20;
+
+// Size of cover-grid preview rows (recently added, top rated, random highlights).
+export const GRID_PREVIEW_LIMIT = 12;
+
+// Overlap records previewed on the compare page.
+export const SHARED_RECORDS_PREVIEW = 30;
+
 export const GENRE_COLORS: Record<string, string> = {
 	Rock: '#e11d48',
 	Electronic: '#8b5cf6',

@@ -8,6 +8,7 @@ import type {
 	CollectionStats,
 	UserCollection
 } from '$lib/types/discogs';
+import { TOP_LIST_LIMIT, GRID_PREVIEW_LIMIT } from '$lib/constants';
 
 const DISCOGS_API_BASE = 'https://api.discogs.com';
 const PER_PAGE = 100; // Max allowed by Discogs
@@ -241,12 +242,12 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 			.sort((a, b) => b[1] - a[1])
 			.map(([name, count]) => ({ name, count }));
 
-	const topArtists = sortByCount(artistCounts).slice(0, 20);
-	const topLabels = sortByCount(labelCounts).slice(0, 20);
-	const topStyles = sortByCount(styleCounts).slice(0, 20);
+	const topArtists = sortByCount(artistCounts).slice(0, TOP_LIST_LIMIT);
+	const topLabels = sortByCount(labelCounts).slice(0, TOP_LIST_LIMIT);
+	const topStyles = sortByCount(styleCounts).slice(0, TOP_LIST_LIMIT);
 
 	// Recently added (already sorted by API)
-	const recentlyAdded = items.slice(0, 12);
+	const recentlyAdded = items.slice(0, GRID_PREVIEW_LIMIT);
 
 	// Added by month (last 12 months)
 	const addedByMonth = Object.entries(addedByMonthMap)
@@ -298,7 +299,7 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 	const topRatedItems = items
 		.filter(i => i.rating >= 4)
 		.sort((a, b) => b.rating - a.rating || a.basic_information.title.localeCompare(b.basic_information.title))
-		.slice(0, 12);
+		.slice(0, GRID_PREVIEW_LIMIT);
 
 	return {
 		totalItems: items.length,
