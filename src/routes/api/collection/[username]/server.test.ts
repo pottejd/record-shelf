@@ -94,7 +94,8 @@ describe('collection endpoint', () => {
 		it('returns cached data when available', async () => {
 			vi.mocked(readCache).mockResolvedValue({
 				data: mockCollection as any,
-				cachedAt: Date.now()
+				cachedAt: Date.now(),
+				stale: false
 			});
 
 			const response = await GET(makeGetEvent());

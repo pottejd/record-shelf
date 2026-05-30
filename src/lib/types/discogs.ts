@@ -155,4 +155,6 @@ export interface CachedCollection {
 	data: UserCollection;
 	cachedAt: number;
 	expiresAt: number;
+	/** Hard expiry for stale-while-revalidate. Optional for backward-compat with legacy entries. */
+	staleUntil?: number;
 }
