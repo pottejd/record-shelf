@@ -241,4 +241,58 @@ describe('value endpoint', () => {
 		expect(mockFetch).toHaveBeenCalledTimes(2);
 		expect(data.results[0].lowestPrice).toBe(20);
 	});
+
+	it('returns 400 on a malformed JSON body', async () => {
+		const event = {
+			params: { username: 'testuser' },
+			request: new Request('http://localhost/api/value/testuser', {
+				method: 'POST',
+				body: 'not-json{',
+				headers: { 'content-type': 'application/json', 'x-discogs-token': 'tok' }
+			})
+		} as any;
+		await expect(POST(event)).rejects.toMatchObject({ status: 400 });
+	});
+
+	it('returns 400 when no valid positive integer ids remain', async () => {
+		await expect(POST(makeEvent(['x', -1, 0, 2.5], 'tok'))).rejects.toMatchObject({ status: 400 });
+	});
+
+	it('filters out non-integer ids and queries only the valid ones', async () => {
+		mockFetch.mockResolvedValue(makePriceResponse({ value: 5, currency: 'USD' }));
+
+		const promise = POST(makeEvent([1, 'x', -2, 3.5, 2], 'tok'));
+		await vi.advanceTimersByTimeAsync(3 * 1200);
+		const response = await promise;
+		const data = await response.json();
+
+		expect(data.totalRequested).toBe(2);
+		expect(mockFetch).toHaveBeenCalledTimes(2);
+	});
+
+	it('prefers the discogs_token cookie over the env token', async () => {
+		mockEnv.DISCOGS_TOKEN = 'env-token';
+		mockFetch.mockResolvedValue(makePriceResponse({ value: 10, currency: 'USD' }));
+
+		const event = {
+			params: { username: 'testuser' },
+			cookies: { get: (n: string) => (n === 'discogs_token' ? 'cookie-token' : undefined) },
+			request: new Request('http://localhost/api/value/testuser', {
+				method: 'POST',
+				body: JSON.stringify({ releaseIds: [1] }),
+				headers: { 'content-type': 'application/json' }
+			})
+		} as any;
+
+		const promise = POST(event);
+		await vi.advanceTimersByTimeAsync(1200);
+		await promise;
+
+		expect(mockFetch).toHaveBeenCalledWith(
+			expect.stringContaining('price_suggestions/1'),
+			expect.objectContaining({
+				headers: expect.objectContaining({ Authorization: 'Discogs token=cookie-token' })
+			})
+		);
+	});
 });

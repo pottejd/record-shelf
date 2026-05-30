@@ -60,21 +60,36 @@ async function rateLimitedFetch(url: string, headers: Record<string, string>): P
 	return result;
 }
 
-export const POST: RequestHandler = async ({ params, request }) => {
+export const POST: RequestHandler = async ({ params, request, cookies }) => {
 	const { username } = params;
 	if (!username) throw error(400, 'Username is required');
 
-	const body = await request.json();
-	const releaseIds: number[] = body.releaseIds;
+	let body: { releaseIds?: unknown };
+	try {
+		body = await request.json();
+	} catch {
+		throw error(400, 'Invalid JSON body');
+	}
 
-	if (!Array.isArray(releaseIds) || releaseIds.length === 0) {
+	if (!Array.isArray(body.releaseIds)) {
 		throw error(400, 'releaseIds array is required');
 	}
 
-	// Limit to prevent abuse
-	const ids = releaseIds.slice(0, 50);
+	// Keep only valid positive integer release ids, capped to limit abuse.
+	const ids = body.releaseIds
+		.map(Number)
+		.filter((n) => Number.isInteger(n) && n > 0)
+		.slice(0, 50);
 
-	const token = env.DISCOGS_TOKEN || request.headers.get('x-discogs-token') || '';
+	if (ids.length === 0) {
+		throw error(400, 'releaseIds must contain at least one valid release id');
+	}
+
+	// Resolve the token the same way /api/collection does: the caller's own
+	// cookie token first, so an authenticated user's quota is used rather than
+	// the server env token (which is only a last-resort fallback).
+	const token =
+		cookies?.get('discogs_token') || request.headers.get('x-discogs-token') || env.DISCOGS_TOKEN || '';
 	if (!token) {
 		throw error(401, 'Discogs token required for marketplace data');
 	}
