@@ -80,7 +80,7 @@ export async function fetchUserProfile(
 	username: string,
 	options: FetchOptions
 ): Promise<DiscogsUserProfile> {
-	return fetchDiscogs<DiscogsUserProfile>(`/users/${username}`, options);
+	return fetchDiscogs<DiscogsUserProfile>(`/users/${encodeURIComponent(username)}`, options);
 }
 
 export async function fetchCollectionPage(
@@ -109,7 +109,7 @@ export async function fetchUserCollection(
 
 	while (page <= totalPages && page <= pageLimit) {
 		const response = await fetchDiscogs<DiscogsCollectionResponse>(
-			`/users/${username}/collection/folders/0/releases?page=${page}&per_page=${PER_PAGE}&sort=added&sort_order=desc`,
+			`/users/${encodeURIComponent(username)}/collection/folders/0/releases?page=${page}&per_page=${PER_PAGE}&sort=added&sort_order=desc`,
 			options
 		);
 
@@ -142,7 +142,7 @@ export async function fetchUserWantlist(
 
 	while (page <= totalPages) {
 		const response = await fetchDiscogs<DiscogsWantlistResponse>(
-			`/users/${username}/wants?page=${page}&per_page=${PER_PAGE}&sort=added&sort_order=desc`,
+			`/users/${encodeURIComponent(username)}/wants?page=${page}&per_page=${PER_PAGE}&sort=added&sort_order=desc`,
 			options
 		);
 

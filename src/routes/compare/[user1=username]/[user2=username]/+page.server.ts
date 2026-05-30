@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 	const token = cookieToken || env.DISCOGS_TOKEN;
 
 	if (!token) {
-		throw redirect(303, `/settings?redirect=/compare/${params.user1}/${params.user2}`);
+		throw redirect(303, `/settings?redirect=/compare/${encodeURIComponent(params.user1)}/${encodeURIComponent(params.user2)}`);
 	}
 
 	const fetchOptions = { userAgent: USER_AGENT, token };
