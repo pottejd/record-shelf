@@ -12,6 +12,14 @@ const config = {
 				exclude: ['<all>']
 			}
 		}),
+		csp: {
+			mode: 'hash',
+			directives: {
+				'script-src': ['self'],
+				'object-src': ['none'],
+				'base-uri': ['self']
+			}
+		},
 		version: {
 			name: pkg.version
 		}
