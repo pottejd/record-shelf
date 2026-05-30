@@ -16,8 +16,10 @@ function setCookie(name: string, value: string, days: number = 365) {
 	if (!browser) return;
 	const expires = new Date();
 	expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-	// Set cookie with SameSite=Strict for security
-	document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
+	// SameSite=Strict + Secure (on https) so this long-lived credential can't leak
+	// over a plaintext request. Secure is omitted on http for localhost development.
+	const secure = globalThis.location?.protocol === 'https:' ? ';Secure' : '';
+	document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/;SameSite=Strict${secure}`;
 }
 
 function deleteCookie(name: string) {
