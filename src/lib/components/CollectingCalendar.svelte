@@ -7,7 +7,17 @@
 		date: string;
 		count: number;
 		level: number;
+		title: string;
 	}
+
+	// One shared formatter reused for every cell title (vs. a new Intl format per
+	// cell on every render).
+	const dateFormatter = new Intl.DateTimeFormat('en-US', {
+		weekday: 'short',
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric'
+	});
 
 	let calendarData = $derived(generateCalendarData(items));
 	let totalThisYear = $derived(calendarData.reduce((sum, d) => sum + d.count, 0));
@@ -40,7 +50,8 @@
 			days.push({
 				date: key,
 				count,
-				level: getLevel(count)
+				level: getLevel(count),
+				title: `${count} record${count !== 1 ? 's' : ''} on ${dateFormatter.format(new Date(key))}`
 			});
 			current.setDate(current.getDate() + 1);
 		}
@@ -82,15 +93,6 @@
 		return labels;
 	}
 
-	function formatDate(dateStr: string): string {
-		return new Date(dateStr).toLocaleDateString('en-US', {
-			weekday: 'short',
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
-	}
-
 	let weeks = $derived(getWeeks(calendarData));
 	let monthLabels = $derived(getMonthLabels(calendarData));
 </script>
@@ -124,7 +126,7 @@
 						{#each week as day}
 							<div
 								class="day level-{day.level}"
-								title="{day.count} record{day.count !== 1 ? 's' : ''} on {formatDate(day.date)}"
+								title={day.title}
 							></div>
 						{/each}
 					</div>
