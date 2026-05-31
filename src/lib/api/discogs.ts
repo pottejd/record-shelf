@@ -174,6 +174,10 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 	let oldestRelease: DiscogsCollectionItem['basic_information'] | null = null;
 	let newestRelease: DiscogsCollectionItem['basic_information'] | null = null;
 
+	const ratingBreakdown: Record<number, number> = {};
+	let ratingSum = 0;
+	let ratedCount = 0;
+
 	for (const item of items) {
 		const info = item.basic_information;
 
@@ -234,6 +238,13 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 				labelCounts[name] = (labelCounts[name] || 0) + 1;
 			}
 		}
+
+		// Ratings
+		if (item.rating > 0) {
+			ratingBreakdown[item.rating] = (ratingBreakdown[item.rating] || 0) + 1;
+			ratingSum += item.rating;
+			ratedCount++;
+		}
 	}
 
 	// Sort and get top items
@@ -284,17 +295,7 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 		? Object.keys(artistCounts).length / items.length
 		: 0;
 
-	// Rating stats
-	const ratingBreakdown: Record<number, number> = {};
-	let ratingSum = 0;
-	let ratedCount = 0;
-	for (const item of items) {
-		if (item.rating > 0) {
-			ratingBreakdown[item.rating] = (ratingBreakdown[item.rating] || 0) + 1;
-			ratingSum += item.rating;
-			ratedCount++;
-		}
-	}
+	// Rating stats (accumulated in the main loop above)
 	const averageRating = ratedCount > 0 ? ratingSum / ratedCount : 0;
 	const topRatedItems = items
 		.filter(i => i.rating >= 4)

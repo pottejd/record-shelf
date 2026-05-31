@@ -35,7 +35,7 @@
 	import { browser } from '$app/environment';
 	import { reveal } from '$lib/actions/reveal';
 	import { keyboardNav } from '$lib/actions/keyboardNav';
-	import { shuffleArray } from '$lib/utils/array';
+	import { sampleN } from '$lib/utils/array';
 	import { toChartData } from '$lib/utils/chart';
 	import { calculateBadges } from '$lib/utils/badges';
 	import { CHART_LIMITS, GRID_PREVIEW_LIMIT } from '$lib/constants';
@@ -59,6 +59,7 @@
 	let items: DiscogsCollectionItem[] = $state(data.collection.items);
 	let isLoadingMore = $state(false);
 	let loadProgress = $state(0);
+	let loadError = $state(false);
 
 	// Recompute stats reactively as more items load
 	let stats = $derived(computeCollectionStats(items));
@@ -68,7 +69,12 @@
 		items = data.collection.items;
 	});
 
-	// Progressive loading: fetch remaining pages client-side
+	// Progressive loading: fetch remaining pages client-side.
+	// Pages are buffered and flushed to the reactive `items` array every few
+	// pages so stats + ~13 derived consumers recompute a handful of times
+	// instead of once per page (which was O(n^2) over the growing collection).
+	const FLUSH_EVERY_PAGES = 3;
+
 	$effect(() => {
 		if (!browser) return;
 		const initialItems = data.collection.items;
@@ -77,24 +83,46 @@
 
 		let cancelled = false;
 		isLoadingMore = true;
+		loadError = false;
 
 		async function loadRemaining() {
 			let nextPage = 2;
-			while (!cancelled) {
-				try {
-					const response = await fetch(`/api/collection/${data.collection.profile.username}?page=${nextPage}`);
-					if (!response.ok || cancelled) break;
+			let buffer = [...initialItems];
+			let sinceFlush = 0;
+			const flush = () => {
+				items = buffer;
+				loadProgress = Math.min(items.length / total, 1);
+				sinceFlush = 0;
+			};
+
+			try {
+				while (!cancelled) {
+					const response = await fetch(
+						`/api/collection/${data.collection.profile.username}?page=${nextPage}`
+					);
+					if (cancelled) return;
+					if (!response.ok) {
+						loadError = true;
+						break;
+					}
 					const pageData = await response.json();
-					if (!pageData.items?.length || cancelled) break;
-					items = [...items, ...pageData.items];
-					loadProgress = Math.min(items.length / data.collection.totalDiscogsItems, 1);
+					if (cancelled) return;
+					if (!pageData.items?.length) break;
+
+					buffer = [...buffer, ...pageData.items];
+					if (++sinceFlush >= FLUSH_EVERY_PAGES) flush();
+
 					if (pageData.pagination.page >= pageData.pagination.pages) break;
 					nextPage++;
-				} catch {
-					break;
+				}
+			} catch {
+				loadError = true;
+			} finally {
+				if (!cancelled) {
+					flush(); // ensure the last buffered pages are shown
+					isLoadingMore = false;
 				}
 			}
-			if (!cancelled) isLoadingMore = false;
 		}
 
 		loadRemaining();
@@ -178,7 +206,13 @@
 	);
 
 	// Random highlights — shuffle the collection for variety
-	let randomHighlights = $derived(shuffleArray(items).slice(0, GRID_PREVIEW_LIMIT));
+	// Sample highlights from the initial (server-rendered) page once per collection
+	// rather than re-deriving from `items` on every progressive append — that
+	// reshuffled the grid and re-downloaded covers on each page load.
+	let randomHighlights = $state<DiscogsCollectionItem[]>([]);
+	$effect(() => {
+		randomHighlights = sampleN(data.collection.items, GRID_PREVIEW_LIMIT);
+	});
 
 	// Fun personality badges
 	let badges = $derived(calculateBadges(stats));
@@ -269,13 +303,20 @@
 	<SectionNav sections={navSections} />
 
 	{#if isLoadingMore}
-		<div class="loading-banner">
+		<div class="loading-banner" aria-live="polite">
 			<div class="loading-text">
 				Loading collection: {items.length} of {totalDiscogsItems} items...
 			</div>
 			<div class="progress-track">
 				<div class="progress-fill" style="width: {loadProgress * 100}%"></div>
 			</div>
+		</div>
+	{:else if loadError}
+		<div class="loading-banner load-error" role="alert">
+			<div class="loading-text">
+				Couldn't load the full collection — showing {items.length} of {totalDiscogsItems} items.
+			</div>
+			<button class="retry-btn" onclick={() => invalidateAll()}>Retry</button>
 		</div>
 	{/if}
 
@@ -707,6 +748,35 @@
 		font-size: 0.8125rem;
 		color: var(--color-text-secondary);
 		margin-bottom: 0.5rem;
+	}
+
+	.load-error {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		border-color: var(--color-danger, #ef4444);
+	}
+
+	.load-error .loading-text {
+		margin-bottom: 0;
+	}
+
+	.retry-btn {
+		flex-shrink: 0;
+		padding: 0.375rem 0.875rem;
+		font-size: 0.8125rem;
+		font-weight: 600;
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		background: var(--color-bg-secondary);
+		color: var(--color-text);
+		cursor: pointer;
+	}
+
+	.retry-btn:hover {
+		border-color: var(--color-primary);
+		color: var(--color-primary);
 	}
 
 	.progress-track {
