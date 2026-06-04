@@ -21,6 +21,14 @@ export const CHART_LIMITS = {
 	TOP_STYLES: 12
 } as const;
 
+// Collection-size tiers for the profile "size" badge.
+export const BADGE_SIZE_THRESHOLDS = {
+	HOARDER: 1000,
+	SERIOUS: 500,
+	GROWING: 100,
+	STARTED: 25
+} as const;
+
 // Top artists/labels/styles computed into collection stats.
 export const TOP_LIST_LIMIT = 20;
 
