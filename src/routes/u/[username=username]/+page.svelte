@@ -34,6 +34,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { reveal } from '$lib/actions/reveal';
+	import { CHART_LIMITS, GRID_PREVIEW_LIMIT } from '$lib/constants';
 
 	const navSections = [
 		{ id: 'overview', label: 'Overview' },
@@ -227,7 +228,7 @@
 	let genreData = $derived(Object.entries(stats.genreBreakdown)
 		.map(([genre, count]) => ({ label: genre, value: count }))
 		.sort((a, b) => b.value - a.value)
-		.slice(0, 8));
+		.slice(0, CHART_LIMITS.TOP_GENRES));
 
 	let formatData = $derived(Object.entries(stats.formatBreakdown)
 		.map(([format, count]) => ({ label: format, value: count }))
@@ -236,7 +237,7 @@
 	let styleData = $derived(Object.entries(stats.styleBreakdown)
 		.map(([style, count]) => ({ label: style, value: count }))
 		.sort((a, b) => b.value - a.value)
-		.slice(0, 12));
+		.slice(0, CHART_LIMITS.TOP_STYLES));
 
 	// Random highlights - shuffle the collection for variety
 	function shuffleArray<T>(array: T[]): T[] {
@@ -248,7 +249,7 @@
 		return shuffled;
 	}
 
-	let randomHighlights = $derived(shuffleArray(items).slice(0, 12));
+	let randomHighlights = $derived(shuffleArray(items).slice(0, GRID_PREVIEW_LIMIT));
 
 	// Calculate fun personality badges
 	interface Badge {
