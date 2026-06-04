@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import { formatArtists } from '$lib/utils/discogs';
+	import { escapeCsvCell } from '$lib/utils/csv';
 
 	let { items, username }: { items: DiscogsCollectionItem[]; username: string } = $props();
 
@@ -27,14 +28,14 @@
 		const headers = ['ID', 'Title', 'Artist', 'Year', 'Genres', 'Styles', 'Format', 'Label', 'Catalog #', 'Rating', 'Date Added'];
 		const rows = items.map(item => [
 			item.basic_information.id,
-			escapeCsv(item.basic_information.title),
-			escapeCsv(formatArtists(item.basic_information.artists)),
+			escapeCsvCell(item.basic_information.title),
+			escapeCsvCell(formatArtists(item.basic_information.artists)),
 			item.basic_information.year || '',
-			escapeCsv((item.basic_information.genres || []).join(', ')),
-			escapeCsv((item.basic_information.styles || []).join(', ')),
-			escapeCsv(item.basic_information.formats.map(f => f.name).join(', ')),
-			escapeCsv(item.basic_information.labels.map(l => l.name).join(', ')),
-			escapeCsv(item.basic_information.labels.map(l => l.catno).filter(Boolean).join(', ')),
+			escapeCsvCell((item.basic_information.genres || []).join(', ')),
+			escapeCsvCell((item.basic_information.styles || []).join(', ')),
+			escapeCsvCell(item.basic_information.formats.map(f => f.name).join(', ')),
+			escapeCsvCell(item.basic_information.labels.map(l => l.name).join(', ')),
+			escapeCsvCell(item.basic_information.labels.map(l => l.catno).filter(Boolean).join(', ')),
 			item.rating || '',
 			item.date_added.split('T')[0]
 		].join(','));
@@ -42,13 +43,6 @@
 		const csv = [headers.join(','), ...rows].join('\n');
 		const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
 		downloadBlob(blob, `${username}-collection.csv`);
-	}
-
-	function escapeCsv(value: string): string {
-		if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-			return `"${value.replace(/"/g, '""')}"`;
-		}
-		return value;
 	}
 
 	function downloadBlob(blob: Blob, filename: string) {
