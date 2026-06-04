@@ -10,7 +10,7 @@
 </script>
 
 <div class="cover-grid size-{size}">
-	{#each items as item (item.basic_information.id)}
+	{#each items as item (item.instance_id)}
 		<a
 			href="https://www.discogs.com/release/{item.basic_information.id}"
 			target="_blank"
