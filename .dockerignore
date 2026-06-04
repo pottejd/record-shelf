@@ -2,3 +2,19 @@ node_modules
 build
 .svelte-kit
 .git
+
+# Secrets — never copy into the build context
+.env
+.env.*
+!.env.example
+
+# Test / build artifacts and local tooling
+coverage
+test-results
+playwright-report
+.playwright-mcp
+.wrangler
+
+# Docs and large static assets not needed at runtime
+docs
+static/*.pdf
