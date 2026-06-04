@@ -359,6 +359,16 @@ describe('fetch functions', () => {
 			expect(mockFetch).toHaveBeenCalledTimes(4);
 		});
 
+		it('maps an unexpected upstream status to a generic 502 without leaking statusText', async () => {
+			mockFetch.mockResolvedValue(mockResponse(null, 500));
+
+			await expect(fetchUserProfile('testuser', opts)).rejects.toMatchObject({
+				status: 502,
+				code: 'UPSTREAM_ERROR',
+				message: 'Discogs API request failed'
+			});
+		});
+
 		it('works without auth token', async () => {
 			mockFetch.mockResolvedValue(mockResponse({ username: 'testuser', id: 1 }));
 
