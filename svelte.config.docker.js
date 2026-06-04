@@ -9,6 +9,14 @@ const config = {
 		adapter: adapter({
 			out: 'build'
 		}),
+		csp: {
+			mode: 'hash',
+			directives: {
+				'script-src': ['self'],
+				'object-src': ['none'],
+				'base-uri': ['self']
+			}
+		},
 		version: {
 			name: pkg.version
 		}
