@@ -13,6 +13,13 @@ declare global {
 			env?: {
 				COLLECTION_CACHE?: KVNamespace;
 			};
+			/**
+			 * Cloudflare execution context. `waitUntil` keeps the isolate alive for
+			 * background work (e.g. caching a full collection after the response is sent).
+			 */
+			context?: {
+				waitUntil(promise: Promise<unknown>): void;
+			};
 		}
 	}
 }

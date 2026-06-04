@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { readCache, writeCache, invalidateCache } from './cache';
+import { readCache, writeCache, invalidateCache, kvGetJSON, kvPutJSON } from './cache';
 import type { UserCollection } from '$lib/types/discogs';
 
-// Mock constants
+// Mock constants — soft TTL 1h, stale window 24h
 vi.mock('$lib/constants', () => ({
 	CACHE_TTL_MS: 3600000,
-	CACHE_TTL_SECONDS: 3600
+	CACHE_STALE_TTL_MS: 86400000,
+	CACHE_STALE_TTL_SECONDS: 86400
 }));
 
 function createMockKV() {
@@ -108,7 +109,7 @@ describe('cache utility', () => {
 			expect(kv.get).toHaveBeenCalledWith('collection:testuser', 'json');
 		});
 
-		it('returns cached data when valid', async () => {
+		it('returns fresh cached data with stale=false', async () => {
 			const cached = {
 				data: mockCollection,
 				cachedAt: Date.now(),
@@ -119,15 +120,54 @@ describe('cache utility', () => {
 			const result = await readCache(platform, 'testuser');
 			expect(result).not.toBeNull();
 			expect(result!.data).toEqual(mockCollection);
+			expect(result!.stale).toBe(false);
 		});
 
-		it('returns null when cache is expired', async () => {
+		it('returns soft-expired data with stale=true while within the stale window', async () => {
+			const now = Date.now();
+			const cached = {
+				data: mockCollection,
+				cachedAt: now - 7200000,
+				expiresAt: now - 3600000, // soft-expired 1h ago
+				staleUntil: now + 3600000 // but still serveable for another hour
+			};
+			kv._store.set('collection:testuser', JSON.stringify(cached));
+
+			const result = await readCache(platform, 'testuser');
+			expect(result).not.toBeNull();
+			expect(result!.data).toEqual(mockCollection);
+			expect(result!.stale).toBe(true);
+		});
+
+		it('returns null once past the hard staleUntil limit', async () => {
+			const now = Date.now();
+			const cached = {
+				data: mockCollection,
+				cachedAt: now - 172800000,
+				expiresAt: now - 90000000,
+				staleUntil: now - 3600000 // hard-expired 1h ago
+			};
+			kv._store.set('collection:testuser', JSON.stringify(cached));
+
+			const result = await readCache(platform, 'testuser');
+			expect(result).toBeNull();
+		});
+
+		it('treats a legacy entry without staleUntil as hard-expired at expiresAt', async () => {
 			const cached = {
 				data: mockCollection,
 				cachedAt: Date.now() - 7200000,
-				expiresAt: Date.now() - 3600000 // expired 1 hour ago
+				expiresAt: Date.now() - 3600000 // expired 1 hour ago, no staleUntil
 			};
 			kv._store.set('collection:testuser', JSON.stringify(cached));
+
+			const result = await readCache(platform, 'testuser');
+			expect(result).toBeNull();
+		});
+
+		it('treats a malformed cached entry as a miss', async () => {
+			// missing data.items / numeric fields
+			kv._store.set('collection:testuser', JSON.stringify({ data: { profile: {} }, foo: 'bar' }));
 
 			const result = await readCache(platform, 'testuser');
 			expect(result).toBeNull();
@@ -145,14 +185,20 @@ describe('cache utility', () => {
 			// No error thrown
 		});
 
-		it('writes data to KV store', async () => {
+		it('writes data to KV store with the stale-window TTL', async () => {
 			await writeCache(platform, 'testuser', mockCollection);
 			expect(kv.put).toHaveBeenCalledTimes(1);
 			expect(kv.put).toHaveBeenCalledWith(
 				'collection:testuser',
 				expect.any(String),
-				{ expirationTtl: 3600 }
+				{ expirationTtl: 86400 }
 			);
+		});
+
+		it('persists a staleUntil beyond expiresAt so entries can be served stale', async () => {
+			await writeCache(platform, 'testuser', mockCollection);
+			const written = JSON.parse(kv._store.get('collection:testuser')!);
+			expect(written.staleUntil).toBeGreaterThan(written.expiresAt);
 		});
 
 		it('normalizes username to lowercase', async () => {
@@ -179,6 +225,47 @@ describe('cache utility', () => {
 		it('normalizes username to lowercase', async () => {
 			await invalidateCache(platform, 'TestUser');
 			expect(kv.delete).toHaveBeenCalledWith('collection:testuser');
+		});
+	});
+
+	describe('kvGetJSON', () => {
+		it('returns null when no platform is provided', async () => {
+			const result = await kvGetJSON(undefined, 'price:123');
+			expect(result).toBeNull();
+		});
+
+		it('returns the parsed JSON value on a hit', async () => {
+			kv._store.set('price:123', JSON.stringify({ lowestPrice: 9.99 }));
+			const result = await kvGetJSON<{ lowestPrice: number }>(platform, 'price:123');
+			expect(result).toEqual({ lowestPrice: 9.99 });
+			expect(kv.get).toHaveBeenCalledWith('price:123', 'json');
+		});
+
+		it('returns null on a miss', async () => {
+			const result = await kvGetJSON(platform, 'price:missing');
+			expect(result).toBeNull();
+		});
+
+		it('returns null (does not throw) when the store errors', async () => {
+			kv.get.mockRejectedValueOnce(new Error('kv down'));
+			const result = await kvGetJSON(platform, 'price:123');
+			expect(result).toBeNull();
+		});
+	});
+
+	describe('kvPutJSON', () => {
+		it('does nothing when no platform is provided', async () => {
+			await kvPutJSON(undefined, 'price:123', { lowestPrice: 1 }, 300);
+			// no throw
+		});
+
+		it('stringifies the value and writes it with the given TTL', async () => {
+			await kvPutJSON(platform, 'price:123', { lowestPrice: 9.99 }, 300);
+			expect(kv.put).toHaveBeenCalledWith(
+				'price:123',
+				JSON.stringify({ lowestPrice: 9.99 }),
+				{ expirationTtl: 300 }
+			);
 		});
 	});
 });
