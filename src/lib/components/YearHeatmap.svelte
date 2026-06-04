@@ -7,15 +7,23 @@
 	let maxCount = $derived(years.length > 0 ? Math.max(...Object.values(data)) : 1);
 
 	let allYears = $derived(Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i));
-	let decades = $derived([...new Set(allYears.map((y) => Math.floor(y / 10) * 10))].sort());
+
+	// Group years by decade once per data change, instead of filtering the full
+	// year range for every decade row on every render.
+	let yearsByDecade = $derived.by(() => {
+		const map = new Map<number, number[]>();
+		for (const y of allYears) {
+			const decade = Math.floor(y / 10) * 10;
+			if (!map.has(decade)) map.set(decade, []);
+			map.get(decade)!.push(y);
+		}
+		return map;
+	});
+	let decades = $derived([...yearsByDecade.keys()].sort((a, b) => a - b));
 
 	function getIntensity(count: number): number {
 		if (!count) return 0;
 		return Math.max(0.15, count / maxCount);
-	}
-
-	function getYearsInDecade(decade: number): number[] {
-		return allYears.filter((y) => Math.floor(y / 10) * 10 === decade);
 	}
 </script>
 
@@ -24,7 +32,7 @@
 		<div class="decade-row">
 			<span class="decade-label">{decade}s</span>
 			<div class="years">
-				{#each getYearsInDecade(decade) as year}
+				{#each yearsByDecade.get(decade) ?? [] as year}
 					{@const count = data[year] || 0}
 					<button
 						class="year-cell"
