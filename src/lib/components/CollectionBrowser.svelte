@@ -66,17 +66,39 @@
 		.map(y => Math.floor(y / 10) * 10)
 	)].sort((a, b) => b - a));
 
+	// Precompute lowercased searchable fields once per item (recomputed only when
+	// `items` changes), so per-keystroke filtering is a cheap lookup + includes
+	// instead of re-lowercasing/joining every item's fields on every render.
+	let searchIndex = $derived(
+		new Map(
+			items.map((item) => {
+				const info = item.basic_information;
+				return [
+					item,
+					{
+						title: info.title.toLowerCase(),
+						artists: info.artists.map((a) => a.name.toLowerCase()).join(' '),
+						labels: info.labels?.map((l) => l.name.toLowerCase()).join(' ') || '',
+						catno: info.labels?.map((l) => l.catno.toLowerCase()).join(' ') || ''
+					}
+				];
+			})
+		)
+	);
+
 	// Filter and sort items
 	let filteredItems = $derived(items
 		.filter(item => {
 			if (debouncedQuery) {
 				const query = debouncedQuery.toLowerCase();
-				const title = item.basic_information.title.toLowerCase();
-				const artists = item.basic_information.artists.map(a => a.name.toLowerCase()).join(' ');
-				const labels = item.basic_information.labels?.map(l => l.name.toLowerCase()).join(' ') || '';
-				const catno = item.basic_information.labels?.map(l => l.catno.toLowerCase()).join(' ') || '';
-
-				if (!title.includes(query) && !artists.includes(query) && !labels.includes(query) && !catno.includes(query)) {
+				const idx = searchIndex.get(item);
+				if (
+					idx &&
+					!idx.title.includes(query) &&
+					!idx.artists.includes(query) &&
+					!idx.labels.includes(query) &&
+					!idx.catno.includes(query)
+				) {
 					return false;
 				}
 			}
