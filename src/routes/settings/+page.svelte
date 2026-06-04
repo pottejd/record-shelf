@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { settings } from '$lib/stores/settings';
 	import { version } from '$app/environment';
+	import { safeRedirectTarget } from '$lib/utils/redirect';
 
 	let token = $state($settings.discogsToken);
 	let showToken = $state(false);
@@ -21,8 +22,9 @@
 
 		// If there's a redirect URL, go there after a short delay
 		if (redirectTo) {
+			const target = safeRedirectTarget(redirectTo);
 			setTimeout(() => {
-				goto(redirectTo);
+				goto(target);
 			}, 500);
 		} else {
 			setTimeout(() => (saved = false), 2000);
@@ -96,7 +98,7 @@
 		<h2>Discogs API Token</h2>
 		<p class="description">
 			Record Shelf needs a Discogs Personal Access Token to fetch collection data.
-			Your token is stored locally in your browser and never sent to our servers.
+			Your token is stored in your browser and sent to this app as a cookie so it can fetch your collection server-side. It is never shared with third parties.
 		</p>
 
 		<div class="token-input-group">
@@ -204,8 +206,9 @@
 				<line x1="12" y1="8" x2="12.01" y2="8" />
 			</svg>
 			<p>
-				<strong>Privacy note:</strong> Your token is only stored in your browser's local storage.
-				It's sent directly to Discogs when fetching data and is never stored on any server.
+				<strong>Privacy note:</strong> Your token is stored in your browser and sent as a
+				cookie to this app's server only to fetch your collection from Discogs on your behalf.
+				It is never persisted server-side or shared with third parties.
 			</p>
 		</div>
 	</section>

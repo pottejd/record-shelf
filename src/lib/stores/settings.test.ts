@@ -92,4 +92,21 @@ describe('settings store', () => {
 		expect(stored.discogsToken).toBe('direct-set');
 		expect(get(settings).discogsToken).toBe('direct-set');
 	});
+
+	it('marks the token cookie Secure + SameSite=Strict over https', async () => {
+		vi.stubGlobal('location', { protocol: 'https:' });
+		const { settings } = await importStore();
+		settings.setToken('tok');
+
+		expect((document.cookie as string)).toContain(';Secure');
+		expect((document.cookie as string)).toContain('SameSite=Strict');
+	});
+
+	it('omits Secure on http so localhost dev still works', async () => {
+		vi.stubGlobal('location', { protocol: 'http:' });
+		const { settings } = await importStore();
+		settings.setToken('tok');
+
+		expect((document.cookie as string)).not.toContain('Secure');
+	});
 });
