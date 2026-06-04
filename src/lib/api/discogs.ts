@@ -89,7 +89,7 @@ export async function fetchCollectionPage(
 	options: FetchOptions
 ): Promise<{ items: DiscogsCollectionItem[]; pagination: DiscogsPagination }> {
 	const response = await fetchDiscogs<DiscogsCollectionResponse>(
-		`/users/${username}/collection/folders/0/releases?page=${page}&per_page=${PER_PAGE}&sort=added&sort_order=desc`,
+		`/users/${encodeURIComponent(username)}/collection/folders/0/releases?page=${page}&per_page=${PER_PAGE}&sort=added&sort_order=desc`,
 		options
 	);
 	return { items: response.releases, pagination: response.pagination };
