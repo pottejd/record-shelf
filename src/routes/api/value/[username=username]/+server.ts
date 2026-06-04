@@ -64,14 +64,14 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 	const { username } = params;
 	if (!username) throw error(400, 'Username is required');
 
-	let body: { releaseIds?: unknown };
+	let body: { releaseIds?: unknown } | null;
 	try {
 		body = await request.json();
 	} catch {
 		throw error(400, 'Invalid JSON body');
 	}
 
-	if (!Array.isArray(body.releaseIds)) {
+	if (!body || typeof body !== 'object' || !Array.isArray(body.releaseIds)) {
 		throw error(400, 'releaseIds array is required');
 	}
 

@@ -254,6 +254,18 @@ describe('value endpoint', () => {
 		await expect(POST(event)).rejects.toMatchObject({ status: 400 });
 	});
 
+	it('returns 400 on a literal null JSON body (not a 500)', async () => {
+		const event = {
+			params: { username: 'testuser' },
+			request: new Request('http://localhost/api/value/testuser', {
+				method: 'POST',
+				body: 'null',
+				headers: { 'content-type': 'application/json', 'x-discogs-token': 'tok' }
+			})
+		} as any;
+		await expect(POST(event)).rejects.toMatchObject({ status: 400 });
+	});
+
 	it('returns 400 when no valid positive integer ids remain', async () => {
 		await expect(POST(makeEvent(['x', -1, 0, 2.5], 'tok'))).rejects.toMatchObject({ status: 400 });
 	});
