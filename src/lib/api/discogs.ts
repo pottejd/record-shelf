@@ -9,6 +9,7 @@ import type {
 	UserCollection
 } from '$lib/types/discogs';
 import { TOP_LIST_LIMIT, GRID_PREVIEW_LIMIT } from '$lib/constants';
+import { cleanArtistName } from '$lib/utils/discogs';
 
 const DISCOGS_API_BASE = 'https://api.discogs.com';
 const PER_PAGE = 100; // Max allowed by Discogs
@@ -227,7 +228,7 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 
 		// Artists
 		for (const artist of info.artists || []) {
-			const name = artist.name.replace(/\s*\(\d+\)$/, ''); // Remove disambiguation numbers
+			const name = cleanArtistName(artist.name);
 			artistCounts[name] = (artistCounts[name] || 0) + 1;
 		}
 

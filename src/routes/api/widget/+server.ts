@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { fetchCollectionPage, fetchUserProfile, DiscogsAPIError } from '$lib/api/discogs';
+import { cleanArtistName } from '$lib/utils/discogs';
 import { env } from '$env/dynamic/private';
 import { USER_AGENT } from '$lib/constants';
 
@@ -40,7 +41,7 @@ export const GET: RequestHandler = async () => {
 		const recent = firstPage.items.slice(0, 3);
 		for (const item of recent) {
 			const artist =
-				item.basic_information.artists?.[0]?.name?.replace(/\s*\(\d+\)$/, '') || 'Unknown';
+				cleanArtistName(item.basic_information.artists?.[0]?.name ?? '') || 'Unknown';
 			items.push({
 				label: 'Recent',
 				value: `${artist} - ${item.basic_information.title}`,

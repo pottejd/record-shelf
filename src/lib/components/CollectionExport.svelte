@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import { formatArtists } from '$lib/utils/discogs';
 
 	let { items, username }: { items: DiscogsCollectionItem[]; username: string } = $props();
 
@@ -7,7 +8,7 @@
 		const data = items.map(item => ({
 			id: item.basic_information.id,
 			title: item.basic_information.title,
-			artist: item.basic_information.artists.map(a => a.name.replace(/\s*\(\d+\)$/, '')).join(', '),
+			artist: formatArtists(item.basic_information.artists),
 			year: item.basic_information.year,
 			genres: item.basic_information.genres,
 			styles: item.basic_information.styles,
@@ -27,7 +28,7 @@
 		const rows = items.map(item => [
 			item.basic_information.id,
 			escapeCsv(item.basic_information.title),
-			escapeCsv(item.basic_information.artists.map(a => a.name.replace(/\s*\(\d+\)$/, '')).join(', ')),
+			escapeCsv(formatArtists(item.basic_information.artists)),
 			item.basic_information.year || '',
 			escapeCsv((item.basic_information.genres || []).join(', ')),
 			escapeCsv((item.basic_information.styles || []).join(', ')),

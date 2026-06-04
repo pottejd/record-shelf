@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import { cleanArtistName } from '$lib/utils/discogs';
 
 	let { items, minCount = 5 }: {
 		items: DiscogsCollectionItem[];
@@ -28,7 +29,7 @@
 
 		for (const item of items) {
 			for (const artist of item.basic_information.artists) {
-				const name = artist.name.replace(/\s*\(\d+\)$/, '');
+				const name = cleanArtistName(artist.name);
 
 				// Skip excluded artists
 				if (excludedArtists.has(name.toLowerCase())) continue;

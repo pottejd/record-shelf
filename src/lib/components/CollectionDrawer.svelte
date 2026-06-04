@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import { formatArtists } from '$lib/utils/discogs';
 	import { fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 
@@ -99,7 +100,7 @@
 								<div class="record-info">
 									<p class="record-title">{item.basic_information.title}</p>
 									<p class="record-artist">
-										{item.basic_information.artists.map((a) => a.name).join(', ')}
+										{formatArtists(item.basic_information.artists)}
 									</p>
 									<div class="record-meta">
 										{#if item.basic_information.year}

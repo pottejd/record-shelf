@@ -6,6 +6,7 @@ import { USER_AGENT } from '$lib/constants';
 import { fetchUserProfile, fetchUserCollection, DiscogsAPIError } from '$lib/api/discogs';
 import { readCache, writeCache } from '$lib/server/cache';
 import { computeCollectionStats } from '$lib/api/discogs';
+import { cleanArtistName } from '$lib/utils/discogs';
 
 export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 	const cookieToken = cookies.get('discogs_token');
@@ -68,7 +69,7 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 				return `master:${item.basic_information.master_id}`;
 			}
 			const title = item.basic_information.title.toLowerCase().trim();
-			const artist = item.basic_information.artists[0]?.name.toLowerCase().replace(/\s*\(\d+\)$/, '').trim() || '';
+			const artist = cleanArtistName((item.basic_information.artists?.[0]?.name ?? '').toLowerCase()).trim();
 			return `title:${artist}:${title}`;
 		}
 
@@ -123,8 +124,8 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 		const jaccardIndex = totalUniqueAlbums > 0 ? overlapCount / totalUniqueAlbums : 0;
 
 		// Artist overlap
-		const artists1 = new Set(collection1.items.flatMap(i => i.basic_information.artists.map(a => a.name)));
-		const artists2 = new Set(collection2.items.flatMap(i => i.basic_information.artists.map(a => a.name)));
+		const artists1 = new Set(collection1.items.flatMap(i => (i.basic_information.artists ?? []).map(a => a.name)));
+		const artists2 = new Set(collection2.items.flatMap(i => (i.basic_information.artists ?? []).map(a => a.name)));
 		const sharedArtists = [...artists1].filter(a => artists2.has(a));
 
 		function computeGenreOverlap(g1: Map<string, number>, g2: Map<string, number>) {
