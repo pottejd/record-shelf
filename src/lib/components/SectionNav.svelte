@@ -24,11 +24,15 @@
 
 		const observer = new IntersectionObserver(
 			(entries) => {
-				for (const entry of entries) {
-					if (entry.isIntersecting) {
-						activeSection = entry.target.id;
-					}
-				}
+				// Among the sections intersecting in this batch, make the topmost one
+				// active. Iterating and taking the last would let a lower section win
+				// during fast scrolls, causing the highlight to flicker.
+				const visible = entries.filter((e) => e.isIntersecting);
+				if (visible.length === 0) return;
+				const topmost = visible.reduce((a, b) =>
+					a.boundingClientRect.top <= b.boundingClientRect.top ? a : b
+				);
+				activeSection = topmost.target.id;
 			},
 			{ rootMargin: '-20% 0px -60% 0px' }
 		);

@@ -19,6 +19,9 @@
 	let backdropEl: HTMLDivElement | undefined = $state();
 
 	function handleKeydown(e: KeyboardEvent) {
+		// The window listener is always mounted; ignore keys when the drawer is
+		// closed so Escape/Tab elsewhere on the page don't trigger close/focus-trap.
+		if (!open) return;
 		if (e.key === 'Escape') onClose();
 		if (e.key === 'Tab' && backdropEl) {
 			const focusable = backdropEl.querySelectorAll<HTMLElement>(

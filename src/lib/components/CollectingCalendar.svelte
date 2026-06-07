@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import { localDayKey, parseLocalDayKey } from '$lib/utils/dates';
 
 	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
@@ -32,7 +33,7 @@
 		for (const item of items) {
 			const date = new Date(item.date_added);
 			if (date >= oneYearAgo && date <= now) {
-				const key = date.toISOString().split('T')[0];
+				const key = localDayKey(date);
 				dayCounts.set(key, (dayCounts.get(key) || 0) + 1);
 			}
 		}
@@ -45,13 +46,13 @@
 		current.setDate(current.getDate() - current.getDay());
 
 		while (current <= now) {
-			const key = current.toISOString().split('T')[0];
+			const key = localDayKey(current);
 			const count = dayCounts.get(key) || 0;
 			days.push({
 				date: key,
 				count,
 				level: getLevel(count),
-				title: `${count} record${count !== 1 ? 's' : ''} on ${dateFormatter.format(new Date(key))}`
+				title: `${count} record${count !== 1 ? 's' : ''} on ${dateFormatter.format(parseLocalDayKey(key))}`
 			});
 			current.setDate(current.getDate() + 1);
 		}
@@ -80,10 +81,10 @@
 		let lastMonth = -1;
 
 		days.forEach((day, i) => {
-			const month = new Date(day.date).getMonth();
+			const month = parseLocalDayKey(day.date).getMonth();
 			if (month !== lastMonth && i % 7 === 0) {
 				labels.push({
-					label: new Date(day.date).toLocaleDateString('en-US', { month: 'short' }),
+					label: parseLocalDayKey(day.date).toLocaleDateString('en-US', { month: 'short' }),
 					index: Math.floor(i / 7)
 				});
 				lastMonth = month;

@@ -8,6 +8,11 @@
 	let isSpinning = $state(false);
 	let spinCount = $state(0);
 
+	// Track the pending spin timer so a teardown mid-spin doesn't keep firing and
+	// mutating state after the component is gone.
+	let spinTimer: ReturnType<typeof setTimeout> | undefined;
+	$effect(() => () => clearTimeout(spinTimer));
+
 	function pickRandom() {
 		if (items.length === 0 || isSpinning) return;
 
@@ -21,7 +26,7 @@
 			if (spinCount >= totalSpins) {
 				isSpinning = false;
 			} else {
-				setTimeout(spin, 80 + spinCount * 8);
+				spinTimer = setTimeout(spin, 80 + spinCount * 8);
 			}
 		}
 		spin();

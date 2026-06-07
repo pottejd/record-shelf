@@ -176,6 +176,23 @@ describe('value endpoint', () => {
 		expect(data.totalRequested).toBe(3);
 	});
 
+	it('sums only the dominant currency when results are mixed (no FX mixing)', async () => {
+		mockFetch
+			.mockResolvedValueOnce(makePriceResponse({ value: 10, currency: 'USD' }))
+			.mockResolvedValueOnce(makePriceResponse({ value: 100, currency: 'EUR' }));
+
+		const promise = POST(makeEvent([1, 2], 'tok'));
+		await vi.advanceTimersByTimeAsync(2 * 1200);
+		const response = await promise;
+		const data = await response.json();
+
+		// Display currency is the first priced result's; the EUR item is excluded
+		// from the total rather than added as if it were USD.
+		expect(data.currency).toBe('USD');
+		expect(data.totalValue).toBe(10);
+		expect(data.pricedCount).toBe(1);
+	});
+
 	it('returns null price on fetch failure', async () => {
 		mockFetch.mockRejectedValue(new Error('Network error'));
 

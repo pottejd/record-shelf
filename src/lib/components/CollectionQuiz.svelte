@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import { formatArtists } from '$lib/utils/discogs';
+	import { pickDistinctOptions } from '$lib/utils/quiz';
 
 	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
@@ -46,12 +47,16 @@
 		switch (type) {
 			case 'album':
 				correctAnswer = item.basic_information.title;
-				options = [correctAnswer, ...shuffled.slice(1, 4).map(i => i.basic_information.title)];
+				options = pickDistinctOptions(
+					correctAnswer,
+					shuffled.slice(1).map((i) => i.basic_information.title)
+				);
 				break;
-			case 'year':
+			case 'year': {
 				correctAnswer = String(item.basic_information.year);
 				const years = new Set<string>([correctAnswer]);
-				while (years.size < 4) {
+				// Bounded so a year near the 1900 floor can't spin forever.
+				for (let attempt = 0; attempt < 50 && years.size < 4; attempt++) {
 					const offset = Math.floor(Math.random() * 20) - 10;
 					const year = item.basic_information.year + offset;
 					if (year > 1900 && year <= new Date().getFullYear()) {
@@ -60,18 +65,17 @@
 				}
 				options = Array.from(years);
 				break;
+			}
 			case 'artist':
 				correctAnswer = getArtistName(item);
-				const artists = new Set<string>([correctAnswer]);
-				for (const other of shuffled.slice(1)) {
-					if (artists.size >= 4) break;
-					const otherArtist = getArtistName(other);
-					if (otherArtist !== correctAnswer) {
-						artists.add(otherArtist);
-					}
-				}
-				options = Array.from(artists);
+				options = pickDistinctOptions(correctAnswer, shuffled.slice(1).map(getArtistName));
 				break;
+		}
+
+		// A collection with duplicate titles/artists (or a too-narrow year range)
+		// can yield fewer than 4 distinct options — reject so the caller retries.
+		if (options.length < 4) {
+			throw new Error('Not enough distinct options');
 		}
 
 		return {
@@ -92,11 +96,17 @@
 	function nextQuestion() {
 		selectedAnswer = null;
 		showResult = false;
-		try {
-			currentQuestion = generateQuestion();
-		} catch {
-			quizActive = false;
+		// Retry across random types/items: a single draw can be unusable (duplicate
+		// options) even when the collection can produce a valid question.
+		for (let attempt = 0; attempt < 8; attempt++) {
+			try {
+				currentQuestion = generateQuestion();
+				return;
+			} catch {
+				// try another draw
+			}
 		}
+		quizActive = false;
 	}
 
 	function selectAnswer(answer: string) {

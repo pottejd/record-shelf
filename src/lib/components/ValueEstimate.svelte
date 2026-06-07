@@ -7,6 +7,12 @@
 	// Memoize the sampled release ids so repeated estimates reuse the same set
 	// (and therefore the server's per-release price cache) instead of re-sampling.
 	let sampledIds: number[] | null = null;
+	// Invalidate the memoized sample when the collection changes (e.g. progressive
+	// loading grows `items`), so a re-estimate samples the current collection.
+	$effect(() => {
+		items;
+		sampledIds = null;
+	});
 	function getSampleIds(): number[] {
 		if (!sampledIds) {
 			sampledIds = sampleN(items, Math.min(items.length, 20)).map((i) => i.basic_information.id);

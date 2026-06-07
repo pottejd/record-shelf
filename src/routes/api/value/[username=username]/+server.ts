@@ -183,9 +183,14 @@ export const POST: RequestHandler = async ({ params, request, cookies, platform 
 		}
 	}
 
-	const totalValue = results.reduce((sum, r) => sum + (r.lowestPrice || 0), 0);
-	const pricedCount = results.filter(r => r.lowestPrice !== null).length;
-	const currency = results.find(r => r.currency)?.currency || 'USD';
+	// Sum only prices in a single currency so the total is internally consistent —
+	// Discogs can return per-listing currencies and we don't convert FX. The
+	// display currency is the first priced result's; other-currency items are
+	// excluded from the total rather than added as if they matched.
+	const currency = results.find((r) => r.lowestPrice !== null)?.currency || 'USD';
+	const priced = results.filter((r) => r.lowestPrice !== null && r.currency === currency);
+	const totalValue = priced.reduce((sum, r) => sum + (r.lowestPrice || 0), 0);
+	const pricedCount = priced.length;
 
 	return json({
 		totalValue,
