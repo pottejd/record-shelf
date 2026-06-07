@@ -1,42 +1,23 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
-	import StatCard from '$lib/components/StatCard.svelte';
-	import BarChart from '$lib/components/BarChart.svelte';
-	import DonutChart from '$lib/components/DonutChart.svelte';
-	import TimelineChart from '$lib/components/TimelineChart.svelte';
-	import YearHeatmap from '$lib/components/YearHeatmap.svelte';
-	import TopList from '$lib/components/TopList.svelte';
-	import RecentlyAdded from '$lib/components/RecentlyAdded.svelte';
-	import CoverGrid from '$lib/components/CoverGrid.svelte';
 	import CollectionDrawer from '$lib/components/CollectionDrawer.svelte';
-	import RandomPicker from '$lib/components/RandomPicker.svelte';
-	import CollectionDNA from '$lib/components/CollectionDNA.svelte';
-	import ArtistLoyalty from '$lib/components/ArtistLoyalty.svelte';
-	import Milestones from '$lib/components/Milestones.svelte';
-	import CollectionQuiz from '$lib/components/CollectionQuiz.svelte';
-	import ShareableCard from '$lib/components/ShareableCard.svelte';
-	import CollectionBrowser from '$lib/components/CollectionBrowser.svelte';
-	import RatingsOverview from '$lib/components/RatingsOverview.svelte';
 	import SectionNav from '$lib/components/SectionNav.svelte';
-	import ValueEstimate from '$lib/components/ValueEstimate.svelte';
-	import CollectionExport from '$lib/components/CollectionExport.svelte';
-	import Recommendations from '$lib/components/Recommendations.svelte';
-	import FormatDrilldown from '$lib/components/FormatDrilldown.svelte';
-	import CollectionTimeline from '$lib/components/CollectionTimeline.svelte';
-	import DuplicateDetector from '$lib/components/DuplicateDetector.svelte';
-	import FormatUpgrades from '$lib/components/FormatUpgrades.svelte';
 	import KeyboardHelp from '$lib/components/KeyboardHelp.svelte';
 	import FloatingActions from '$lib/components/FloatingActions.svelte';
 	import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
 	import LoadingBanner from '$lib/components/profile/LoadingBanner.svelte';
-	import OldestNewestHighlights from '$lib/components/profile/OldestNewestHighlights.svelte';
+	import ProfileOverview from '$lib/components/profile/ProfileOverview.svelte';
+	import ProfileCollection from '$lib/components/profile/ProfileCollection.svelte';
+	import ProfileCharts from '$lib/components/profile/ProfileCharts.svelte';
 	import ProfileActivity from '$lib/components/profile/ProfileActivity.svelte';
+	import ProfileInsights from '$lib/components/profile/ProfileInsights.svelte';
+	import ProfileShare from '$lib/components/profile/ProfileShare.svelte';
+	import OldestNewestHighlights from '$lib/components/profile/OldestNewestHighlights.svelte';
 	import { findDuplicates, groupAlbums } from '$lib/utils/albums';
 	import { computeCollectionStats } from '$lib/api/discogs';
 	import { invalidateAll } from '$app/navigation';
 	import { browser } from '$app/environment';
-	import { reveal } from '$lib/actions/reveal';
 	import { keyboardNav } from '$lib/actions/keyboardNav';
 	import { sampleN } from '$lib/utils/array';
 	import { toChartData } from '$lib/utils/chart';
@@ -273,172 +254,36 @@
 		onRetry={() => invalidateAll()}
 	/>
 
-	<section id="overview" class="stats-overview">
-		<StatCard label="Records" value={stats.totalItems} />
-		<StatCard label="Artists" value={stats.totalArtists} />
-		<StatCard label="Labels" value={stats.totalLabels} />
-		<StatCard label="Avg. Year" value={stats.averageYear ? String(stats.averageYear) : '—'} />
-		<StatCard label="Year Span" value={stats.collectionSpan ? `${stats.collectionSpan} yrs` : '—'} />
-		<StatCard label="Top Genre" value={stats.dominantGenre || '—'} />
-	</section>
+	<ProfileOverview
+		{stats}
+		{items}
+		{randomHighlights}
+		onArtistClick={filterByArtist}
+		onLabelClick={filterByLabel}
+	/>
 
-	<div class="grid-2col" use:reveal>
-		<section class="card">
-			<h2>Recently Added</h2>
-			<RecentlyAdded items={stats.recentlyAdded} />
-		</section>
+	<ProfileCollection {items} {stats} />
 
-		<section class="card">
-			<h2>What Should I Listen To?</h2>
-			<RandomPicker items={items} />
-		</section>
-	</div>
-
-	<div id="top-lists" class="grid-2col" use:reveal>
-		<section class="card">
-			<h2>Top Artists</h2>
-			<TopList items={stats.topArtists} clickable onItemClick={filterByArtist} />
-		</section>
-
-		<section class="card">
-			<h2>Top Labels</h2>
-			<TopList items={stats.topLabels} clickable onItemClick={filterByLabel} />
-		</section>
-	</div>
-
-	<div class="grid-2col" use:reveal>
-		<section class="card">
-			<h2>Collection Highlights</h2>
-			<p class="section-subtitle">A random selection from the collection</p>
-			<CoverGrid items={randomHighlights} />
-		</section>
-
-		<section class="card">
-			<h2>Collection DNA</h2>
-			<CollectionDNA {stats} />
-		</section>
-	</div>
-
-	<section id="collection" class="card" use:reveal>
-		<h2>Full Collection</h2>
-		<p class="section-subtitle">Browse, search, and filter the entire collection</p>
-		<CollectionBrowser items={items} />
-	</section>
-
-	<div class="grid-2col" use:reveal>
-		<section class="card">
-			<h2>Collection Quiz</h2>
-			<CollectionQuiz items={items} />
-		</section>
-
-		<section class="card">
-			<h2>Milestones</h2>
-			<Milestones items={items} />
-		</section>
-	</div>
-
-	{#if stats.ratedCount > 0}
-		<section class="card" use:reveal>
-			<h2>Ratings</h2>
-			<RatingsOverview {stats} />
-		</section>
-	{/if}
-
-	{#if stats.addedByMonth.length > 1}
-		<section class="card" use:reveal>
-			<h2>Collection Growth</h2>
-			<TimelineChart data={stats.addedByMonth} />
-		</section>
-	{/if}
-
-	<section class="card" use:reveal>
-		<h2>Collection Timeline</h2>
-		<p class="section-subtitle">Additions month by month</p>
-		<CollectionTimeline items={items} />
-	</section>
-
-	<div id="charts" class="grid-2col" use:reveal>
-		<section class="card">
-			<h2>By Decade</h2>
-			<BarChart data={decadeData} colorful clickable onItemClick={filterByDecade} />
-		</section>
-
-		<section class="card">
-			<h2>By Genre</h2>
-			<DonutChart data={genreData} clickable onItemClick={filterByGenre} />
-		</section>
-	</div>
-
-	<div class="grid-2col" use:reveal>
-		<section class="card">
-			<h2>Release Years</h2>
-			<YearHeatmap data={stats.yearBreakdown} onYearClick={filterByYear} />
-		</section>
-
-		<section class="card">
-			<h2>Artist Loyalty</h2>
-			<p class="section-subtitle">Artists that keep showing up</p>
-			<ArtistLoyalty items={items} />
-		</section>
-	</div>
-
-	<div class="grid-2col">
-		<section class="card">
-			<h2>By Format</h2>
-			<DonutChart data={formatData} size={180} thickness={35} clickable onItemClick={filterByFormat} />
-		</section>
-
-		<section class="card">
-			<h2>Format Drill-Down</h2>
-			<p class="section-subtitle">Expand to see sub-formats</p>
-			<FormatDrilldown items={items} onFilter={(title, filtered) => openDrawer(title, filtered)} />
-		</section>
-	</div>
-
-	<section class="card">
-		<h2>Top Styles</h2>
-		<BarChart data={styleData} horizontal colorful clickable onItemClick={filterByStyle} />
-	</section>
+	<ProfileCharts
+		{items}
+		{stats}
+		{decadeData}
+		{genreData}
+		{formatData}
+		{styleData}
+		onDecade={filterByDecade}
+		onGenre={filterByGenre}
+		onFormat={filterByFormat}
+		onStyle={filterByStyle}
+		onYear={filterByYear}
+		{openDrawer}
+	/>
 
 	<ProfileActivity {items} />
 
-	{#if duplicates.length > 0}
-		<section class="card" use:reveal>
-			<h2>Duplicates &amp; Variants</h2>
-			<p class="section-subtitle">Albums you own more than one copy or pressing of</p>
-			<DuplicateDetector groups={duplicates} onSelect={openDrawer} />
-		</section>
-	{/if}
+	<ProfileInsights {duplicates} {formatUpgrades} onSelect={openDrawer} />
 
-	{#if formatUpgrades.length > 0}
-		<section class="card" use:reveal>
-			<h2>Vinyl Upgrade Picks</h2>
-			<p class="section-subtitle">Owned on CD or cassette but not vinyl</p>
-			<FormatUpgrades groups={formatUpgrades} onSelect={openDrawer} />
-		</section>
-	{/if}
-
-	<section id="share" class="card">
-		<h2>Share Stats</h2>
-		<ShareableCard username={profile.username} {stats} {badges} />
-	</section>
-
-	<section class="card" use:reveal>
-		<h2>Collection Value</h2>
-		<ValueEstimate items={items} username={profile.username} />
-	</section>
-
-	<section class="card" use:reveal>
-		<h2>Export Collection</h2>
-		<p class="section-subtitle">Download collection data</p>
-		<CollectionExport items={items} username={profile.username} />
-	</section>
-
-	<section class="card" use:reveal>
-		<h2>Explore More</h2>
-		<p class="section-subtitle">Recommendations based on this collection</p>
-		<Recommendations {stats} />
-	</section>
+	<ProfileShare {stats} {items} {badges} username={profile.username} />
 
 	{#if stats.oldestRelease || stats.newestRelease}
 		<div class="grid-2col">
