@@ -1,4 +1,5 @@
-import { json, error, type RequestHandler } from '@sveltejs/kit';
+import { json, error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { USER_AGENT } from '$lib/constants';
 import { kvGetJSON, kvPutJSON } from '$lib/server/cache';

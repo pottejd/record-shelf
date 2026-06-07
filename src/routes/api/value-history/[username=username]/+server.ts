@@ -1,5 +1,6 @@
-import { json, error, type RequestHandler } from '@sveltejs/kit';
+import { json, error } from '@sveltejs/kit';
 import type { Cookies } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { kvGetJSON, kvPutJSON } from '$lib/server/cache';
 
@@ -37,7 +38,7 @@ async function readHistory(
 
 export const GET: RequestHandler = async ({ params, platform, cookies }) => {
 	requireToken(cookies);
-	const history = await readHistory(platform, params.username!);
+	const history = await readHistory(platform, params.username);
 	return json({ history });
 };
 
@@ -62,7 +63,7 @@ export const POST: RequestHandler = async ({ params, request, platform, cookies 
 		typeof rawCurrency === 'string' && /^[A-Z]{3}$/.test(rawCurrency) ? rawCurrency : 'USD';
 
 	const date = new Date().toISOString().slice(0, 10);
-	const history = await readHistory(platform, params.username!);
+	const history = await readHistory(platform, params.username);
 
 	// One snapshot per day — replace today's if it already exists.
 	const todayIdx = history.findIndex((s) => s.date === date);
@@ -71,7 +72,7 @@ export const POST: RequestHandler = async ({ params, request, platform, cookies 
 	else history.push(snapshot);
 
 	const trimmed = history.slice(-MAX_SNAPSHOTS);
-	await kvPutJSON(platform, historyKey(params.username!), trimmed, TTL_SECONDS);
+	await kvPutJSON(platform, historyKey(params.username), trimmed, TTL_SECONDS);
 
 	return json({ history: trimmed });
 };

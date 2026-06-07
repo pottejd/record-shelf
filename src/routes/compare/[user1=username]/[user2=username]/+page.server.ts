@@ -2,7 +2,12 @@ import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { DiscogsCollectionItem } from '$lib/types/discogs';
-import { USER_AGENT } from '$lib/constants';
+import {
+	USER_AGENT,
+	UNIQUE_RECORDS_PREVIEW,
+	SHARED_ARTISTS_PREVIEW,
+	GENRE_OVERLAP_LIMIT
+} from '$lib/constants';
 import { fetchUserProfile, fetchUserCollection, DiscogsAPIError } from '$lib/api/discogs';
 import { readCache, writeCache } from '$lib/server/cache';
 import { computeCollectionStats } from '$lib/api/discogs';
@@ -134,7 +139,7 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 				genre,
 				count1: g1.get(genre) || 0,
 				count2: g2.get(genre) || 0
-			})).sort((a, b) => (b.count1 + b.count2) - (a.count1 + a.count2)).slice(0, 10);
+			})).sort((a, b) => (b.count1 + b.count2) - (a.count1 + a.count2)).slice(0, GENRE_OVERLAP_LIMIT);
 		}
 
 		function computeDecades(items: DiscogsCollectionItem[]) {
@@ -162,12 +167,12 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			},
 			comparison: {
 				overlap,
-				uniqueTo1: uniqueTo1.slice(0, 20),
-				uniqueTo2: uniqueTo2.slice(0, 20),
+				uniqueTo1: uniqueTo1.slice(0, UNIQUE_RECORDS_PREVIEW),
+				uniqueTo2: uniqueTo2.slice(0, UNIQUE_RECORDS_PREVIEW),
 				overlapCount: overlap.length,
 				similarityScore: Math.round(jaccardIndex * 100),
 				sharedArtistsCount: sharedArtists.length,
-				sharedArtists: sharedArtists.slice(0, 10),
+				sharedArtists: sharedArtists.slice(0, SHARED_ARTISTS_PREVIEW),
 				genres1: Object.fromEntries(genres1),
 				genres2: Object.fromEntries(genres2),
 				sharedGenres: [...genres1.keys()].filter(g => genres2.has(g)),
@@ -185,18 +190,18 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 				);
 			}
 			if (e.code === 'NOT_FOUND') {
-				throw error(404, e.message);
+				throw error(404, { message: e.message });
 			}
 			if (e.code === 'PRIVATE') {
-				throw error(403, e.message);
+				throw error(403, { message: e.message });
 			}
 			if (e.code === 'RATE_LIMITED') {
-				throw error(429, 'Rate limited by Discogs. Please try again in a minute.');
+				throw error(429, { message: 'Rate limited by Discogs. Please try again in a minute.' });
 			}
-			throw error(e.status, e.message);
+			throw error(e.status, { message: e.message });
 		}
 		// A non-Discogs error (network, parse, etc.) is a 500, not a misleading 404.
 		console.error('Unexpected error loading comparison:', e);
-		throw error(500, 'An unexpected error occurred while loading the comparison');
+		throw error(500, { message: 'An unexpected error occurred while loading the comparison' });
 	}
 };

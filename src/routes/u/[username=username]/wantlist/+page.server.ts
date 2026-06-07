@@ -1,9 +1,10 @@
-import { error, redirect, type ServerLoadEvent } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
 import { fetchUserProfile, fetchUserWantlist, DiscogsAPIError } from '$lib/api/discogs';
 import { env } from '$env/dynamic/private';
 import { USER_AGENT } from '$lib/constants';
 
-export const load = async ({ params, cookies }: ServerLoadEvent) => {
+export const load: PageServerLoad = async ({ params, cookies }) => {
 	const { username } = params;
 
 	if (!username) {

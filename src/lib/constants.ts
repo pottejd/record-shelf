@@ -38,6 +38,15 @@ export const GRID_PREVIEW_LIMIT = 12;
 // Overlap records previewed on the compare page.
 export const SHARED_RECORDS_PREVIEW = 30;
 
+// Unique-to-each-user records previewed on the compare page.
+export const UNIQUE_RECORDS_PREVIEW = 20;
+
+// Shared artists listed on the compare page.
+export const SHARED_ARTISTS_PREVIEW = 10;
+
+// Genre rows shown in the compare page's genre-overlap chart.
+export const GENRE_OVERLAP_LIMIT = 10;
+
 export const GENRE_COLORS: Record<string, string> = {
 	Rock: '#e11d48',
 	Electronic: '#8b5cf6',
