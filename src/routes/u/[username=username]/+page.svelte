@@ -35,6 +35,8 @@
 	import KeyboardHelp from '$lib/components/KeyboardHelp.svelte';
 	import FloatingActions from '$lib/components/FloatingActions.svelte';
 	import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
+	import LoadingBanner from '$lib/components/profile/LoadingBanner.svelte';
+	import OldestNewestHighlights from '$lib/components/profile/OldestNewestHighlights.svelte';
 	import { findDuplicates, groupAlbums } from '$lib/utils/albums';
 	import { computeCollectionStats } from '$lib/api/discogs';
 	import { invalidateAll } from '$app/navigation';
@@ -267,23 +269,14 @@
 
 	<SectionNav sections={navSections} />
 
-	{#if isLoadingMore}
-		<div class="loading-banner" aria-live="polite">
-			<div class="loading-text">
-				Loading collection: {items.length} of {totalDiscogsItems} items...
-			</div>
-			<div class="progress-track">
-				<div class="progress-fill" style="width: {loadProgress * 100}%"></div>
-			</div>
-		</div>
-	{:else if loadError}
-		<div class="loading-banner load-error" role="alert">
-			<div class="loading-text">
-				Couldn't load the full collection — showing {items.length} of {totalDiscogsItems} items.
-			</div>
-			<button class="retry-btn" onclick={() => invalidateAll()}>Retry</button>
-		</div>
-	{/if}
+	<LoadingBanner
+		{isLoadingMore}
+		{loadError}
+		loaded={items.length}
+		total={totalDiscogsItems}
+		{loadProgress}
+		onRetry={() => invalidateAll()}
+	/>
 
 	<section id="overview" class="stats-overview">
 		<StatCard label="Records" value={stats.totalItems} />
@@ -490,30 +483,7 @@
 
 	{#if stats.oldestRelease || stats.newestRelease}
 		<div class="grid-2col">
-			{#if stats.oldestRelease}
-				<section class="card highlight-card">
-					<span class="highlight-label">Oldest Release</span>
-					<div class="highlight-content">
-						<img src={stats.oldestRelease.thumb || '/placeholder.svg'} alt="" class="highlight-thumb" />
-						<div>
-							<p class="highlight-title">{stats.oldestRelease.title}</p>
-							<p class="highlight-year">{stats.oldestRelease.year}</p>
-						</div>
-					</div>
-				</section>
-			{/if}
-			{#if stats.newestRelease}
-				<section class="card highlight-card">
-					<span class="highlight-label">Newest Release</span>
-					<div class="highlight-content">
-						<img src={stats.newestRelease.thumb || '/placeholder.svg'} alt="" class="highlight-thumb" />
-						<div>
-							<p class="highlight-title">{stats.newestRelease.title}</p>
-							<p class="highlight-year">{stats.newestRelease.year}</p>
-						</div>
-					</div>
-				</section>
-			{/if}
+			<OldestNewestHighlights {stats} />
 		</div>
 	{/if}
 
@@ -537,63 +507,6 @@
 		max-width: 1200px;
 		margin: 0 auto;
 		padding: 2rem;
-	}
-
-	.loading-banner {
-		margin-bottom: 1.5rem;
-		padding: 0.75rem 1rem;
-		background: var(--color-bg-card);
-		border: 1px solid var(--color-border);
-		border-radius: 12px;
-	}
-
-	.loading-text {
-		font-size: 0.8125rem;
-		color: var(--color-text-secondary);
-		margin-bottom: 0.5rem;
-	}
-
-	.load-error {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.75rem;
-		border-color: var(--color-danger, #ef4444);
-	}
-
-	.load-error .loading-text {
-		margin-bottom: 0;
-	}
-
-	.retry-btn {
-		flex-shrink: 0;
-		padding: 0.375rem 0.875rem;
-		font-size: 0.8125rem;
-		font-weight: 600;
-		border: 1px solid var(--color-border);
-		border-radius: 8px;
-		background: var(--color-bg-secondary);
-		color: var(--color-text);
-		cursor: pointer;
-	}
-
-	.retry-btn:hover {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
-	}
-
-	.progress-track {
-		height: 4px;
-		background: var(--color-bg-secondary);
-		border-radius: 2px;
-		overflow: hidden;
-	}
-
-	.progress-fill {
-		height: 100%;
-		background: var(--gradient-brand);
-		border-radius: 2px;
-		transition: width 0.3s ease;
 	}
 
 	.stats-overview {
@@ -624,49 +537,6 @@
 		margin: -1rem 0 1.25rem;
 		font-size: 0.875rem;
 		color: var(--color-text-tertiary);
-	}
-
-	.highlight-card {
-		background: linear-gradient(135deg, var(--color-bg-secondary, #f5f5f5), var(--color-bg-card, #fff));
-	}
-
-	.highlight-label {
-		font-size: 0.6875rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--color-text-tertiary, #999);
-	}
-
-	.highlight-content {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		margin-top: 0.75rem;
-	}
-
-	.highlight-thumb {
-		width: 64px;
-		height: 64px;
-		border-radius: 8px;
-		object-fit: cover;
-		background: var(--color-bg-secondary, #f5f5f5);
-	}
-
-	.highlight-title {
-		margin: 0;
-		font-weight: 600;
-		font-size: 1rem;
-	}
-
-	.highlight-year {
-		margin: 0.25rem 0 0;
-		font-size: 1.5rem;
-		font-weight: 700;
-		background: linear-gradient(135deg, #6366f1, #ec4899);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
 	}
 
 	.footer {
