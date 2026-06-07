@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toChartData } from './chart';
+import { toChartData, colorAt, CHART_PALETTE, RANK_PALETTE } from './chart';
 
 describe('toChartData', () => {
 	it('maps a record to {label, value} entries', () => {
@@ -39,5 +39,39 @@ describe('toChartData', () => {
 
 	it('returns an empty array for an empty record', () => {
 		expect(toChartData({}, { sort: 'value-desc' })).toEqual([]);
+	});
+});
+
+describe('colorAt', () => {
+	it('returns the palette color at the given index', () => {
+		expect(colorAt(0)).toBe(CHART_PALETTE[0]);
+		expect(colorAt(3)).toBe(CHART_PALETTE[3]);
+	});
+
+	it('wraps around the palette by default (modulo)', () => {
+		const n = CHART_PALETTE.length;
+		expect(colorAt(n)).toBe(CHART_PALETTE[0]);
+		expect(colorAt(n + 2)).toBe(CHART_PALETTE[2]);
+	});
+
+	it('handles negative indices when wrapping', () => {
+		expect(colorAt(-1)).toBe(CHART_PALETTE[CHART_PALETTE.length - 1]);
+	});
+
+	it('clamps to the last color in clamp mode (matches TopList rank coloring)', () => {
+		const n = RANK_PALETTE.length;
+		expect(colorAt(0, RANK_PALETTE, 'clamp')).toBe(RANK_PALETTE[0]);
+		expect(colorAt(n + 5, RANK_PALETTE, 'clamp')).toBe(RANK_PALETTE[n - 1]);
+		expect(colorAt(-3, RANK_PALETTE, 'clamp')).toBe(RANK_PALETTE[0]);
+	});
+
+	it('accepts a custom palette', () => {
+		const palette = ['#aaa', '#bbb'];
+		expect(colorAt(1, palette)).toBe('#bbb');
+		expect(colorAt(2, palette)).toBe('#aaa');
+	});
+
+	it('falls back to a neutral gray for an empty palette', () => {
+		expect(colorAt(0, [])).toBe('#6b7280');
 	});
 });

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { colorAt } from '$lib/utils/chart';
+
 	interface Props {
 		data: Array<{ label: string; value: number; color?: string }>;
 		size?: number;
@@ -8,11 +10,6 @@
 	}
 
 	let { data, size = 200, thickness = 40, clickable = false, onItemClick }: Props = $props();
-
-	const colors = [
-		'#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
-		'#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6',
-	];
 
 	let total = $derived(data.reduce((sum, d) => sum + d.value, 0));
 	let radius = $derived(size / 2);
@@ -26,7 +23,7 @@
 			currentAngle += angle;
 			return {
 				...d,
-				color: d.color || colors[i % colors.length],
+				color: d.color || colorAt(i),
 				startAngle,
 				endAngle: currentAngle,
 				percentage: ((d.value / total) * 100).toFixed(1)

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { colorAt, RANK_PALETTE } from '$lib/utils/chart';
+
 	interface Props {
 		items: Array<{ name: string; count: number }>;
 		limit?: number;
@@ -7,11 +9,6 @@
 	}
 
 	let { items, limit = 10, clickable = false, onItemClick }: Props = $props();
-
-	const colors = [
-		'#6366f1', '#8b5cf6', '#a855f7', '#c084fc', '#d8b4fe',
-		'#e9d5ff', '#f3e8ff', '#faf5ff', '#fdf4ff', '#fefce8'
-	];
 
 	let displayItems = $derived(items.slice(0, limit));
 	let maxCount = $derived(displayItems.length > 0 ? Math.max(...displayItems.map((i) => i.count)) : 1);
@@ -26,7 +23,7 @@
 				disabled={!clickable}
 				onclick={() => onItemClick?.(item.name)}
 			>
-				<span class="rank" style:background={colors[Math.min(i, colors.length - 1)]}>{i + 1}</span>
+				<span class="rank" style:background={colorAt(i, RANK_PALETTE, 'clamp')}>{i + 1}</span>
 				<div class="bar-wrapper">
 					<div class="name-row">
 						<span class="name">{item.name}</span>
@@ -36,7 +33,7 @@
 						<div
 							class="bar-fill"
 							style:width="{(item.count / maxCount) * 100}%"
-							style:background={colors[Math.min(i, colors.length - 1)]}
+							style:background={colorAt(i, RANK_PALETTE, 'clamp')}
 						></div>
 					</div>
 				</div>

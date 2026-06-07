@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { colorAt } from '$lib/utils/chart';
+
 	interface Props {
 		data: Array<{ label: string; value: number; color?: string }>;
 		horizontal?: boolean;
@@ -9,15 +11,10 @@
 
 	let { data, horizontal = false, colorful = false, clickable = false, onItemClick }: Props = $props();
 
-	const colors = [
-		'#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
-		'#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6',
-	];
-
 	let maxValue = $derived(data.length > 0 ? Math.max(...data.map((d) => d.value)) : 1);
 	let coloredData = $derived(data.map((d, i) => ({
 		...d,
-		color: d.color || (colorful ? colors[i % colors.length] : 'var(--bar-color, #6366f1)')
+		color: d.color || (colorful ? colorAt(i) : 'var(--bar-color, #6366f1)')
 	})));
 </script>
 
