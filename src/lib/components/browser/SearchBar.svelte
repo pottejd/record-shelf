@@ -8,7 +8,7 @@
 		<path d="m21 21-4.35-4.35" />
 	</svg>
 	<input
-		type="text"
+		type="search"
 		bind:value
 		{placeholder}
 		aria-label={placeholder || 'Search'}

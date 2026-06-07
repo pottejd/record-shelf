@@ -56,6 +56,16 @@
 			if (closeBtn) closeBtn.focus();
 		}
 	});
+
+	// Lock background scroll while the drawer is open.
+	$effect(() => {
+		if (!open) return;
+		const previous = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		return () => {
+			document.body.style.overflow = previous;
+		};
+	});
 </script>
 
 <svelte:window onkeydown={handleKeydown} />

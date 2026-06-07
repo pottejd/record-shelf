@@ -7,6 +7,11 @@
 			title: 'Bad Request',
 			suggestion: 'Check the URL and try again.'
 		},
+		401: {
+			icon: '\u{1F511}',
+			title: 'Token Required',
+			suggestion: 'Your Discogs token may be missing or invalid. Add or update it in Settings.'
+		},
 		403: {
 			icon: '\u{1F512}',
 			title: 'Private Collection',
@@ -49,6 +54,9 @@
 	<p class="suggestion">{info.suggestion}</p>
 	<div class="actions">
 		<a href="/" class="btn primary">Back to Home</a>
+		{#if status === 401}
+			<a href="/settings" class="btn secondary">Go to Settings</a>
+		{/if}
 		{#if status === 429}
 			<button class="btn secondary" onclick={() => location.reload()}>
 				Retry
