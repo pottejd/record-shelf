@@ -21,8 +21,28 @@
 		totalRequested: number;
 		failedCount?: number;
 		currency: string;
+		results?: Array<{ releaseId: number; lowestPrice: number | null; currency: string }>;
 	} | null = $state(null);
 	let errorMsg = $state('');
+
+	// Top-priced items from the sampled results — surfaces the per-item prices the
+	// endpoint already returns instead of discarding them.
+	let topValued = $derived.by(() => {
+		const results = result?.results;
+		if (!results) return [];
+		return results
+			.filter((r) => r.lowestPrice != null)
+			.sort((a, b) => (b.lowestPrice ?? 0) - (a.lowestPrice ?? 0))
+			.slice(0, 5)
+			.map((r) => ({
+				price: r.lowestPrice as number,
+				currency: r.currency,
+				item: items.find((i) => i.basic_information.id === r.releaseId)
+			}))
+			.filter(
+				(x): x is { price: number; currency: string; item: DiscogsCollectionItem } => !!x.item
+			);
+	});
 
 	async function estimateValue() {
 		loading = true;
@@ -88,6 +108,19 @@
 					⚠ {result.failedCount} price lookup{result.failedCount === 1 ? '' : 's'} failed — this estimate may be incomplete.
 				</span>
 			{/if}
+			{#if topValued.length > 0}
+				<div class="most-valuable">
+					<h3>Most valuable</h3>
+					<ul>
+						{#each topValued as v}
+							<li>
+								<span class="mv-title">{v.item.basic_information.title}</span>
+								<span class="mv-price">{formatCurrency(v.price, v.currency)}</span>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
 		</div>
 	{:else}
 		<div class="value-prompt">
@@ -146,6 +179,48 @@
 		font-size: 0.75rem;
 		color: #b45309;
 		margin-top: 0.5rem;
+	}
+
+	.most-valuable {
+		width: 100%;
+		max-width: 360px;
+		margin: 1.25rem auto 0;
+		text-align: left;
+	}
+
+	.most-valuable h3 {
+		font-size: 0.8125rem;
+		color: var(--color-text-secondary);
+		margin: 0 0 0.5rem;
+	}
+
+	.most-valuable ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.most-valuable li {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.75rem;
+		font-size: 0.8125rem;
+	}
+
+	.mv-title {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		color: var(--color-text);
+	}
+
+	.mv-price {
+		flex-shrink: 0;
+		font-weight: 600;
+		color: var(--color-primary);
 	}
 
 	.value-prompt {
