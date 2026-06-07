@@ -13,9 +13,8 @@
 		covers: string[];
 	}
 
-	let loyalArtists = $derived(calculateLoyalty(items));
-
-	// Artists to exclude (compilations, etc.)
+	// Artists to exclude (compilations, etc.). Declared before the $derived below
+	// so it isn't in the temporal dead zone when calculateLoyalty runs during SSR.
 	const excludedArtists = new Set([
 		'various',
 		'various artists',
@@ -23,6 +22,8 @@
 		'unknown',
 		'unknown artist'
 	]);
+
+	let loyalArtists = $derived(calculateLoyalty(items));
 
 	function calculateLoyalty(items: DiscogsCollectionItem[]): LoyalArtist[] {
 		const artistMap = new Map<string, { count: number; covers: string[] }>();
