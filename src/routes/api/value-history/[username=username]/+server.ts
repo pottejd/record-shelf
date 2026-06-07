@@ -1,4 +1,6 @@
 import { json, error, type RequestHandler } from '@sveltejs/kit';
+import type { Cookies } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import { kvGetJSON, kvPutJSON } from '$lib/server/cache';
 
 interface Snapshot {
@@ -9,17 +11,29 @@ interface Snapshot {
 
 const MAX_SNAPSHOTS = 52;
 const TTL_SECONDS = 60 * 60 * 24 * 400; // ~400 days
+const MAX_VALUE = 1_000_000_000; // clamp so a forged snapshot can't dominate the chart
 
 function historyKey(username: string): string {
 	return `value-history:${username.toLowerCase()}`;
 }
 
-export const GET: RequestHandler = async ({ params, platform }) => {
+// Match the auth model of /api/collection and /api/value: a Discogs token
+// (cookie or server env) is required. The app has no user accounts, so this
+// gates out anonymous reads/writes rather than enforcing per-user ownership.
+function requireToken(cookies: Cookies): void {
+	const token = cookies.get('discogs_token') || env.DISCOGS_TOKEN;
+	if (!token) throw error(401, 'Discogs token required');
+}
+
+export const GET: RequestHandler = async ({ params, platform, cookies }) => {
+	requireToken(cookies);
 	const history = (await kvGetJSON<Snapshot[]>(platform, historyKey(params.username!))) ?? [];
 	return json({ history });
 };
 
-export const POST: RequestHandler = async ({ params, request, platform }) => {
+export const POST: RequestHandler = async ({ params, request, platform, cookies }) => {
+	requireToken(cookies);
+
 	let body: { value?: unknown; currency?: unknown } | null;
 	try {
 		body = await request.json();
@@ -28,13 +42,14 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 	}
 
 	const value = Number((body as { value?: unknown })?.value);
-	if (!body || typeof body !== 'object' || !Number.isFinite(value) || value < 0) {
-		throw error(400, 'A non-negative numeric "value" is required');
+	if (!body || typeof body !== 'object' || !Number.isFinite(value) || value < 0 || value > MAX_VALUE) {
+		throw error(400, 'A numeric "value" between 0 and 1e9 is required');
 	}
+
+	// Coerce currency to an ISO-4217-shaped code; ignore anything else.
+	const rawCurrency = (body as { currency?: unknown }).currency;
 	const currency =
-		typeof (body as { currency?: unknown }).currency === 'string'
-			? (body as { currency: string }).currency
-			: 'USD';
+		typeof rawCurrency === 'string' && /^[A-Z]{3}$/.test(rawCurrency) ? rawCurrency : 'USD';
 
 	const date = new Date().toISOString().slice(0, 10);
 	const history = (await kvGetJSON<Snapshot[]>(platform, historyKey(params.username!))) ?? [];
