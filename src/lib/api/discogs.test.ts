@@ -177,6 +177,16 @@ describe('computeCollectionStats', () => {
 		expect(stats.medianYear).toBe(1985); // (1980 + 1990) / 2
 	});
 
+	it('skips items with an unparseable date_added (no NaN-NaN month bucket)', () => {
+		const items = [
+			makeItem({ id: 1, date_added: 'not-a-date' }),
+			makeItem({ id: 2, date_added: '2024-03-15T00:00:00-00:00' })
+		];
+		const stats = computeCollectionStats(items);
+		expect(stats.addedByMonth.some((m) => m.date.includes('NaN'))).toBe(false);
+		expect(stats.addedByMonth).toHaveLength(1);
+	});
+
 	it('computes format breakdowns including detail', () => {
 		const items = [
 			makeItem({ id: 1, formats: [{ name: 'Vinyl', qty: '1', descriptions: ['LP', 'Album'] }] }),
@@ -346,6 +356,23 @@ describe('fetch functions', () => {
 			const promise = fetchUserProfile('testuser', opts);
 			// Retry-After: 2 → 2000ms delay
 			await vi.advanceTimersByTimeAsync(2100);
+			const result = await promise;
+
+			expect(result.username).toBe('testuser');
+			expect(mockFetch).toHaveBeenCalledTimes(2);
+		});
+
+		it('falls back to exponential backoff when Retry-After is non-numeric', async () => {
+			const headers = new Headers({ 'Retry-After': 'Wed, 21 Oct 2099 07:28:00 GMT' });
+			mockFetch
+				.mockResolvedValueOnce({ ok: false, status: 429, headers, statusText: 'Too Many Requests' })
+				.mockResolvedValueOnce(mockResponse({ username: 'testuser', id: 1 }));
+
+			const promise = fetchUserProfile('testuser', opts);
+			// Bug would parse to NaN -> ~0ms and retry almost immediately.
+			await vi.advanceTimersByTimeAsync(100);
+			expect(mockFetch).toHaveBeenCalledTimes(1); // not retried yet (backoff ~1000ms)
+			await vi.advanceTimersByTimeAsync(1000);
 			const result = await promise;
 
 			expect(result.username).toBe('testuser');

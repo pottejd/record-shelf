@@ -68,10 +68,13 @@ async function fetchDiscogs<T>(
 		}
 
 		if (response.status === 429 && attempt < MAX_RETRIES) {
-			const retryAfter = response.headers.get('Retry-After');
-			const delay = retryAfter
-				? parseInt(retryAfter, 10) * 1000
-				: BASE_DELAY_MS * Math.pow(2, attempt);
+			// Retry-After may be a non-numeric HTTP-date; fall back to exponential
+			// backoff rather than parsing to NaN (which would retry near-instantly).
+			const retryAfter = parseInt(response.headers.get('Retry-After') ?? '', 10);
+			const delay =
+				Number.isFinite(retryAfter) && retryAfter >= 0
+					? retryAfter * 1000
+					: BASE_DELAY_MS * Math.pow(2, attempt);
 			await new Promise((resolve) => setTimeout(resolve, delay));
 			continue;
 		}
@@ -192,10 +195,13 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 	for (const item of items) {
 		const info = item.basic_information;
 
-		// Track when items were added (by month)
+		// Track when items were added (by month), skipping unparseable dates so we
+		// don't emit a "NaN-NaN" bucket into the activity timeline.
 		const addedDate = new Date(item.date_added);
-		const monthKey = `${addedDate.getFullYear()}-${String(addedDate.getMonth() + 1).padStart(2, '0')}`;
-		addedByMonthMap[monthKey] = (addedByMonthMap[monthKey] || 0) + 1;
+		if (!Number.isNaN(addedDate.getTime())) {
+			const monthKey = `${addedDate.getFullYear()}-${String(addedDate.getMonth() + 1).padStart(2, '0')}`;
+			addedByMonthMap[monthKey] = (addedByMonthMap[monthKey] || 0) + 1;
+		}
 
 		// Formats (main type)
 		for (const format of info.formats) {

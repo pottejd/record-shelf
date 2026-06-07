@@ -6,6 +6,8 @@ import type { ParamMatcher } from '@sveltejs/kit';
  * rejects path separators and URL-reserved characters before they can reach
  * (and corrupt) an upstream request. Requests that fail to match 404 in SvelteKit.
  */
-const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{1,50}$/;
+// The lookahead requires at least one alphanumeric, rejecting separator-only
+// strings like "..", "--", "_" that would otherwise cost a wasted upstream 404.
+const USERNAME_PATTERN = /^(?=.*[A-Za-z0-9])[A-Za-z0-9_.-]{1,50}$/;
 
 export const match: ParamMatcher = (param) => USERNAME_PATTERN.test(param);

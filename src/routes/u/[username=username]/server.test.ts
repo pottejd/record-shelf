@@ -91,6 +91,44 @@ describe('profile loader caching', () => {
 		expect(fetchFullUserCollection).not.toHaveBeenCalled();
 	});
 
+	it('revalidates a stale cache entry in the background while serving it', async () => {
+		const stale = makeCollection(250, 250);
+		const fresh = makeCollection(260, 260);
+		vi.mocked(readCache).mockResolvedValue({ data: stale, cachedAt: 123, stale: true });
+		vi.mocked(fetchFullUserCollection).mockResolvedValue(fresh);
+		const event = makeLoadEvent();
+
+		const result = (await load(event)) as { collection: unknown; cached: boolean };
+
+		// Serves the stale copy immediately
+		expect(result.cached).toBe(true);
+		expect(result.collection).toBe(stale);
+		// Registered a background refresh
+		expect(event.platform.context.waitUntil).toHaveBeenCalledTimes(1);
+
+		// Drain the background task: it fetches the full collection and re-caches it
+		await event.platform.context.waitUntil.mock.calls[0][0];
+		expect(fetchFullUserCollection).toHaveBeenCalledTimes(1);
+		expect(writeCache).toHaveBeenCalledWith(event.platform, 'testuser', fresh);
+	});
+
+	it('serves a stale cache entry without revalidating when waitUntil is unavailable', async () => {
+		vi.mocked(readCache).mockResolvedValue({
+			data: makeCollection(250, 250),
+			cachedAt: 123,
+			stale: true
+		});
+
+		const result = (await load(makeLoadEvent({ withWaitUntil: false }))) as {
+			collection: unknown;
+			cached: boolean;
+		};
+
+		expect(result.cached).toBe(true);
+		expect(fetchFullUserCollection).not.toHaveBeenCalled();
+		expect(writeCache).not.toHaveBeenCalled();
+	});
+
 	it('caches a complete collection synchronously', async () => {
 		const complete = makeCollection(5, 5);
 		vi.mocked(fetchFullUserCollection).mockResolvedValue(complete);

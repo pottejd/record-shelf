@@ -23,6 +23,16 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 	// Try cache first
 	const cached = await readCache(platform, username);
 	if (cached) {
+		// Stale-while-revalidate: serve the cached copy immediately, and if it's
+		// past its freshness window kick off a background refresh so the next visit
+		// is fresh (mirrors /api/collection's SWR behaviour).
+		if (cached.stale && platform?.context?.waitUntil) {
+			platform.context.waitUntil(
+				fetchFullUserCollection(username, { userAgent: USER_AGENT, token })
+					.then((full) => writeCache(platform, username, full))
+					.catch((err) => console.error('Background stale-cache refresh failed:', err))
+			);
+		}
 		return {
 			collection: cached.data,
 			cached: true,

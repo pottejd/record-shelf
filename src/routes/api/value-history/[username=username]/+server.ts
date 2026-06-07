@@ -25,9 +25,19 @@ function requireToken(cookies: Cookies): void {
 	if (!token) throw error(401, 'Discogs token required');
 }
 
+// Read the stored series, tolerating a non-array (manual KV edit / schema drift)
+// by treating it as empty rather than throwing or echoing garbage.
+async function readHistory(
+	platform: App.Platform | undefined,
+	username: string
+): Promise<Snapshot[]> {
+	const stored = await kvGetJSON<unknown>(platform, historyKey(username));
+	return Array.isArray(stored) ? (stored as Snapshot[]) : [];
+}
+
 export const GET: RequestHandler = async ({ params, platform, cookies }) => {
 	requireToken(cookies);
-	const history = (await kvGetJSON<Snapshot[]>(platform, historyKey(params.username!))) ?? [];
+	const history = await readHistory(platform, params.username!);
 	return json({ history });
 };
 
@@ -52,7 +62,7 @@ export const POST: RequestHandler = async ({ params, request, platform, cookies 
 		typeof rawCurrency === 'string' && /^[A-Z]{3}$/.test(rawCurrency) ? rawCurrency : 'USD';
 
 	const date = new Date().toISOString().slice(0, 10);
-	const history = (await kvGetJSON<Snapshot[]>(platform, historyKey(params.username!))) ?? [];
+	const history = await readHistory(platform, params.username!);
 
 	// One snapshot per day — replace today's if it already exists.
 	const todayIdx = history.findIndex((s) => s.date === date);

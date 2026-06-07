@@ -48,7 +48,7 @@
 				<div class="month-label">{month.label}</div>
 				<div class="month-count">{month.items.length} added</div>
 				<div class="covers">
-					{#each month.items as item}
+					{#each month.items as item (item.instance_id)}
 						{@const info = item.basic_information}
 						<a
 							href="https://www.discogs.com/release/{info.id}"

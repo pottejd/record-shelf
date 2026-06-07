@@ -9,7 +9,7 @@
 	let sampledIds: number[] | null = null;
 	function getSampleIds(): number[] {
 		if (!sampledIds) {
-			sampledIds = sampleN(items, Math.min(items.length, 50)).map((i) => i.basic_information.id);
+			sampledIds = sampleN(items, Math.min(items.length, 20)).map((i) => i.basic_information.id);
 		}
 		return sampledIds;
 	}
@@ -51,8 +51,8 @@
 		result = null;
 
 		try {
-			// Sample up to 50 releases for estimation (stable across re-clicks)
-			const sampleSize = Math.min(items.length, 50);
+			// Sample up to 20 releases for estimation (stable across re-clicks)
+			const sampleSize = Math.min(items.length, 20);
 			const releaseIds = getSampleIds();
 
 			const response = await fetch(`/api/value/${username}`, {
@@ -112,8 +112,8 @@
 			<span class="value-label">Estimated collection value</span>
 			<span class="value-note">
 				Based on {result.pricedCount} of {result.totalRequested} items with marketplace data
-				{#if items.length > 50}
-					(extrapolated from 50-item sample)
+				{#if items.length > 20}
+					(extrapolated from 20-item sample)
 				{/if}
 			</span>
 			{#if result.failedCount && result.failedCount > 0}
@@ -171,7 +171,7 @@
 					Estimate Value
 				{/if}
 			</button>
-			<p class="disclaimer">Requires a Discogs API token. Samples up to 50 items and extrapolates.</p>
+			<p class="disclaimer">Requires a Discogs API token. Samples up to 20 items and extrapolates.</p>
 		</div>
 	{/if}
 </div>

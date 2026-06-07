@@ -52,7 +52,7 @@ export const GET: RequestHandler = async ({ platform }) => {
 		]);
 
 		const items: Array<{ label: string; value: string; type: string }> = [
-			{ label: 'Collection', value: `${profile.num_collection} records`, type: 'highlight' }
+			{ label: 'Collection', value: `${profile.num_collection ?? 0} records`, type: 'highlight' }
 		];
 		for (const item of firstPage.items.slice(0, 3)) {
 			const artist = cleanArtistName(item.basic_information.artists?.[0]?.name ?? '') || 'Unknown';

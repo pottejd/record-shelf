@@ -105,7 +105,7 @@ describe('value endpoint', () => {
 		await expect(POST(makeEvent('notarray', 'tok'))).rejects.toMatchObject({ status: 400 });
 	});
 
-	it('caps releaseIds at 50 items', async () => {
+	it('caps releaseIds at 20 items', async () => {
 		const ids = Array.from({ length: 60 }, (_, i) => i + 1);
 		mockFetch.mockResolvedValue(makePriceResponse({ value: 5, currency: 'USD' }));
 
@@ -114,8 +114,8 @@ describe('value endpoint', () => {
 		const response = await promise;
 		const data = await response.json();
 
-		expect(data.totalRequested).toBe(50);
-		expect(mockFetch).toHaveBeenCalledTimes(50);
+		expect(data.totalRequested).toBe(20);
+		expect(mockFetch).toHaveBeenCalledTimes(20);
 	});
 
 	it('prefers NearMint over VG+', async () => {

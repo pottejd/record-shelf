@@ -31,6 +31,13 @@ describe('username param matcher', () => {
 		expect(match('has space')).toBe(false);
 	});
 
+	it('rejects separator-only strings (must contain an alphanumeric)', () => {
+		expect(match('..')).toBe(false);
+		expect(match('--')).toBe(false);
+		expect(match('_')).toBe(false);
+		expect(match('.-_')).toBe(false);
+	});
+
 	it('rejects URL-reserved characters that could corrupt the Discogs request', () => {
 		expect(match('query?inject')).toBe(false);
 		expect(match('frag#ment')).toBe(false);

@@ -27,6 +27,15 @@
 		return () => observer.disconnect();
 	});
 
+	// Reset load state when src changes — the instance may be reused for a new
+	// item in an unkeyed list, where stale loaded/error would flash the old cover
+	// (or leave a permanently-blank slot if the previous src had failed).
+	$effect(() => {
+		src; // track
+		loaded = false;
+		error = false;
+	});
+
 	function onLoad() {
 		loaded = true;
 	}

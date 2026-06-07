@@ -20,6 +20,10 @@ interface CachedPrice {
 const MAX_CACHE_SIZE = 2000;
 const priceCache = new Map<number, CachedPrice>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+// Per-request id cap: the price loop sleeps ~1.1s before each uncached fetch, so
+// a fresh estimate runs ~N*1.1s. Cap N to keep a cold request well under typical
+// proxy/browser timeouts; results are extrapolated from the sample anyway.
+const MAX_RELEASE_IDS = 20;
 
 function getCached(key: number): CachedPrice | undefined {
 	const entry = priceCache.get(key);
@@ -112,7 +116,7 @@ export const POST: RequestHandler = async ({ params, request, cookies, platform 
 	const ids = body.releaseIds
 		.map(Number)
 		.filter((n) => Number.isInteger(n) && n > 0)
-		.slice(0, 50);
+		.slice(0, MAX_RELEASE_IDS);
 
 	if (ids.length === 0) {
 		throw error(400, 'releaseIds must contain at least one valid release id');
