@@ -30,6 +30,9 @@
 	import FormatDrilldown from '$lib/components/FormatDrilldown.svelte';
 	import CollectionTimeline from '$lib/components/CollectionTimeline.svelte';
 	import LazySection from '$lib/components/LazySection.svelte';
+	import DuplicateDetector from '$lib/components/DuplicateDetector.svelte';
+	import FormatUpgrades from '$lib/components/FormatUpgrades.svelte';
+	import { findDuplicates, groupAlbums } from '$lib/utils/albums';
 	import { computeCollectionStats } from '$lib/api/discogs';
 	import { invalidateAll } from '$app/navigation';
 	import { browser } from '$app/environment';
@@ -216,6 +219,17 @@
 
 	// Fun personality badges
 	let badges = $derived(calculateBadges(stats));
+
+	// Collection insights (duplicates / format upgrades) — computed via albums util
+	let duplicates = $derived(findDuplicates(items));
+	let formatUpgrades = $derived(
+		groupAlbums(items).filter((g) => {
+			const formats = new Set(
+				g.items.flatMap((i) => i.basic_information.formats.map((f) => f.name))
+			);
+			return !formats.has('Vinyl') && (formats.has('CD') || formats.has('Cassette'));
+		})
+	);
 </script>
 
 <svelte:head>
@@ -484,6 +498,22 @@
 			</section>
 		</div>
 	</LazySection>
+
+	{#if duplicates.length > 0}
+		<section class="card" use:reveal>
+			<h2>Duplicates &amp; Variants</h2>
+			<p class="section-subtitle">Albums you own more than one copy or pressing of</p>
+			<DuplicateDetector groups={duplicates} onSelect={openDrawer} />
+		</section>
+	{/if}
+
+	{#if formatUpgrades.length > 0}
+		<section class="card" use:reveal>
+			<h2>Vinyl Upgrade Picks</h2>
+			<p class="section-subtitle">Owned on CD or cassette but not vinyl</p>
+			<FormatUpgrades groups={formatUpgrades} onSelect={openDrawer} />
+		</section>
+	{/if}
 
 	<section id="share" class="card">
 		<h2>Share Stats</h2>
