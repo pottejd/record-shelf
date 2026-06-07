@@ -230,7 +230,7 @@
 	}
 
 	.meta-item.year {
-		background: linear-gradient(135deg, #6366f1, #8b5cf6);
+		background: var(--gradient-brand);
 		color: white;
 		font-weight: 600;
 	}
@@ -260,7 +260,7 @@
 		padding: 0.75rem 1.5rem;
 		font-size: 0.9375rem;
 		font-weight: 600;
-		background: linear-gradient(135deg, #6366f1, #8b5cf6);
+		background: var(--gradient-brand);
 		color: white;
 		border: none;
 		border-radius: 10px;

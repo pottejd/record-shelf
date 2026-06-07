@@ -179,7 +179,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: linear-gradient(135deg, #6366f1, #8b5cf6);
+		background: var(--gradient-brand);
 		color: white;
 		font-weight: 700;
 		font-size: 0.75rem;

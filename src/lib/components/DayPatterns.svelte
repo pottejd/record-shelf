@@ -86,7 +86,7 @@
 	.favorite-value {
 		font-size: 1.25rem;
 		font-weight: 700;
-		background: linear-gradient(135deg, #6366f1, #8b5cf6);
+		background: var(--gradient-brand);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;

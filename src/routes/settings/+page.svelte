@@ -388,7 +388,7 @@
 	}
 
 	.btn.primary {
-		background: linear-gradient(135deg, #6366f1, #8b5cf6);
+		background: var(--gradient-brand);
 		color: white;
 	}
 

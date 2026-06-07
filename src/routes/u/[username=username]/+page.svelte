@@ -633,7 +633,7 @@
 	}
 
 	.badge.primary {
-		background: linear-gradient(135deg, #6366f1, #8b5cf6);
+		background: var(--gradient-brand);
 		color: white;
 	}
 
@@ -788,7 +788,7 @@
 
 	.progress-fill {
 		height: 100%;
-		background: linear-gradient(135deg, #6366f1, #8b5cf6);
+		background: var(--gradient-brand);
 		border-radius: 2px;
 		transition: width 0.3s ease;
 	}
