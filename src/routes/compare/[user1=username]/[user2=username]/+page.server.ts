@@ -178,6 +178,12 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 		};
 	} catch (e) {
 		if (e instanceof DiscogsAPIError) {
+			if (e.code === 'BAD_TOKEN') {
+				throw redirect(
+					303,
+					`/settings?redirect=/compare/${encodeURIComponent(params.user1)}/${encodeURIComponent(params.user2)}`
+				);
+			}
 			if (e.code === 'NOT_FOUND') {
 				throw error(404, e.message);
 			}
@@ -189,6 +195,8 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			}
 			throw error(e.status, e.message);
 		}
-		throw error(404, e instanceof Error ? e.message : 'Failed to load collections');
+		// A non-Discogs error (network, parse, etc.) is a 500, not a misleading 404.
+		console.error('Unexpected error loading comparison:', e);
+		throw error(500, 'An unexpected error occurred while loading the comparison');
 	}
 };

@@ -50,9 +50,16 @@ async function fetchDiscogs<T>(
 		const response = await fetch(`${DISCOGS_API_BASE}${endpoint}`, { headers });
 
 		if (response.ok) {
-			return response.json();
+			try {
+				return await response.json();
+			} catch {
+				throw new DiscogsAPIError('Invalid response from Discogs', 502, 'BAD_RESPONSE');
+			}
 		}
 
+		if (response.status === 401) {
+			throw new DiscogsAPIError('Invalid or expired Discogs token', 401, 'BAD_TOKEN');
+		}
 		if (response.status === 404) {
 			throw new DiscogsAPIError('User not found', 404, 'NOT_FOUND');
 		}
@@ -270,11 +277,15 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 		.slice(-12)
 		.map(([date, count]) => ({ date, count }));
 
-	// Calculate median year
-	const sortedYears = years.sort((a, b) => a - b);
-	const medianYear = sortedYears.length > 0
-		? sortedYears[Math.floor(sortedYears.length / 2)]
-		: 0;
+	// Calculate median year (true median: average the two middle values when even)
+	const sortedYears = [...years].sort((a, b) => a - b);
+	const mid = Math.floor(sortedYears.length / 2);
+	const medianYear =
+		sortedYears.length === 0
+			? 0
+			: sortedYears.length % 2 === 0
+				? Math.round((sortedYears[mid - 1] + sortedYears[mid]) / 2)
+				: sortedYears[mid];
 
 	// Calculate average year
 	const averageYear = years.length > 0

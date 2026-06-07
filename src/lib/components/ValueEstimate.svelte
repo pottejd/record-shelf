@@ -4,7 +4,13 @@
 	let { items, username }: { items: DiscogsCollectionItem[]; username: string } = $props();
 
 	let loading = $state(false);
-	let result: { totalValue: number; pricedCount: number; totalRequested: number; currency: string } | null = $state(null);
+	let result: {
+		totalValue: number;
+		pricedCount: number;
+		totalRequested: number;
+		failedCount?: number;
+		currency: string;
+	} | null = $state(null);
 	let errorMsg = $state('');
 
 	async function estimateValue() {
@@ -68,6 +74,11 @@
 					(extrapolated from 50-item sample)
 				{/if}
 			</span>
+			{#if result.failedCount && result.failedCount > 0}
+				<span class="value-warning">
+					⚠ {result.failedCount} price lookup{result.failedCount === 1 ? '' : 's'} failed — this estimate may be incomplete.
+				</span>
+			{/if}
 		</div>
 	{:else}
 		<div class="value-prompt">
@@ -119,6 +130,12 @@
 	.value-note {
 		font-size: 0.75rem;
 		color: var(--color-text-tertiary);
+		margin-top: 0.5rem;
+	}
+
+	.value-warning {
+		font-size: 0.75rem;
+		color: #b45309;
 		margin-top: 0.5rem;
 	}
 

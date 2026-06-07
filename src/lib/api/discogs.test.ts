@@ -171,6 +171,12 @@ describe('computeCollectionStats', () => {
 		expect(stats.medianYear).toBe(1980);
 	});
 
+	it('computes median as the average of the two middle years for an even count', () => {
+		const items = [1970, 1980, 1990, 2020].map((year, i) => makeItem({ id: i + 1, year }));
+		const stats = computeCollectionStats(items);
+		expect(stats.medianYear).toBe(1985); // (1980 + 1990) / 2
+	});
+
 	it('computes format breakdowns including detail', () => {
 		const items = [
 			makeItem({ id: 1, formats: [{ name: 'Vinyl', qty: '1', descriptions: ['LP', 'Album'] }] }),
@@ -366,6 +372,31 @@ describe('fetch functions', () => {
 				status: 502,
 				code: 'UPSTREAM_ERROR',
 				message: 'Discogs API request failed'
+			});
+		});
+
+		it('throws BAD_TOKEN on 401 so loaders can redirect to settings', async () => {
+			mockFetch.mockResolvedValue(mockResponse(null, 401));
+
+			await expect(fetchUserProfile('testuser', opts)).rejects.toMatchObject({
+				status: 401,
+				code: 'BAD_TOKEN'
+			});
+		});
+
+		it('throws a DiscogsAPIError (not a raw SyntaxError) when a 200 has invalid JSON', async () => {
+			mockFetch.mockResolvedValue({
+				ok: true,
+				status: 200,
+				statusText: 'OK',
+				headers: new Headers(),
+				json: async () => {
+					throw new SyntaxError('Unexpected token < in JSON');
+				}
+			});
+
+			await expect(fetchUserProfile('testuser', opts)).rejects.toMatchObject({
+				name: 'DiscogsAPIError'
 			});
 		});
 

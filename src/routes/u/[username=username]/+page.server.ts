@@ -57,6 +57,9 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 		};
 	} catch (e) {
 		if (e instanceof DiscogsAPIError) {
+			if (e.code === 'BAD_TOKEN') {
+				throw redirect(303, `/settings?redirect=/u/${encodeURIComponent(username)}`);
+			}
 			if (e.code === 'NOT_FOUND') {
 				throw error(404, {
 					message: `User "${username}" not found on Discogs`

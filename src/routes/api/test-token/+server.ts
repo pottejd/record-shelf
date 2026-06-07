@@ -24,8 +24,23 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Failed to verify token' }, { status: response.status });
 		}
 
-		const data = await response.json();
-		return json({ success: true, username: data.username });
+		let data: unknown;
+		try {
+			data = await response.json();
+		} catch {
+			return json({ error: 'Unexpected response from Discogs' }, { status: 502 });
+		}
+
+		const username =
+			data && typeof data === 'object' && typeof (data as { username?: unknown }).username === 'string'
+				? (data as { username: string }).username
+				: null;
+
+		if (!username) {
+			return json({ error: 'Unexpected response from Discogs' }, { status: 502 });
+		}
+
+		return json({ success: true, username });
 	} catch (error) {
 		return json({ error: 'Failed to connect to Discogs' }, { status: 500 });
 	}

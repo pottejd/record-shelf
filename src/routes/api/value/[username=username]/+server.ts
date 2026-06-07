@@ -101,6 +101,7 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 	};
 
 	const results: Array<{ releaseId: number; lowestPrice: number | null; currency: string }> = [];
+	let failedCount = 0; // requests that errored (auth/rate-limit/network), distinct from "no data"
 	const now = Date.now();
 
 	for (const releaseId of ids) {
@@ -135,9 +136,11 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 					timestamp: Date.now()
 				});
 			} else {
+				failedCount++;
 				results.push({ releaseId, lowestPrice: null, currency: 'USD' });
 			}
 		} catch {
+			failedCount++;
 			results.push({ releaseId, lowestPrice: null, currency: 'USD' });
 		}
 	}
@@ -150,6 +153,9 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 		totalValue,
 		pricedCount,
 		totalRequested: ids.length,
+		// How many price lookups errored (so the client can flag an incomplete estimate
+		// rather than presenting a confidently-wrong total).
+		failedCount,
 		currency,
 		results
 	});
