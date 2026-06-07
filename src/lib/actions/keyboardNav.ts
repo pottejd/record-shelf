@@ -8,6 +8,8 @@ export interface KeyboardNavParams {
 	isDrawerOpen: () => boolean;
 	/** Close the collection drawer. */
 	onCloseDrawer: () => void;
+	/** Show the keyboard-shortcuts help overlay. */
+	onShowHelp?: () => void;
 }
 
 /**
@@ -34,6 +36,12 @@ export const keyboardNav: Action<HTMLElement, KeyboardNavParams> = (node, params
 		}
 
 		if (isInput) return;
+
+		if (e.key === '?') {
+			e.preventDefault();
+			current.onShowHelp?.();
+			return;
+		}
 
 		if (e.key === '/' || e.key === 's') {
 			e.preventDefault();

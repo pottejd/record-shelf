@@ -32,6 +32,8 @@
 	import LazySection from '$lib/components/LazySection.svelte';
 	import DuplicateDetector from '$lib/components/DuplicateDetector.svelte';
 	import FormatUpgrades from '$lib/components/FormatUpgrades.svelte';
+	import KeyboardHelp from '$lib/components/KeyboardHelp.svelte';
+	import FloatingActions from '$lib/components/FloatingActions.svelte';
 	import { findDuplicates, groupAlbums } from '$lib/utils/albums';
 	import { computeCollectionStats } from '$lib/api/discogs';
 	import { invalidateAll } from '$app/navigation';
@@ -149,6 +151,7 @@
 	let drawerOpen = $state(false);
 	let drawerTitle = $state('');
 	let drawerItems: DiscogsCollectionItem[] = $state([]);
+	let showHelp = $state(false);
 
 	function openDrawer(title: string, items: DiscogsCollectionItem[]) {
 		drawerTitle = title;
@@ -255,7 +258,8 @@
 	use:keyboardNav={{
 		sectionIds: navSectionIds,
 		isDrawerOpen: () => drawerOpen,
-		onCloseDrawer: closeDrawer
+		onCloseDrawer: closeDrawer,
+		onShowHelp: () => (showHelp = true)
 	}}
 >
 	<nav class="nav-bar">
@@ -577,6 +581,9 @@
 	items={drawerItems}
 	onClose={closeDrawer}
 />
+
+<FloatingActions onHelp={() => (showHelp = true)} />
+<KeyboardHelp open={showHelp} onClose={() => (showHelp = false)} />
 
 <style>
 	.profile {
