@@ -14,6 +14,7 @@
 	import ProfileInsights from '$lib/components/profile/ProfileInsights.svelte';
 	import ProfileShare from '$lib/components/profile/ProfileShare.svelte';
 	import OldestNewestHighlights from '$lib/components/profile/OldestNewestHighlights.svelte';
+	import SiteFooter from '$lib/components/SiteFooter.svelte';
 	import { findDuplicates, groupAlbums } from '$lib/utils/albums';
 	import { computeCollectionStats } from '$lib/api/discogs';
 	import { invalidateAll } from '$app/navigation';
@@ -291,9 +292,7 @@
 		</div>
 	{/if}
 
-	<footer class="footer">
-		<p>&copy; {new Date().getFullYear()} Record Shelf. Not affiliated with Discogs.</p>
-	</footer>
+	<SiteFooter />
 </main>
 
 <CollectionDrawer
@@ -345,19 +344,6 @@
 		margin: -1rem 0 1.25rem;
 		font-size: 0.875rem;
 		color: var(--color-text-tertiary);
-	}
-
-	.footer {
-		margin-top: 2rem;
-		padding: 2rem 0;
-		border-top: 1px solid var(--color-border, #e0e0e0);
-	}
-
-	.footer p {
-		margin: 0;
-		font-size: 0.75rem;
-		color: var(--color-text-tertiary);
-		text-align: center;
 	}
 
 	@media (max-width: 600px) {

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import CoverGrid from '$lib/components/CoverGrid.svelte';
+	import BrandNav from '$lib/components/BrandNav.svelte';
+	import SiteFooter from '$lib/components/SiteFooter.svelte';
 	import { SIMILARITY_THRESHOLDS, SHARED_RECORDS_PREVIEW } from '$lib/constants';
 
 	let { data }: { data: PageData } = $props();
@@ -26,16 +28,7 @@
 </svelte:head>
 
 <main id="main-content" class="compare-results">
-	<nav class="nav-bar">
-		<a href="/" class="home-link">
-			<svg aria-hidden="true" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="2"/>
-				<circle cx="24" cy="24" r="12" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
-				<circle cx="24" cy="24" r="3" fill="currentColor"/>
-			</svg>
-			<span>Record Shelf</span>
-		</a>
-	</nav>
+	<BrandNav />
 
 	<header class="matchup">
 		<div class="user-card">
@@ -173,9 +166,7 @@
 		<a href="/compare" class="action-btn">Compare Different Users</a>
 	</div>
 
-	<footer class="footer">
-		<p>&copy; {new Date().getFullYear()} Record Shelf. Not affiliated with Discogs.</p>
-	</footer>
+	<SiteFooter />
 </main>
 
 <style>
@@ -183,26 +174,6 @@
 		max-width: 1200px;
 		margin: 0 auto;
 		padding: 2rem;
-	}
-
-	.nav-bar {
-		margin-bottom: 2rem;
-	}
-
-	.home-link {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		text-decoration: none;
-		color: var(--color-text);
-		font-weight: 600;
-		font-size: 1rem;
-	}
-
-	.home-link svg {
-		width: 28px;
-		height: 28px;
-		color: var(--color-primary);
 	}
 
 	.matchup {
@@ -490,18 +461,6 @@
 
 	.action-btn:hover {
 		background: var(--color-bg-tertiary);
-	}
-
-	.footer {
-		padding: 2rem 0;
-		border-top: 1px solid var(--color-border);
-	}
-
-	.footer p {
-		margin: 0;
-		font-size: 0.75rem;
-		color: var(--color-text-tertiary);
-		text-align: center;
 	}
 
 	@media (max-width: 600px) {

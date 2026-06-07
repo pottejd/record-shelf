@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto, afterNavigate } from '$app/navigation';
+	import BrandNav from '$lib/components/BrandNav.svelte';
 
 	let username1 = $state('');
 	let username2 = $state('');
@@ -35,16 +36,7 @@
 </svelte:head>
 
 <main id="main-content" class="compare-page">
-	<nav class="nav-bar">
-		<a href="/" class="home-link">
-			<svg aria-hidden="true" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-				<circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="2"/>
-				<circle cx="24" cy="24" r="12" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
-				<circle cx="24" cy="24" r="3" fill="currentColor"/>
-			</svg>
-			<span>Record Shelf</span>
-		</a>
-	</nav>
+	<BrandNav />
 
 	<div class="compare-form">
 		<h1>Head-to-Head</h1>
@@ -94,26 +86,6 @@
 		max-width: 600px;
 		margin: 0 auto;
 		padding: 2rem;
-	}
-
-	.nav-bar {
-		margin-bottom: 3rem;
-	}
-
-	.home-link {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		text-decoration: none;
-		color: var(--color-text);
-		font-weight: 600;
-		font-size: 1rem;
-	}
-
-	.home-link svg {
-		width: 28px;
-		height: 28px;
-		color: var(--color-primary);
 	}
 
 	.compare-form {
