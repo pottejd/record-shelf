@@ -1,56 +1,28 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Home page', () => {
-	test('renders title and search form', async ({ page }) => {
-		await page.goto('/');
-		await expect(page.locator('h1')).toHaveText('Record Shelf');
-		await expect(page.locator('input[type="text"]')).toBeVisible();
-		await expect(page.locator('button[type="submit"]')).toHaveText('Explore');
-	});
+// Note: `/` server-redirects to the configured profile (/u/pottejd). Without a
+// token configured (the CI default), that profile bounces on to /settings. The
+// old home-page search form is therefore not reachable at `/`, so these tests
+// target the redirect and the directly-reachable pages instead.
 
-	test('shows error when submitting empty username', async ({ page }) => {
+test.describe('Home redirect', () => {
+	test('redirects to the configured profile, then to settings without a token', async ({ page }) => {
 		await page.goto('/');
-		await page.locator('button[type="submit"]').click();
-		await expect(page.locator('.error-message')).toHaveText('Please enter a username');
-	});
-
-	test('navigates to user page on form submit', async ({ page }) => {
-		await page.goto('/');
-		await page.locator('input[type="text"]').fill('testuser');
-		await page.locator('button[type="submit"]').click();
-		await page.waitForURL('**/u/testuser');
-		expect(page.url()).toContain('/u/testuser');
-	});
-
-	test('has settings link', async ({ page }) => {
-		await page.goto('/');
-		const settingsLink = page.locator('a[href="/settings"]');
-		await expect(settingsLink).toBeVisible();
-	});
-
-	test('has compare link', async ({ page }) => {
-		await page.goto('/');
-		const compareLink = page.locator('a[href="/compare"]');
-		await expect(compareLink).toBeVisible();
-		await expect(compareLink).toContainText('Compare Two Collections');
-	});
-
-	test('has feature cards', async ({ page }) => {
-		await page.goto('/');
-		const features = page.locator('.feature');
-		await expect(features).toHaveCount(3);
+		await page.waitForURL('**/settings**');
+		// The settings redirect preserves the intended profile destination.
+		expect(decodeURIComponent(page.url())).toContain('/u/pottejd');
 	});
 });
 
 test.describe('Theme toggle', () => {
 	test('theme toggle button is visible', async ({ page }) => {
-		await page.goto('/');
+		await page.goto('/settings');
 		const toggle = page.locator('.theme-toggle');
 		await expect(toggle).toBeVisible();
 	});
 
 	test('cycles theme on click', async ({ page }) => {
-		await page.goto('/');
+		await page.goto('/settings');
 		const toggle = page.locator('.theme-toggle');
 
 		// Default is 'system'
@@ -78,21 +50,5 @@ test.describe('Settings page', () => {
 	test('renders settings page', async ({ page }) => {
 		await page.goto('/settings');
 		await expect(page.locator('h1')).toContainText('Settings');
-	});
-});
-
-test.describe('Navigation', () => {
-	test('can navigate from home to settings and back', async ({ page }) => {
-		await page.goto('/');
-		await page.locator('a[href="/settings"]').click();
-		await page.waitForURL('**/settings');
-		expect(page.url()).toContain('/settings');
-	});
-
-	test('can navigate from home to compare', async ({ page }) => {
-		await page.goto('/');
-		await page.locator('a[href="/compare"]').click();
-		await page.waitForURL('**/compare');
-		expect(page.url()).toContain('/compare');
 	});
 });
