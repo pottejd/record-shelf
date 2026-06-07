@@ -2,6 +2,7 @@
 	import type { DiscogsUserProfile, DiscogsWantlistItem } from '$lib/types/discogs';
 	import { formatArtists } from '$lib/utils/discogs';
 	import LazyImage from '$lib/components/LazyImage.svelte';
+	import SearchBar from '$lib/components/browser/SearchBar.svelte';
 
 	let { data }: { data: { profile: DiscogsUserProfile; wantlist: DiscogsWantlistItem[] } } = $props();
 
@@ -71,11 +72,7 @@
 
 	<div class="controls">
 		<div class="search-bar">
-			<input
-				type="text"
-				bind:value={searchQuery}
-				placeholder="Search wantlist..."
-			/>
+			<SearchBar bind:value={searchQuery} placeholder="Search wantlist..." />
 			{#if searchQuery}
 				<span class="result-count" aria-live="polite" role="status">{filteredItems.length} results</span>
 			{/if}
@@ -260,22 +257,6 @@
 		background: var(--color-primary);
 		border-color: var(--color-primary);
 		color: white;
-	}
-
-	.search-bar input {
-		flex: 1;
-		padding: 0.75rem 1rem;
-		font-size: 0.9rem;
-		border: 1px solid var(--color-border);
-		border-radius: 10px;
-		background: var(--color-bg-card);
-		color: var(--color-text);
-		transition: border-color 0.15s;
-	}
-
-	.search-bar input:focus {
-		outline: none;
-		border-color: var(--color-primary);
 	}
 
 	.result-count {
