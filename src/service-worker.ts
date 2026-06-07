@@ -47,18 +47,29 @@ sw.addEventListener('fetch', (event) => {
 			if (cached) return cached;
 
 			// For navigation/page requests, try network first
-			return fetch(event.request).then((response) => {
-				// Don't cache non-ok responses or opaque responses
-				if (!response.ok) return response;
+			return fetch(event.request)
+				.then((response) => {
+					// Don't cache non-ok responses or opaque responses
+					if (!response.ok) return response;
 
-				// Cache static-looking responses for offline use
-				if (ASSETS.includes(url.pathname)) {
-					const clone = response.clone();
-					caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-				}
+					// Cache static-looking responses for offline use
+					if (ASSETS.includes(url.pathname)) {
+						const clone = response.clone();
+						caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+					}
 
-				return response;
-			});
+					return response;
+				})
+				.catch(async () => {
+					// Offline and uncached: serve the static offline page for page
+					// navigations so users see a friendly message, not a raw browser
+					// error. (Pages are SSR'd, so they're never in the asset cache.)
+					if (event.request.mode === 'navigate') {
+						const fallback = await caches.match('/offline.html');
+						if (fallback) return fallback;
+					}
+					throw new Error('Offline and no cached response available');
+				});
 		})
 	);
 });
