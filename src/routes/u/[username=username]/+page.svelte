@@ -844,14 +844,7 @@
 		margin-bottom: 1.5rem;
 	}
 
-	.card {
-		background: var(--color-bg-card, #fff);
-		border: 1px solid var(--color-border, #e0e0e0);
-		border-radius: 16px;
-		padding: 1.5rem;
-		margin-bottom: 1.5rem;
-	}
-
+	/* Base .card styling is global (app.css); only page-specific tweaks here. */
 	.card h2 {
 		margin: 0 0 1.25rem;
 		font-size: 1rem;

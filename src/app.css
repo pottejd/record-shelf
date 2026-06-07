@@ -138,7 +138,28 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .card {
+	background: var(--color-bg-card);
+	border: 1px solid var(--color-border);
+	border-radius: 16px;
+	padding: 1.5rem;
+	margin-bottom: 1.5rem;
 	animation: fadeIn 0.3s ease-out;
+}
+
+/* Shared loading spinner (white-on-accent, 18px). Components override size /
+   spacing via a scoped .spinner rule where they differ. */
+.spinner {
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+	border: 2px solid rgba(255, 255, 255, 0.3);
+	border-top-color: white;
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
 }
 
 .skip-link {

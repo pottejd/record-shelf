@@ -206,19 +206,9 @@
 		margin: 0 0 1rem;
 	}
 
+	/* Base .spinner is global (app.css); only spacing differs here. */
 	.spinner {
-		display: inline-block;
-		width: 18px;
-		height: 18px;
-		border: 2px solid rgba(255, 255, 255, 0.3);
-		border-top-color: white;
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
 		vertical-align: middle;
 		margin-right: 0.5rem;
-	}
-
-	@keyframes spin {
-		to { transform: rotate(360deg); }
 	}
 </style>

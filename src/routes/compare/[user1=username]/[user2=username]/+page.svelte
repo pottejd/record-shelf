@@ -300,14 +300,7 @@
 		letter-spacing: 0.05em;
 	}
 
-	.card {
-		background: var(--color-bg-card);
-		border: 1px solid var(--color-border);
-		border-radius: 16px;
-		padding: 1.5rem;
-		margin-bottom: 1.5rem;
-	}
-
+	/* Base .card styling is global (app.css); only page-specific tweaks here. */
 	.card h2 {
 		margin: 0 0 1.25rem;
 		font-size: 1rem;

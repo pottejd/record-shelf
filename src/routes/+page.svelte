@@ -308,19 +308,7 @@
 		cursor: not-allowed;
 	}
 
-	.spinner {
-		display: inline-block;
-		width: 18px;
-		height: 18px;
-		border: 2px solid rgba(255, 255, 255, 0.3);
-		border-top-color: white;
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-
-	@keyframes spin {
-		to { transform: rotate(360deg); }
-	}
+	/* .spinner and @keyframes spin are global (app.css); the 18px default matches. */
 
 	.error-message {
 		color: #ef4444;
