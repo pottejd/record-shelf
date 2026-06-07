@@ -77,13 +77,4 @@
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
 	}
-
-	/* Preserve the profile page's mobile card override, which no longer reaches
-	   these cards now that they live in a child component (Svelte scopes it). */
-	@media (max-width: 600px) {
-		.highlight-card {
-			padding: 1rem;
-			border-radius: 12px;
-		}
-	}
 </style>

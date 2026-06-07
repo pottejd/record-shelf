@@ -14,11 +14,6 @@
 	import CollectionDNA from '$lib/components/CollectionDNA.svelte';
 	import ArtistLoyalty from '$lib/components/ArtistLoyalty.svelte';
 	import Milestones from '$lib/components/Milestones.svelte';
-	import CollectingActivity from '$lib/components/CollectingActivity.svelte';
-	import GenreEvolution from '$lib/components/GenreEvolution.svelte';
-	import CollectingCalendar from '$lib/components/CollectingCalendar.svelte';
-	import DayPatterns from '$lib/components/DayPatterns.svelte';
-	import NewVsVintage from '$lib/components/NewVsVintage.svelte';
 	import CollectionQuiz from '$lib/components/CollectionQuiz.svelte';
 	import ShareableCard from '$lib/components/ShareableCard.svelte';
 	import CollectionBrowser from '$lib/components/CollectionBrowser.svelte';
@@ -29,7 +24,6 @@
 	import Recommendations from '$lib/components/Recommendations.svelte';
 	import FormatDrilldown from '$lib/components/FormatDrilldown.svelte';
 	import CollectionTimeline from '$lib/components/CollectionTimeline.svelte';
-	import LazySection from '$lib/components/LazySection.svelte';
 	import DuplicateDetector from '$lib/components/DuplicateDetector.svelte';
 	import FormatUpgrades from '$lib/components/FormatUpgrades.svelte';
 	import KeyboardHelp from '$lib/components/KeyboardHelp.svelte';
@@ -37,6 +31,7 @@
 	import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
 	import LoadingBanner from '$lib/components/profile/LoadingBanner.svelte';
 	import OldestNewestHighlights from '$lib/components/profile/OldestNewestHighlights.svelte';
+	import ProfileActivity from '$lib/components/profile/ProfileActivity.svelte';
 	import { findDuplicates, groupAlbums } from '$lib/utils/albums';
 	import { computeCollectionStats } from '$lib/api/discogs';
 	import { invalidateAll } from '$app/navigation';
@@ -405,43 +400,7 @@
 		<BarChart data={styleData} horizontal colorful clickable onItemClick={filterByStyle} />
 	</section>
 
-	<LazySection height="300px">
-		<div class="grid-2col">
-			<section class="card">
-				<h2>Genre Evolution</h2>
-				<p class="section-subtitle">How taste has evolved over time</p>
-				<GenreEvolution items={items} />
-			</section>
-
-			<section class="card">
-				<h2>New vs Vintage</h2>
-				<p class="section-subtitle">New releases or digging for classics?</p>
-				<NewVsVintage items={items} />
-			</section>
-		</div>
-	</LazySection>
-
-	<LazySection height="250px">
-		<section id="activity" class="card">
-			<h2>Collecting Calendar</h2>
-			<p class="section-subtitle">Activity over the past year</p>
-			<CollectingCalendar items={items} />
-		</section>
-	</LazySection>
-
-	<LazySection height="250px">
-		<div class="grid-2col">
-			<section class="card">
-				<h2>Day Patterns</h2>
-				<DayPatterns items={items} />
-			</section>
-
-			<section class="card">
-				<h2>Collecting Activity</h2>
-				<CollectingActivity items={items} />
-			</section>
-		</div>
-	</LazySection>
+	<ProfileActivity {items} />
 
 	{#if duplicates.length > 0}
 		<section class="card" use:reveal>
@@ -509,22 +468,26 @@
 		padding: 2rem;
 	}
 
-	.stats-overview {
+	/* These layout/typography rules are :global(.profile ...) so they apply to
+	   `.card`/grid/subtitle/heading elements that now live in extracted
+	   components/profile/* children (Svelte would otherwise only scope them to
+	   markup in this file). Scoped to .profile so other pages are unaffected. */
+	:global(.profile .stats-overview) {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 		gap: 1rem;
 		margin-bottom: 2rem;
 	}
 
-	.grid-2col {
+	:global(.profile .grid-2col) {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 		gap: 1.5rem;
 		margin-bottom: 1.5rem;
 	}
 
-	/* Base .card styling is global (app.css); only page-specific tweaks here. */
-	.card h2 {
+	/* Base .card styling is global (app.css); these are page-specific tweaks. */
+	:global(.profile .card h2) {
 		margin: 0 0 1.25rem;
 		font-size: 1rem;
 		font-weight: 600;
@@ -533,7 +496,7 @@
 		letter-spacing: 0.05em;
 	}
 
-	.section-subtitle {
+	:global(.profile .section-subtitle) {
 		margin: -1rem 0 1.25rem;
 		font-size: 0.875rem;
 		color: var(--color-text-tertiary);
@@ -557,12 +520,12 @@
 			padding: 1rem;
 		}
 
-		.card {
+		:global(.profile .card) {
 			padding: 1rem;
 			border-radius: 12px;
 		}
 
-		.stats-overview {
+		:global(.profile .stats-overview) {
 			grid-template-columns: repeat(2, 1fr);
 		}
 	}
