@@ -1,7 +1,18 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import { sampleN } from '$lib/utils/array';
 
 	let { items, username }: { items: DiscogsCollectionItem[]; username: string } = $props();
+
+	// Memoize the sampled release ids so repeated estimates reuse the same set
+	// (and therefore the server's per-release price cache) instead of re-sampling.
+	let sampledIds: number[] | null = null;
+	function getSampleIds(): number[] {
+		if (!sampledIds) {
+			sampledIds = sampleN(items, Math.min(items.length, 50)).map((i) => i.basic_information.id);
+		}
+		return sampledIds;
+	}
 
 	let loading = $state(false);
 	let result: {
@@ -19,11 +30,9 @@
 		result = null;
 
 		try {
-			// Sample up to 50 releases for estimation
+			// Sample up to 50 releases for estimation (stable across re-clicks)
 			const sampleSize = Math.min(items.length, 50);
-			const shuffled = [...items].sort(() => Math.random() - 0.5);
-			const sample = shuffled.slice(0, sampleSize);
-			const releaseIds = sample.map(i => i.basic_information.id);
+			const releaseIds = getSampleIds();
 
 			const response = await fetch(`/api/value/${username}`, {
 				method: 'POST',

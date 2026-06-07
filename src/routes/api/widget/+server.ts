@@ -2,46 +2,60 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { fetchCollectionPage, fetchUserProfile, DiscogsAPIError } from '$lib/api/discogs';
 import { cleanArtistName } from '$lib/utils/discogs';
+import { kvGetJSON, kvPutJSON } from '$lib/server/cache';
 import { env } from '$env/dynamic/private';
 import { USER_AGENT } from '$lib/constants';
 
-const WIDGET_USERNAME = 'pottejd';
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_SECONDS = 5 * 60; // 5 minutes
 
-let cachedWidget: { data: unknown; fetchedAt: number } | null = null;
+// Public, cacheable, embeddable from any dashboard.
+const RESPONSE_HEADERS = {
+	'cache-control': 'public, max-age=300',
+	'access-control-allow-origin': '*'
+};
 
-export const GET: RequestHandler = async () => {
-	if (cachedWidget && Date.now() - cachedWidget.fetchedAt < CACHE_TTL) {
-		return json(cachedWidget.data);
+function widgetKey(username: string): string {
+	return `widget:${username.toLowerCase()}`;
+}
+
+function fallback(items: Array<{ label: string; value: string; type: string }>) {
+	return {
+		appName: 'Record Shelf',
+		icon: '🎵',
+		url: 'https://records.home',
+		items,
+		updatedAt: new Date().toISOString()
+	};
+}
+
+export const GET: RequestHandler = async ({ platform }) => {
+	const username = env.WIDGET_USERNAME || 'pottejd';
+
+	// KV-backed cache (shared across isolates, unlike the previous per-isolate Map).
+	const cached = await kvGetJSON<unknown>(platform, widgetKey(username));
+	if (cached) {
+		return json(cached, { headers: RESPONSE_HEADERS });
 	}
 
 	const token = env.DISCOGS_TOKEN;
 	if (!token) {
-		return json({
-			appName: 'Record Shelf',
-			icon: '🎵',
-			url: 'https://records.home',
-			items: [{ label: 'Status', value: 'Token not configured', type: 'secondary' }],
-			updatedAt: new Date().toISOString()
+		return json(fallback([{ label: 'Status', value: 'Token not configured', type: 'secondary' }]), {
+			headers: RESPONSE_HEADERS
 		});
 	}
 
 	try {
 		const options = { userAgent: USER_AGENT, token };
-
 		const [profile, firstPage] = await Promise.all([
-			fetchUserProfile(WIDGET_USERNAME, options),
-			fetchCollectionPage(WIDGET_USERNAME, 1, options)
+			fetchUserProfile(username, options),
+			fetchCollectionPage(username, 1, options)
 		]);
 
 		const items: Array<{ label: string; value: string; type: string }> = [
 			{ label: 'Collection', value: `${profile.num_collection} records`, type: 'highlight' }
 		];
-
-		const recent = firstPage.items.slice(0, 3);
-		for (const item of recent) {
-			const artist =
-				cleanArtistName(item.basic_information.artists?.[0]?.name ?? '') || 'Unknown';
+		for (const item of firstPage.items.slice(0, 3)) {
+			const artist = cleanArtistName(item.basic_information.artists?.[0]?.name ?? '') || 'Unknown';
 			items.push({
 				label: 'Recent',
 				value: `${artist} - ${item.basic_information.title}`,
@@ -49,24 +63,13 @@ export const GET: RequestHandler = async () => {
 			});
 		}
 
-		const response = {
-			appName: 'Record Shelf',
-			icon: '🎵',
-			url: 'https://records.home',
-			items,
-			updatedAt: new Date().toISOString()
-		};
-
-		cachedWidget = { data: response, fetchedAt: Date.now() };
-		return json(response);
+		const response = fallback(items);
+		await kvPutJSON(platform, widgetKey(username), response, CACHE_TTL_SECONDS);
+		return json(response, { headers: RESPONSE_HEADERS });
 	} catch (e) {
 		const msg = e instanceof DiscogsAPIError ? e.message : 'Unable to fetch';
-		return json({
-			appName: 'Record Shelf',
-			icon: '🎵',
-			url: 'https://records.home',
-			items: [{ label: 'Status', value: msg, type: 'secondary' }],
-			updatedAt: new Date().toISOString()
+		return json(fallback([{ label: 'Status', value: msg, type: 'secondary' }]), {
+			headers: RESPONSE_HEADERS
 		});
 	}
 };

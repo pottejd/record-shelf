@@ -5,6 +5,10 @@ import { env } from '$env/dynamic/private';
 import { USER_AGENT } from '$lib/constants';
 import { readCache, writeCache, invalidateCache } from '$lib/server/cache';
 
+// Responses are cookie-authed, so only browser-private caching is safe (never
+// shared/edge caching, which would risk leaking one user's data to another).
+const PRIVATE_CACHE = { 'cache-control': 'private, max-age=60' };
+
 export const GET: RequestHandler = async ({ params, platform, cookies, url }) => {
 	const { username } = params;
 
@@ -29,7 +33,7 @@ export const GET: RequestHandler = async ({ params, platform, cookies, url }) =>
 				userAgent: USER_AGENT,
 				token
 			});
-			return json(result);
+			return json(result, { headers: PRIVATE_CACHE });
 		} catch (e) {
 			if (e instanceof DiscogsAPIError) {
 				if (e.code === 'RATE_LIMITED') {
@@ -45,11 +49,23 @@ export const GET: RequestHandler = async ({ params, platform, cookies, url }) =>
 	// Try cache first
 	const cached = await readCache(platform, username);
 	if (cached) {
-		return json({
-			...cached.data,
-			cached: true,
-			cachedAt: cached.cachedAt
-		});
+		// Stale-while-revalidate: serve the stale copy now and refresh in the
+		// background so the next request is fresh, without blocking this one.
+		if (cached.stale && platform?.context?.waitUntil) {
+			platform.context.waitUntil(
+				fetchFullUserCollection(username, { userAgent: USER_AGENT, token })
+					.then((fresh) => writeCache(platform, username, fresh))
+					.catch((err) => console.error('Background cache refresh failed:', err))
+			);
+		}
+		return json(
+			{
+				...cached.data,
+				cached: true,
+				cachedAt: cached.cachedAt
+			},
+			{ headers: PRIVATE_CACHE }
+		);
 	}
 
 	try {
@@ -60,10 +76,13 @@ export const GET: RequestHandler = async ({ params, platform, cookies, url }) =>
 
 		await writeCache(platform, username, collection);
 
-		return json({
-			...collection,
-			cached: false
-		});
+		return json(
+			{
+				...collection,
+				cached: false
+			},
+			{ headers: PRIVATE_CACHE }
+		);
 	} catch (e) {
 		if (e instanceof DiscogsAPIError) {
 			if (e.code === 'NOT_FOUND') {
