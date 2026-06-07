@@ -187,6 +187,27 @@
 		/>
 	</div>
 
+	{#if selectedGenre || selectedFormat || selectedDecade}
+		<div class="active-filters">
+			{#if selectedGenre}
+				<button class="chip" onclick={() => (selectedGenre = '')} aria-label="Remove {selectedGenre} genre filter">
+					{selectedGenre} <span aria-hidden="true">✕</span>
+				</button>
+			{/if}
+			{#if selectedFormat}
+				<button class="chip" onclick={() => (selectedFormat = '')} aria-label="Remove {selectedFormat} format filter">
+					{selectedFormat} <span aria-hidden="true">✕</span>
+				</button>
+			{/if}
+			{#if selectedDecade}
+				<button class="chip" onclick={() => (selectedDecade = '')} aria-label="Remove {selectedDecade}s decade filter">
+					{selectedDecade}s <span aria-hidden="true">✕</span>
+				</button>
+			{/if}
+			<button class="chip clear-all" onclick={clearFilters}>Clear all</button>
+		</div>
+	{/if}
+
 	<SortToolbar
 		resultCount={filteredItems.length}
 		totalCount={items.length}
@@ -228,6 +249,35 @@
 		display: flex;
 		gap: 0.75rem;
 		flex-wrap: wrap;
+	}
+
+	.active-filters {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.3rem 0.7rem;
+		font-size: 0.8125rem;
+		border: 1px solid var(--color-border);
+		border-radius: 999px;
+		background: var(--color-bg-card);
+		color: var(--color-text);
+		cursor: pointer;
+	}
+
+	.chip:hover {
+		border-color: var(--color-primary);
+		color: var(--color-primary);
+	}
+
+	.chip.clear-all {
+		color: var(--color-text-secondary);
 	}
 
 	.items-grid {

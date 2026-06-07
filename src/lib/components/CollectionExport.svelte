@@ -53,6 +53,59 @@
 		link.click();
 		URL.revokeObjectURL(url);
 	}
+
+	// Open a clean, printable list (Print → Save as PDF for an insurance record).
+	// Built with DOM + textContent so Discogs-supplied strings can't inject markup.
+	function printList() {
+		const w = window.open('', '_blank');
+		if (!w) return;
+		const d = w.document;
+		d.title = `${username} — Record Shelf collection`;
+
+		const style = d.createElement('style');
+		style.textContent =
+			'body{font-family:system-ui,sans-serif;margin:2rem;color:#111}h1{font-size:1.25rem}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #ccc;padding:4px 8px;text-align:left}th{background:#f3f3f3}@media print{@page{margin:1.5cm}}';
+		d.head.appendChild(style);
+
+		const h1 = d.createElement('h1');
+		h1.textContent = `${username} — Record Collection (${items.length} items)`;
+		d.body.appendChild(h1);
+
+		const table = d.createElement('table');
+		const thead = d.createElement('thead');
+		const headRow = d.createElement('tr');
+		for (const label of ['Artist', 'Title', 'Year', 'Format', 'Catalog #']) {
+			const th = d.createElement('th');
+			th.textContent = label;
+			headRow.appendChild(th);
+		}
+		thead.appendChild(headRow);
+		table.appendChild(thead);
+
+		const tbody = d.createElement('tbody');
+		for (const item of items) {
+			const info = item.basic_information;
+			const cells = [
+				formatArtists(info.artists),
+				info.title,
+				info.year ? String(info.year) : '',
+				info.formats.map((f) => f.name).join(', '),
+				info.labels.map((l) => l.catno).filter(Boolean).join(', ')
+			];
+			const tr = d.createElement('tr');
+			for (const value of cells) {
+				const td = d.createElement('td');
+				td.textContent = value;
+				tr.appendChild(td);
+			}
+			tbody.appendChild(tr);
+		}
+		table.appendChild(tbody);
+		d.body.appendChild(table);
+
+		w.focus();
+		w.print();
+	}
 </script>
 
 <div class="export-actions">
@@ -71,6 +124,14 @@
 			<line x1="12" y1="15" x2="12" y2="3" />
 		</svg>
 		Export JSON
+	</button>
+	<button class="export-btn" onclick={printList}>
+		<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<polyline points="6 9 6 2 18 2 18 9" />
+			<path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+			<rect x="6" y="14" width="12" height="8" />
+		</svg>
+		Print / Insurance List
 	</button>
 </div>
 
