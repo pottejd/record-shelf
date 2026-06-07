@@ -32,6 +32,7 @@
 		class="kh-backdrop"
 		bind:this={backdrop}
 		onclick={onBackdropClick}
+		onkeydown={onKeydown}
 		role="dialog"
 		aria-modal="true"
 		aria-label="Keyboard shortcuts"
