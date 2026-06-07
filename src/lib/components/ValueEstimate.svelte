@@ -24,6 +24,7 @@
 		results?: Array<{ releaseId: number; lowestPrice: number | null; currency: string }>;
 	} | null = $state(null);
 	let errorMsg = $state('');
+	let history = $state<Array<{ date: string; value: number; currency: string }>>([]);
 
 	// Top-priced items from the sampled results — surfaces the per-item prices the
 	// endpoint already returns instead of discarding them.
@@ -76,6 +77,18 @@
 			}
 
 			result = data;
+
+			// Record a value snapshot and load the trend (non-fatal if it fails).
+			try {
+				const histRes = await fetch(`/api/value-history/${username}`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ value: Math.round(data.totalValue), currency: data.currency })
+				});
+				if (histRes.ok) history = (await histRes.json()).history ?? [];
+			} catch {
+				// ignore — history is a nice-to-have
+			}
 		} catch (e) {
 			errorMsg = e instanceof Error ? e.message : 'Failed to estimate value';
 		} finally {
@@ -119,6 +132,28 @@
 							</li>
 						{/each}
 					</ul>
+				</div>
+			{/if}
+			{#if history.length > 1}
+				{@const first = history[0]}
+				{@const last = history[history.length - 1]}
+				{@const max = Math.max(...history.map((h) => h.value), 1)}
+				{@const pct =
+					first.value > 0 ? Math.round(((last.value - first.value) / first.value) * 100) : 0}
+				<div class="value-history">
+					<h3>Value over time</h3>
+					<div class="vh-spark">
+						{#each history as snap}
+							<span
+								class="vh-bar"
+								style:height="{(snap.value / max) * 100}%"
+								title="{snap.date}: {formatCurrency(snap.value, snap.currency)}"
+							></span>
+						{/each}
+					</div>
+					<span class="vh-caption">
+						{history.length} snapshots · {pct >= 0 ? '+' : ''}{pct}% since {first.date}
+					</span>
 				</div>
 			{/if}
 		</div>
@@ -221,6 +256,40 @@
 		flex-shrink: 0;
 		font-weight: 600;
 		color: var(--color-primary);
+	}
+
+	.value-history {
+		width: 100%;
+		max-width: 360px;
+		margin: 1.25rem auto 0;
+		text-align: left;
+	}
+
+	.value-history h3 {
+		font-size: 0.8125rem;
+		color: var(--color-text-secondary);
+		margin: 0 0 0.5rem;
+	}
+
+	.vh-spark {
+		display: flex;
+		align-items: flex-end;
+		gap: 2px;
+		height: 40px;
+	}
+
+	.vh-bar {
+		flex: 1;
+		min-height: 2px;
+		background: var(--gradient-brand);
+		border-radius: 2px 2px 0 0;
+	}
+
+	.vh-caption {
+		display: block;
+		margin-top: 0.375rem;
+		font-size: 0.7rem;
+		color: var(--color-text-tertiary);
 	}
 
 	.value-prompt {
