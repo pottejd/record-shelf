@@ -1,4 +1,5 @@
 import type { Action } from 'svelte/action';
+import { scrollBehavior } from '$lib/utils/motion';
 
 export interface KeyboardNavParams {
 	/** Section element ids, in document order, for j/k navigation. */
@@ -41,7 +42,7 @@ export const keyboardNav: Action<HTMLElement, KeyboardNavParams> = (node, params
 			);
 			if (searchInput) {
 				searchInput.focus();
-				searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				searchInput.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
 			}
 			return;
 		}
@@ -58,7 +59,7 @@ export const keyboardNav: Action<HTMLElement, KeyboardNavParams> = (node, params
 			const next =
 				e.key === 'j' ? Math.min(idx + 1, sectionIds.length - 1) : Math.max(idx - 1, 0);
 			const el = document.getElementById(sectionIds[next]);
-			if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			if (el) el.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
 		}
 	}
 

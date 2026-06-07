@@ -3,6 +3,29 @@
 
 	let loaded = $state(false);
 	let error = $state(false);
+	let shouldLoad = $state(false);
+	let container = $state<HTMLDivElement | undefined>();
+
+	// Defer creating the <img> until it scrolls near the viewport, so off-screen
+	// covers (e.g. a long wantlist) don't all request at once. rootMargin loads
+	// a little ahead so there's no visible pop-in.
+	$effect(() => {
+		if (typeof IntersectionObserver === 'undefined') {
+			shouldLoad = true;
+			return;
+		}
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0]?.isIntersecting) {
+					shouldLoad = true;
+					observer.disconnect();
+				}
+			},
+			{ rootMargin: '200px' }
+		);
+		if (container) observer.observe(container);
+		return () => observer.disconnect();
+	});
 
 	function onLoad() {
 		loaded = true;
@@ -14,8 +37,8 @@
 	}
 </script>
 
-<div class="lazy-image" class:loaded>
-	{#if !error}
+<div class="lazy-image" class:loaded bind:this={container}>
+	{#if shouldLoad && !error}
 		<img
 			{src}
 			{alt}
@@ -67,5 +90,14 @@
 		0% { background-position: 100% 100%; }
 		50% { background-position: 0% 0%; }
 		100% { background-position: 100% 100%; }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		img {
+			transition: none;
+		}
+		.placeholder {
+			animation: none;
+		}
 	}
 </style>

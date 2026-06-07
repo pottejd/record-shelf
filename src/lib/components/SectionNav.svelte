@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { scrollBehavior } from '$lib/utils/motion';
 
 	interface Section {
 		id: string;
@@ -45,7 +46,7 @@
 		if (!browser || !navEl || !activeSection) return;
 		const activeEl = navEl.querySelector(`[href="#${activeSection}"]`);
 		if (activeEl) {
-			activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+			activeEl.scrollIntoView({ behavior: scrollBehavior(), block: 'nearest', inline: 'center' });
 		}
 	});
 
