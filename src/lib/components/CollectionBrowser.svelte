@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import { itemSearchFields } from '$lib/utils/discogs';
 	import { page as pageStore } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
@@ -69,31 +70,17 @@
 	// Precompute lowercased searchable fields once per item (recomputed only when
 	// `items` changes), so per-keystroke filtering is a cheap lookup + includes
 	// instead of re-lowercasing/joining every item's fields on every render.
-	let searchIndex = $derived(
-		new Map(
-			items.map((item) => {
-				const info = item.basic_information;
-				return [
-					item,
-					{
-						title: info.title.toLowerCase(),
-						artists: info.artists.map((a) => a.name.toLowerCase()).join(' '),
-						labels: info.labels?.map((l) => l.name.toLowerCase()).join(' ') || '',
-						catno: info.labels?.map((l) => l.catno.toLowerCase()).join(' ') || ''
-					}
-				];
-			})
-		)
-	);
+	let searchIndex = $derived(new Map(items.map((item) => [item, itemSearchFields(item)])));
 
 	// Filter and sort items
 	let filteredItems = $derived(items
 		.filter(item => {
 			if (debouncedQuery) {
 				const query = debouncedQuery.toLowerCase();
-				const idx = searchIndex.get(item);
+				// Fall back to computing fields on the fly if an item somehow isn't in
+				// the index, so a missing entry can't bypass the search filter.
+				const idx = searchIndex.get(item) ?? itemSearchFields(item);
 				if (
-					idx &&
 					!idx.title.includes(query) &&
 					!idx.artists.includes(query) &&
 					!idx.labels.includes(query) &&
