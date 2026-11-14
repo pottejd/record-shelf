@@ -2,3 +2,8 @@ name = "record-shelf"
 pages_build_output_dir = ".svelte-kit/cloudflare"
 compatibility_date = "2026-01-01"
 compatibility_flags = ["nodejs_compat"]
+
+# Stored copies of collections and wantlists, and value history.
+[[kv_namespaces]]
+binding = "COLLECTION_CACHE"
+id = "db19a5a6a90c4cf59771196e6808010c"
