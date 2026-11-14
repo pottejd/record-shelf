@@ -2,9 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
 	computeCollectionStats,
 	DiscogsAPIError,
+	discogsGet,
 	fetchCollectionPage,
+	fetchListPage,
 	fetchUserCollection,
-	fetchUserProfile
+	fetchUserProfile,
+	lastRateReading
 } from './discogs';
 import type { DiscogsCollectionItem } from '$lib/types/discogs';
 
@@ -514,5 +517,72 @@ describe('fetch functions', () => {
 			expect(result.items).toHaveLength(1);
 			expect(mockFetch).toHaveBeenCalledTimes(1);
 		});
+	});
+});
+
+describe('discogsGet', () => {
+	const opts = { userAgent: 'T/1', token: 'tok' };
+	const res = (status: number, body: unknown, headers: Record<string, string> = {}) =>
+		new Response(JSON.stringify(body), { status, headers });
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it('returns data and the remaining budget from X-Discogs-Ratelimit-Remaining', async () => {
+		vi.stubGlobal('fetch', vi.fn(async () => res(200, { a: 1 }, { 'X-Discogs-Ratelimit-Remaining': '42' })));
+		expect(await discogsGet('/x', opts)).toEqual({ data: { a: 1 }, remaining: 42 });
+		expect(lastRateReading().remaining).toBe(42);
+	});
+	it('reports remaining as null when the header is absent', async () => {
+		vi.stubGlobal('fetch', vi.fn(async () => res(200, {})));
+		expect((await discogsGet('/x', opts)).remaining).toBeNull();
+	});
+	it('on 429 throws RATE_LIMITED at once, without a second fetch', async () => {
+		const f = vi.fn(async () => res(429, {}, { 'Retry-After': '7' }));
+		vi.stubGlobal('fetch', f);
+		await expect(discogsGet('/x', opts)).rejects.toMatchObject({ code: 'RATE_LIMITED', retryAfterMs: 7000 });
+		expect(f).toHaveBeenCalledTimes(1);
+		expect(lastRateReading().last429At).not.toBeNull();
+	});
+	it('uses 30000 ms when Retry-After is missing or not a number', async () => {
+		vi.stubGlobal('fetch', vi.fn(async () => res(429, {}, { 'Retry-After': 'Wed, 21 Oct 2026 07:28:00 GMT' })));
+		await expect(discogsGet('/x', opts)).rejects.toMatchObject({ retryAfterMs: 30000 });
+	});
+	it('sends no Authorization header when no token is given', async () => {
+		const f = vi.fn(async (_url: string, _init?: RequestInit) => res(200, {}));
+		vi.stubGlobal('fetch', f);
+		await discogsGet('/x', { userAgent: 'T/1' });
+		expect((f.mock.calls[0][1] as RequestInit).headers).not.toHaveProperty('Authorization');
+	});
+	it('maps 401, 403, 404 and other statuses like fetchDiscogs', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		for (const [status, code] of [[401, 'BAD_TOKEN'], [403, 'PRIVATE'], [404, 'NOT_FOUND'], [500, 'UPSTREAM_ERROR']] as const) {
+			vi.stubGlobal('fetch', vi.fn(async () => res(status, {})));
+			await expect(discogsGet('/x', opts)).rejects.toMatchObject({ code });
+		}
+	});
+});
+
+describe('fetchListPage', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('requests the collection endpoint and returns releases as items', async () => {
+		const f = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ pagination: { page: 2, pages: 3, per_page: 100, items: 250, urls: {} }, releases: [{ id: 1 }] })));
+		vi.stubGlobal('fetch', f);
+		const r = await fetchListPage('collection', 'Some User', 2, 100, { userAgent: 'T/1', token: 't' });
+		expect(f.mock.calls[0][0]).toBe('https://api.discogs.com/users/Some%20User/collection/folders/0/releases?page=2&per_page=100&sort=added&sort_order=desc');
+		expect(r.data.items).toEqual([{ id: 1 }]);
+		expect(r.data.pagination.pages).toBe(3);
+	});
+	it('requests the wants endpoint and returns wants as items', async () => {
+		const f = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ pagination: { page: 1, pages: 1, per_page: 1, items: 1, urls: {} }, wants: [{ id: 9 }] })));
+		vi.stubGlobal('fetch', f);
+		const r = await fetchListPage('wantlist', 'u', 1, 1, { userAgent: 'T/1' });
+		expect(f.mock.calls[0][0]).toBe('https://api.discogs.com/users/u/wants?page=1&per_page=1&sort=added&sort_order=desc');
+		expect(r.data.items).toEqual([{ id: 9 }]);
 	});
 });
