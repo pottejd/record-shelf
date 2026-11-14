@@ -45,7 +45,9 @@ jobs:
 
   e2e:
     name: E2E Tests
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest is now Ubuntu 26.04, which the installed Playwright
+    # (1.58) has no browser build for. Go back to ubuntu-latest after upgrading it.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
