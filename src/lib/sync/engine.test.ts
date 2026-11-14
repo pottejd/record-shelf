@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createEngine, type EngineState } from './engine';
+import { createEngine, COMPLETE_RETRY_MS, MIN_WAIT_MS, type EngineState } from './engine';
 import { FRESH_MS, MAX_WAIT_MS } from './types';
 
 type Item = { instance_id: number };
@@ -308,6 +308,45 @@ describe('review fixes', () => {
 		expect(order.filter((e) => e.startsWith('GET')).sort()).toEqual(['GET2', 'GET3', 'GET4', 'GET5', 'GET6', 'GET7', 'GET8']);
 		expect(engine.state.phase).toBe('done');
 		expect(engine.state.items.map((i) => i.instance_id)).toEqual(items(1, 800).map((i) => i.instance_id));
+	});
+	it('a one-page list started from Discogs sleeps the start reply\'s nextDelayMs once before complete (F2)', async () => {
+		let sleepsAtComplete: number[] | null = null;
+		const h: ReturnType<typeof harness> = harness((_m, _u, body) => {
+			if (body.action === 'start') return ok(1, 1, 40, items(1, 40), { profile, nextDelayMs: 5000 });
+			sleepsAtComplete = [...h.sleeps];
+			return { status: 'complete', snapshot: 'S1', completedAt: T0 + 1 };
+		}, null, { autoRefresh: false });
+		await h.engine.run();
+		expect(h.calls.map((c) => c.method + (c.body?.action ?? ''))).toEqual(['POSTstart', 'POSTcomplete']);
+		expect(sleepsAtComplete).toEqual([5000]);
+		expect(h.sleeps).toEqual([5000]);
+		expect(h.engine.state).toMatchObject({ phase: 'done', asOf: T0 + 1 });
+	});
+	it('a wait never spins: retryAfterMs 0 sleeps MIN_WAIT_MS, then doubles (F4)', async () => {
+		let waits = 0;
+		const h = harness((method, url, body) => {
+			if (method === 'POST') return body.action === 'start' ? ok(1, 2, 150, items(1, 100), { profile }) : { status: 'complete', snapshot: 'S1', completedAt: T0 };
+			return waits++ < 3 ? { status: 'wait', retryAfterMs: 0 } : ok(2, 2, 150, items(101, 50));
+		}, null, { autoRefresh: false });
+		await h.engine.run();
+		expect(h.sleeps).toEqual([1100, 1000, 2000, 4000]);
+		expect(h.engine.state.phase).toBe('done');
+		expect(MIN_WAIT_MS).toBe(1000);
+	});
+	it('pauses COMPLETE_RETRY_MS after refetching missing pages, before asking complete again (F5)', async () => {
+		let completes = 0;
+		let sleepsAtSecondComplete: number[] | null = null;
+		const h: ReturnType<typeof harness> = harness((method, url, body) => {
+			if (method === 'GET') return ok(pageOfUrl(url), 2, 150, items(101, 50));
+			if (body.action === 'start') return ok(1, 2, 150, items(1, 100), { profile });
+			if (completes++ === 0) return { status: 'incomplete', missing: [2] };
+			sleepsAtSecondComplete = [...h.sleeps];
+			return { status: 'complete', snapshot: 'S1', completedAt: T0 + 5 };
+		}, null, { autoRefresh: false });
+		await h.engine.run();
+		expect(sleepsAtSecondComplete).toEqual([1100, 1100, 2000]);
+		expect(h.engine.state).toMatchObject({ phase: 'done', asOf: T0 + 5 });
+		expect(COMPLETE_RETRY_MS).toBe(2000);
 	});
 	it('an unexpected exception ends the flow as a NETWORK error and is logged once', async () => {
 		const log = vi.spyOn(console, 'error').mockImplementation(() => {});

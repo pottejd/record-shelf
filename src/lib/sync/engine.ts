@@ -64,6 +64,10 @@ export const FLUSH_EVERY_PAGES = 3;
 export const MAX_RESTARTS = 2;
 export const MAX_COMPLETE_ATTEMPTS = 3;
 export const MAX_NETWORK_RETRIES = 3;
+/** The shortest wait, so a `retryAfterMs` of 0 never retries in a tight loop. */
+export const MIN_WAIT_MS = 1000;
+/** The pause before asking `complete` again, so the store's key listing can catch up. */
+export const COMPLETE_RETRY_MS = 2000;
 
 const NETWORK_RETRY_BASE_MS = 2000;
 const NETWORK_MESSAGE = 'Could not reach the server';
@@ -183,7 +187,8 @@ export function createEngine<T>(options: EngineOptions<T>): Engine<T> {
 			checkLive(guard);
 
 			if (reply?.status === 'wait') {
-				const delay = Math.min((reply as SyncWait).retryAfterMs * 2 ** waits++, MAX_WAIT_MS);
+				const floor = Math.max((reply as SyncWait).retryAfterMs, MIN_WAIT_MS);
+				const delay = Math.min(floor * 2 ** waits++, MAX_WAIT_MS);
 				update({ phase: 'waiting', resumeAt: now() + delay });
 				await sleep(delay);
 				checkLive(guard);
@@ -308,6 +313,9 @@ export function createEngine<T>(options: EngineOptions<T>): Engine<T> {
 
 		let completedAt: number | null = null;
 		if (!pass.complete && pass.allStored) {
+			// KV takes one write a second per key: start has just written meta, and
+			// complete writes it again. Longer passes are already paced past that.
+			if (pass.totalPages === 1 && pass.nextDelayMs > 0) await sleep(pass.nextDelayMs);
 			for (let attempt = 1; ; attempt++) {
 				const reply = await call<Completion>(base, { action: 'complete', snapshot: pass.snapshot }, ['complete', 'incomplete']);
 				if (reply.status === 'complete') {
@@ -316,6 +324,7 @@ export function createEngine<T>(options: EngineOptions<T>): Engine<T> {
 				}
 				if (attempt === MAX_COMPLETE_ATTEMPTS) break;
 				await fetchPaced(pass, reply.missing);
+				await sleep(COMPLETE_RETRY_MS);
 			}
 		}
 		update({
