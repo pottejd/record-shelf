@@ -4,11 +4,10 @@ import { test, expect } from '@playwright/test';
 // headers hooks.server.ts attaches, the kit.csp policy, the unauthenticated
 // redirect gate, and the public widget endpoint.
 //
-// Note: /u/[username] fetches Discogs *server-side* in its load function, which
-// Playwright's page.route (browser-only) cannot intercept — so these tests cover
-// the auth gate (which needs no upstream call) rather than a stubbed collection
-// render. They assume the preview server runs without a DISCOGS_TOKEN, which is
-// the CI default.
+// Note: page loads read only the stored copy and never call Discogs, so there is
+// no upstream request for Playwright's page.route to stub. These tests cover the
+// auth gate, which needs no upstream call. No server token exists: Discogs is
+// only ever called with the visitor's own token.
 
 test.describe('Security headers', () => {
 	test('home response carries the hardening headers', async ({ page }) => {

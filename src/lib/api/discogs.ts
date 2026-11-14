@@ -3,17 +3,14 @@ import type {
 	DiscogsCollectionItem,
 	DiscogsPagination,
 	DiscogsUserProfile,
-	DiscogsWantlistItem,
 	DiscogsWantlistResponse,
-	CollectionStats,
-	UserCollection
+	CollectionStats
 } from '$lib/types/discogs';
 import { TOP_LIST_LIMIT, GRID_PREVIEW_LIMIT } from '$lib/constants';
 import { cleanArtistName } from '$lib/utils/discogs';
 import { DEFAULT_RETRY_AFTER_MS, type SyncKind } from '$lib/sync/types';
 
 const DISCOGS_API_BASE = 'https://api.discogs.com';
-const PER_PAGE = 100; // Max allowed by Discogs
 
 export class DiscogsAPIError extends Error {
 	constructor(
@@ -30,67 +27,6 @@ export class DiscogsAPIError extends Error {
 interface FetchOptions {
 	userAgent: string;
 	token?: string;
-}
-
-const MAX_RETRIES = 3;
-const BASE_DELAY_MS = 1000;
-
-async function fetchDiscogs<T>(
-	endpoint: string,
-	options: FetchOptions
-): Promise<T> {
-	const headers: Record<string, string> = {
-		'User-Agent': options.userAgent,
-		Accept: 'application/vnd.discogs.v2.discogs+json'
-	};
-
-	if (options.token) {
-		headers['Authorization'] = `Discogs token=${options.token}`;
-	}
-
-	for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-		const response = await fetch(`${DISCOGS_API_BASE}${endpoint}`, { headers });
-
-		if (response.ok) {
-			try {
-				return await response.json();
-			} catch {
-				throw new DiscogsAPIError('Invalid response from Discogs', 502, 'BAD_RESPONSE');
-			}
-		}
-
-		if (response.status === 401) {
-			throw new DiscogsAPIError('Invalid or expired Discogs token', 401, 'BAD_TOKEN');
-		}
-		if (response.status === 404) {
-			throw new DiscogsAPIError('User not found', 404, 'NOT_FOUND');
-		}
-		if (response.status === 403) {
-			throw new DiscogsAPIError('Collection is private', 403, 'PRIVATE');
-		}
-
-		if (response.status === 429 && attempt < MAX_RETRIES) {
-			// Retry-After may be a non-numeric HTTP-date; fall back to exponential
-			// backoff rather than parsing to NaN (which would retry near-instantly).
-			const retryAfter = parseInt(response.headers.get('Retry-After') ?? '', 10);
-			const delay =
-				Number.isFinite(retryAfter) && retryAfter >= 0
-					? retryAfter * 1000
-					: BASE_DELAY_MS * Math.pow(2, attempt);
-			await new Promise((resolve) => setTimeout(resolve, delay));
-			continue;
-		}
-
-		if (response.status === 429) {
-			throw new DiscogsAPIError('Rate limited - please try again later', 429, 'RATE_LIMITED');
-		}
-		// Don't couple our error surface to Discogs': log the real status server-side
-		// and return a generic upstream-failure error to the caller.
-		console.error(`Unexpected Discogs API response: ${response.status} ${response.statusText}`);
-		throw new DiscogsAPIError('Discogs API request failed', 502, 'UPSTREAM_ERROR');
-	}
-
-	throw new DiscogsAPIError('Max retries exceeded', 429, 'RATE_LIMITED');
 }
 
 export interface DiscogsResult<T> {
@@ -207,88 +143,6 @@ export async function fetchListPage(
 		data: { items: r.data.wants, pagination: r.data.pagination },
 		remaining: r.remaining
 	};
-}
-
-export async function fetchUserProfile(
-	username: string,
-	options: FetchOptions
-): Promise<DiscogsUserProfile> {
-	return fetchDiscogs<DiscogsUserProfile>(`/users/${encodeURIComponent(username)}`, options);
-}
-
-export async function fetchCollectionPage(
-	username: string,
-	page: number,
-	options: FetchOptions
-): Promise<{ items: DiscogsCollectionItem[]; pagination: DiscogsPagination }> {
-	const response = await fetchDiscogs<DiscogsCollectionResponse>(
-		`/users/${encodeURIComponent(username)}/collection/folders/0/releases?page=${page}&per_page=${PER_PAGE}&sort=added&sort_order=desc`,
-		options
-	);
-	return { items: response.releases, pagination: response.pagination };
-}
-
-export async function fetchUserCollection(
-	username: string,
-	options: FetchOptions,
-	maxPages?: number,
-	onProgress?: (fetched: number, total: number) => void
-): Promise<{ items: DiscogsCollectionItem[]; totalItems: number; totalPages: number }> {
-	const allItems: DiscogsCollectionItem[] = [];
-	let page = 1;
-	let totalPages = 1;
-	let totalItems = 0;
-	const pageLimit = maxPages ?? Infinity;
-
-	while (page <= totalPages && page <= pageLimit) {
-		const response = await fetchDiscogs<DiscogsCollectionResponse>(
-			`/users/${encodeURIComponent(username)}/collection/folders/0/releases?page=${page}&per_page=${PER_PAGE}&sort=added&sort_order=desc`,
-			options
-		);
-
-		allItems.push(...response.releases);
-		totalPages = response.pagination.pages;
-		totalItems = response.pagination.items;
-
-		if (onProgress) {
-			onProgress(allItems.length, totalItems);
-		}
-
-		page++;
-
-		// Respect Discogs rate limit (~60 req/min for authenticated users)
-		if (page <= totalPages && page <= pageLimit) {
-			await new Promise((resolve) => setTimeout(resolve, 1100));
-		}
-	}
-
-	return { items: allItems, totalItems, totalPages };
-}
-
-export async function fetchUserWantlist(
-	username: string,
-	options: FetchOptions
-): Promise<DiscogsWantlistItem[]> {
-	const allItems: DiscogsWantlistItem[] = [];
-	let page = 1;
-	let totalPages = 1;
-
-	while (page <= totalPages) {
-		const response = await fetchDiscogs<DiscogsWantlistResponse>(
-			`/users/${encodeURIComponent(username)}/wants?page=${page}&per_page=${PER_PAGE}&sort=added&sort_order=desc`,
-			options
-		);
-
-		allItems.push(...response.wants);
-		totalPages = response.pagination.pages;
-		page++;
-
-		if (page <= totalPages) {
-			await new Promise((resolve) => setTimeout(resolve, 1100));
-		}
-	}
-
-	return allItems;
 }
 
 export function computeCollectionStats(items: DiscogsCollectionItem[]): CollectionStats {
@@ -468,24 +322,5 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 		averageRating,
 		ratedCount,
 		topRatedItems
-	};
-}
-
-export async function fetchFullUserCollection(
-	username: string,
-	options: FetchOptions,
-	maxPages?: number,
-	onProgress?: (fetched: number, total: number) => void
-): Promise<UserCollection> {
-	const profile = await fetchUserProfile(username, options);
-	const { items, totalItems } = await fetchUserCollection(username, options, maxPages, onProgress);
-	const stats = computeCollectionStats(items);
-
-	return {
-		profile,
-		items,
-		stats,
-		fetchedAt: Date.now(),
-		totalDiscogsItems: totalItems
 	};
 }

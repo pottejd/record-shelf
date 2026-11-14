@@ -130,14 +130,6 @@ export interface CollectionStats {
 	topRatedItems: DiscogsCollectionItem[];
 }
 
-export interface UserCollection {
-	profile: DiscogsUserProfile;
-	items: DiscogsCollectionItem[];
-	stats: CollectionStats;
-	fetchedAt: number;
-	totalDiscogsItems: number;
-}
-
 export interface DiscogsWantlistItem {
 	id: number;
 	rating: number;
@@ -149,12 +141,4 @@ export interface DiscogsWantlistItem {
 export interface DiscogsWantlistResponse {
 	pagination: DiscogsPagination;
 	wants: DiscogsWantlistItem[];
-}
-
-export interface CachedCollection {
-	data: UserCollection;
-	cachedAt: number;
-	expiresAt: number;
-	/** Hard expiry for stale-while-revalidate. Optional for backward-compat with legacy entries. */
-	staleUntil?: number;
 }

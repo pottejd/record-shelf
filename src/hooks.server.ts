@@ -13,11 +13,6 @@ if (!building && env.ADAPTER === 'node') {
 			`[record-shelf] ORIGIN is not a valid https URL ("${origin ?? ''}") — set it via "docker run -e ORIGIN=https://your.domain" or SvelteKit's CSRF/origin checks may reject requests behind a proxy.`
 		);
 	}
-	if (!env.DISCOGS_TOKEN) {
-		console.warn(
-			'[record-shelf] DISCOGS_TOKEN is not set — each user must supply their own Discogs token.'
-		);
-	}
 }
 
 /**

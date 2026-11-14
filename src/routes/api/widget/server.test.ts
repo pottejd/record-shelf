@@ -1,122 +1,48 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-const { mockEnv, kvStore } = vi.hoisted(() => ({
-	mockEnv: {} as Record<string, string>,
-	kvStore: new Map<string, unknown>()
-}));
-
-vi.mock('@sveltejs/kit', () => ({
-	json: (data: unknown, init?: ResponseInit) =>
-		new Response(JSON.stringify(data), {
-			status: (init as any)?.status ?? 200,
-			headers: { 'content-type': 'application/json', ...((init as any)?.headers ?? {}) }
-		})
-}));
-
+const { mockEnv } = vi.hoisted(() => ({ mockEnv: {} as Record<string, string> }));
 vi.mock('$env/dynamic/private', () => ({ env: mockEnv }));
-vi.mock('$lib/constants', () => ({ USER_AGENT: 'TestAgent/1.0' }));
-
-vi.mock('$lib/api/discogs', () => {
-	class DiscogsAPIError extends Error {
-		status: number;
-		code?: string;
-		constructor(message: string, status: number, code?: string) {
-			super(message);
-			this.name = 'DiscogsAPIError';
-			this.status = status;
-			this.code = code;
-		}
-	}
-	return {
-		fetchUserProfile: vi.fn(),
-		fetchCollectionPage: vi.fn(),
-		DiscogsAPIError
-	};
-});
-
-vi.mock('$lib/server/cache', () => ({
-	kvGetJSON: vi.fn(async (_platform: unknown, key: string) => kvStore.get(key) ?? null),
-	kvPutJSON: vi.fn(async (_platform: unknown, key: string, value: unknown) => {
-		kvStore.set(key, value);
-	})
-}));
+const fetchSpy = vi.fn();
+vi.stubGlobal('fetch', fetchSpy);
 
 import { GET } from './+server';
-import { fetchUserProfile, fetchCollectionPage, DiscogsAPIError } from '$lib/api/discogs';
+import { getStore, resetMemoryStoreForTests } from '$lib/server/store';
+import { metaKey } from '$lib/server/sync';
 
-function event() {
-	return { platform: {} } as any;
-}
+const event = () => ({ platform: undefined, url: new URL('https://shelf.example/api/widget') }) as any;
+
+beforeEach(() => { resetMemoryStoreForTests(); vi.clearAllMocks(); for (const k of Object.keys(mockEnv)) delete mockEnv[k]; mockEnv.DISCOGS_TOKEN = 'must-be-ignored'; });
 
 describe('widget endpoint', () => {
-	beforeEach(() => {
-		vi.resetAllMocks();
-		kvStore.clear();
-		mockEnv.WIDGET_USERNAME = 'pottejd';
-		mockEnv.DISCOGS_TOKEN = '';
-	});
-
-	it('returns the cached payload without fetching when KV has one', async () => {
-		const cached = { appName: 'Record Shelf', items: [{ label: 'x', value: 'y', type: 'z' }] };
-		kvStore.set('widget:pottejd', cached);
-
+	it('builds from the stored meta with no Discogs call and no store write', async () => {
+		const store = getStore(undefined);
+		await store.putJSON(metaKey('collection', 'pottejd'), {
+			profile: {}, pending: null,
+			current: { id: '1', totalItems: 1234, totalPages: 13, startedAt: 1, completedAt: 2 },
+			recent: [{ artist: 'A', title: 'One' }, { artist: 'B', title: 'Two' }, { artist: 'C', title: 'Three' }]
+		}, 60);
+		const put = vi.spyOn(store, 'putJSON');
 		const res = await GET(event());
-		const data = await res.json();
-
-		expect(data).toEqual(cached);
-		expect(fetchUserProfile).not.toHaveBeenCalled();
+		const body = await res.json();
+		expect(body.items).toEqual([
+			{ label: 'Collection', value: '1234 records', type: 'highlight' },
+			{ label: 'Recent', value: 'A - One', type: 'secondary' },
+			{ label: 'Recent', value: 'B - Two', type: 'secondary' },
+			{ label: 'Recent', value: 'C - Three', type: 'secondary' }
+		]);
+		expect(body.url).toBe('https://shelf.example');
 		expect(res.headers.get('access-control-allow-origin')).toBe('*');
+		expect(res.headers.get('cache-control')).toBe('public, max-age=300');
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(put).not.toHaveBeenCalled();
 	});
-
-	it('returns a "Token not configured" fallback when no token is set', async () => {
-		const res = await GET(event());
-		const data = await res.json();
-
-		expect(data.appName).toBe('Record Shelf');
-		expect(data.items[0].value).toBe('Token not configured');
-		expect(fetchCollectionPage).not.toHaveBeenCalled();
+	it('says "Not loaded yet" when nothing is stored, still without calling Discogs', async () => {
+		const body = await (await GET(event())).json();
+		expect(body.items).toEqual([{ label: 'Status', value: 'Not loaded yet', type: 'secondary' }]);
+		expect(fetchSpy).not.toHaveBeenCalled();
 	});
-
-	it('builds a collection count plus recent items and caches the result', async () => {
-		mockEnv.DISCOGS_TOKEN = 'server-token';
-		vi.mocked(fetchUserProfile).mockResolvedValue({ num_collection: 1234 } as any);
-		vi.mocked(fetchCollectionPage).mockResolvedValue({
-			items: [
-				{ basic_information: { artists: [{ name: 'Radiohead' }], title: 'OK Computer' } },
-				{ basic_information: { artists: [{ name: 'Portishead' }], title: 'Dummy' } }
-			],
-			pagination: {}
-		} as any);
-
-		const res = await GET(event());
-		const data = await res.json();
-
-		expect(data.items[0]).toMatchObject({ label: 'Collection', value: '1234 records' });
-		expect(data.items.some((i: any) => i.value.includes('OK Computer'))).toBe(true);
-		expect(kvStore.get('widget:pottejd')).toBeTruthy();
-	});
-
-	it('falls back to "0 records" when the profile has no collection count', async () => {
-		mockEnv.DISCOGS_TOKEN = 'server-token';
-		vi.mocked(fetchUserProfile).mockResolvedValue({} as any);
-		vi.mocked(fetchCollectionPage).mockResolvedValue({ items: [], pagination: {} } as any);
-
-		const res = await GET(event());
-		const data = await res.json();
-		expect(data.items[0].value).toBe('0 records');
-	});
-
-	it('returns the Discogs error message in a fallback on failure', async () => {
-		mockEnv.DISCOGS_TOKEN = 'server-token';
-		vi.mocked(fetchUserProfile).mockRejectedValue(
-			new (DiscogsAPIError as any)('User not found', 404, 'NOT_FOUND')
-		);
-		vi.mocked(fetchCollectionPage).mockRejectedValue(
-			new (DiscogsAPIError as any)('User not found', 404, 'NOT_FOUND')
-		);
-
-		const res = await GET(event());
-		const data = await res.json();
-		expect(data.items[0].value).toBe('User not found');
+	it('uses WIDGET_USERNAME when set', async () => {
+		mockEnv.WIDGET_USERNAME = 'Other';
+		await getStore(undefined).putJSON(metaKey('collection', 'other'), { profile: {}, pending: null, recent: [], current: { id: '1', totalItems: 5, totalPages: 1, startedAt: 1, completedAt: 2 } }, 60);
+		expect((await (await GET(event())).json()).items[0].value).toBe('5 records');
 	});
 });
