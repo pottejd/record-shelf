@@ -67,4 +67,28 @@ describe('ValueEstimate component', () => {
 
 		expect(await screen.findByText('Discogs token required')).toBeInTheDocument();
 	});
+
+	it('requests the same release ids on every mount, regardless of item order', async () => {
+		const bodies: string[] = [];
+		vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+			if (url.includes('/api/value/')) bodies.push(init!.body as string);
+			return { ok: true, json: async () => ({ totalValue: 0, pricedCount: 0, totalRequested: 20, currency: 'USD', results: [], history: [] }) } as any;
+		}));
+		for (const list of [makeItems(200), makeItems(200).reverse()]) {
+			const { unmount } = render(ValueEstimate, { props: { items: list, username: 'u' } });
+			await fireEvent.click(screen.getByRole('button'));
+			await vi.waitFor(() => expect(bodies.length).toBeGreaterThan(0));
+			unmount();
+		}
+		expect(bodies[0]).toBe(bodies[1]);
+		expect(JSON.parse(bodies[0]).releaseIds).toHaveLength(20);
+	});
+	it('a partial estimate says so and is not recorded in value history', async () => {
+		const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => ({ totalValue: 30, pricedCount: 3, totalRequested: 20, currency: 'USD', retryAfterMs: 30000, results: [] }) }) as any);
+		vi.stubGlobal('fetch', fetchMock);
+		render(ValueEstimate, { props: { items: makeItems(200), username: 'u' } });
+		await fireEvent.click(screen.getByRole('button'));
+		expect(await screen.findByText('Discogs is busy — this is a partial estimate. Try again in a minute.')).toBeInTheDocument();
+		expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/api/value-history/'))).toBe(false);
+	});
 });

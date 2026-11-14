@@ -1,9 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-const { mockEnv, kvStore } = vi.hoisted(() => ({
-	mockEnv: {} as Record<string, string>,
-	kvStore: new Map<string, unknown>()
-}));
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@sveltejs/kit', () => ({
 	json: (data: unknown, init?: ResponseInit) =>
@@ -20,22 +15,14 @@ vi.mock('@sveltejs/kit', () => ({
 	}
 }));
 
-vi.mock('$env/dynamic/private', () => ({ env: mockEnv }));
-
-vi.mock('$lib/server/cache', () => ({
-	kvGetJSON: vi.fn(async (_platform: unknown, key: string) => kvStore.get(key) ?? null),
-	kvPutJSON: vi.fn(async (_platform: unknown, key: string, value: unknown) => {
-		kvStore.set(key, value);
-	})
-}));
-
 import { GET, POST } from './+server';
+import { getStore, resetMemoryStoreForTests } from '$lib/server/store';
 
 const KEY = 'value-history:testuser';
 
 function event(opts: { token?: string; body?: unknown } = {}) {
 	const cookies = { get: (n: string) => (n === 'discogs_token' ? opts.token : undefined) };
-	const base: any = { params: { username: 'testuser' }, platform: {}, cookies };
+	const base: any = { params: { username: 'testuser' }, platform: undefined, cookies };
 	if (opts.body !== undefined) {
 		base.request = new Request('http://localhost/api/value-history/testuser', {
 			method: 'POST',
@@ -48,8 +35,12 @@ function event(opts: { token?: string; body?: unknown } = {}) {
 
 describe('value-history endpoint', () => {
 	beforeEach(() => {
-		kvStore.clear();
-		mockEnv.DISCOGS_TOKEN = '';
+		resetMemoryStoreForTests();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+		delete (globalThis as any).process.env.DISCOGS_TOKEN;
 	});
 
 	it('GET requires a token', async () => {
@@ -62,15 +53,15 @@ describe('value-history endpoint', () => {
 	});
 
 	it('GET tolerates a non-array stored payload by returning empty', async () => {
-		kvStore.set(KEY, { not: 'an array' });
+		await getStore(undefined).putJSON(KEY, { not: 'an array' }, 1000);
 		const res = await GET(event({ token: 'tok' }));
 		expect(await res.json()).toEqual({ history: [] });
 	});
 
-	it('GET falls back to the env token', async () => {
-		mockEnv.DISCOGS_TOKEN = 'env-token';
-		const res = await GET(event());
-		expect(res.status).toBe(200);
+	it('401 on GET and POST when only DISCOGS_TOKEN is set (no cookie)', async () => {
+		(globalThis as any).process.env.DISCOGS_TOKEN = 'env-token';
+		await expect(GET(event())).rejects.toMatchObject({ status: 401 });
+		await expect(POST(event({ body: { value: 100 } }))).rejects.toMatchObject({ status: 401 });
 	});
 
 	it('POST requires a token', async () => {
@@ -83,6 +74,13 @@ describe('value-history endpoint', () => {
 		expect(data.history).toHaveLength(1);
 		expect(data.history[0]).toMatchObject({ value: 250, currency: 'USD' });
 		expect(data.history[0].date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+	});
+
+	it('POST fails with a 5xx when the history cannot be written', async () => {
+		vi.spyOn(getStore(undefined), 'putJSON').mockResolvedValue(false);
+		await expect(
+			POST(event({ token: 'tok', body: { value: 250, currency: 'USD' } }))
+		).rejects.toMatchObject({ status: 500 });
 	});
 
 	it('POST rejects a non-numeric value', async () => {
@@ -126,7 +124,7 @@ describe('value-history endpoint', () => {
 			value: i,
 			currency: 'USD'
 		}));
-		kvStore.set(KEY, seeded);
+		await getStore(undefined).putJSON(KEY, seeded, 1000);
 
 		const res = await POST(event({ token: 'tok', body: { value: 999, currency: 'USD' } }));
 		const data = await res.json();

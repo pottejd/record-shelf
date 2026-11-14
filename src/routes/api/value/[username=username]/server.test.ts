@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const { mockEnv } = vi.hoisted(() => ({
-	mockEnv: {} as Record<string, string>
-}));
-
 vi.mock('@sveltejs/kit', () => ({
 	json: (data: unknown, init?: ResponseInit) =>
 		new Response(JSON.stringify(data), {
@@ -17,39 +13,35 @@ vi.mock('@sveltejs/kit', () => ({
 	}
 }));
 
-vi.mock('$env/dynamic/private', () => ({ env: mockEnv }));
-vi.mock('$lib/constants', () => ({ USER_AGENT: 'TestAgent/1.0' }));
+import { POST } from './+server';
+import { getStore, resetMemoryStoreForTests } from '$lib/server/store';
 
 describe('value endpoint', () => {
-	let POST: typeof import('./+server').POST;
-	let mockFetch: ReturnType<typeof vi.fn>;
-
-	beforeEach(async () => {
+	beforeEach(() => {
 		vi.useFakeTimers();
-		vi.resetModules();
-		mockFetch = vi.fn();
-		vi.stubGlobal('fetch', mockFetch);
-		mockEnv.DISCOGS_TOKEN = '';
-
-		const mod = await import('./+server');
-		POST = mod.POST;
+		resetMemoryStoreForTests();
+		vi.stubGlobal('fetch', vi.fn());
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
 		vi.unstubAllGlobals();
-		delete mockEnv.DISCOGS_TOKEN;
+		delete (globalThis as any).process.env.DISCOGS_TOKEN;
 	});
 
-	function makeEvent(releaseIds: unknown, token?: string) {
-		const headers: Record<string, string> = { 'content-type': 'application/json' };
-		if (token) headers['x-discogs-token'] = token;
+	function makeEvent(opts: {
+		releaseIds: unknown;
+		cookieToken?: string;
+		headers?: Record<string, string>;
+		body?: string;
+	}) {
 		return {
 			params: { username: 'testuser' },
+			cookies: { get: (n: string) => (n === 'discogs_token' ? opts.cookieToken : undefined) },
 			request: new Request('http://localhost/api/value/testuser', {
 				method: 'POST',
-				body: JSON.stringify({ releaseIds }),
-				headers
+				body: opts.body ?? JSON.stringify({ releaseIds: opts.releaseIds }),
+				headers: { 'content-type': 'application/json', ...opts.headers }
 			})
 		} as any;
 	}
@@ -61,115 +53,103 @@ describe('value endpoint', () => {
 		const data: Record<string, { value: number; currency: string }> = {};
 		if (nearMint) data['Near Mint (NM or M-)'] = nearMint;
 		if (vgPlus) data['Very Good Plus (VG+)'] = vgPlus;
-		return { ok: true, json: async () => data };
+		return new Response(JSON.stringify(data));
 	}
 
 	it('returns 401 when no token provided', async () => {
-		await expect(POST(makeEvent([1]))).rejects.toMatchObject({ status: 401 });
+		await expect(POST(makeEvent({ releaseIds: [1] }))).rejects.toMatchObject({ status: 401 });
 	});
 
-	it('uses env DISCOGS_TOKEN as fallback', async () => {
-		mockEnv.DISCOGS_TOKEN = 'env-token';
-		mockFetch.mockResolvedValue(makePriceResponse({ value: 10, currency: 'USD' }));
+	it('401 without a token cookie even when DISCOGS_TOKEN and an x-discogs-token header are present', async () => {
+		(globalThis as any).process.env.DISCOGS_TOKEN = 'server';
+		await expect(POST(makeEvent({ cookieToken: undefined, headers: { 'x-discogs-token': 'hdr' }, releaseIds: [1] }))).rejects.toMatchObject({ status: 401 });
+		expect(fetch).not.toHaveBeenCalled();
+	});
 
-		const promise = POST(makeEvent([1]));
-		await vi.advanceTimersByTimeAsync(1200);
-		const response = await promise;
+	it('sends the cookie token to Discogs', async () => {
+		vi.mocked(fetch).mockResolvedValue(makePriceResponse({ value: 10, currency: 'USD' }));
 
-		expect(response.status).toBe(200);
-		expect(mockFetch).toHaveBeenCalledWith(
+		const promise = POST(makeEvent({ releaseIds: [1], cookieToken: 'cookie-token' }));
+		await vi.runAllTimersAsync();
+		await promise;
+
+		expect(fetch).toHaveBeenCalledWith(
 			expect.stringContaining('price_suggestions/1'),
 			expect.objectContaining({
-				headers: expect.objectContaining({ Authorization: 'Discogs token=env-token' })
+				headers: expect.objectContaining({ Authorization: 'Discogs token=cookie-token' })
 			})
 		);
 	});
 
 	it('returns 400 when releaseIds is missing', async () => {
-		const event = {
-			params: { username: 'testuser' },
-			request: new Request('http://localhost/api/value/testuser', {
-				method: 'POST',
-				body: JSON.stringify({}),
-				headers: { 'content-type': 'application/json', 'x-discogs-token': 'tok' }
-			})
-		} as any;
-		await expect(POST(event)).rejects.toMatchObject({ status: 400 });
+		await expect(
+			POST(makeEvent({ releaseIds: undefined, cookieToken: 'tok', body: JSON.stringify({}) }))
+		).rejects.toMatchObject({ status: 400 });
 	});
 
 	it('returns 400 when releaseIds is empty array', async () => {
-		await expect(POST(makeEvent([], 'tok'))).rejects.toMatchObject({ status: 400 });
+		await expect(POST(makeEvent({ releaseIds: [], cookieToken: 'tok' }))).rejects.toMatchObject({ status: 400 });
 	});
 
 	it('returns 400 when releaseIds is not an array', async () => {
-		await expect(POST(makeEvent('notarray', 'tok'))).rejects.toMatchObject({ status: 400 });
+		await expect(POST(makeEvent({ releaseIds: 'notarray', cookieToken: 'tok' }))).rejects.toMatchObject({ status: 400 });
 	});
 
 	it('caps releaseIds at 20 items', async () => {
 		const ids = Array.from({ length: 60 }, (_, i) => i + 1);
-		mockFetch.mockResolvedValue(makePriceResponse({ value: 5, currency: 'USD' }));
+		vi.mocked(fetch).mockImplementation(async () => makePriceResponse({ value: 5, currency: 'USD' }));
 
-		const promise = POST(makeEvent(ids, 'tok'));
-		await vi.advanceTimersByTimeAsync(60 * 1200);
-		const response = await promise;
-		const data = await response.json();
+		const promise = POST(makeEvent({ releaseIds: ids, cookieToken: 'tok' }));
+		await vi.runAllTimersAsync();
+		const data = await (await promise).json();
 
 		expect(data.totalRequested).toBe(20);
-		expect(mockFetch).toHaveBeenCalledTimes(20);
+		expect(fetch).toHaveBeenCalledTimes(20);
 	});
 
 	it('prefers NearMint over VG+', async () => {
-		mockFetch.mockResolvedValue(
-			makePriceResponse(
-				{ value: 25, currency: 'USD' },
-				{ value: 15, currency: 'USD' }
-			)
+		vi.mocked(fetch).mockResolvedValue(
+			makePriceResponse({ value: 25, currency: 'USD' }, { value: 15, currency: 'USD' })
 		);
 
-		const promise = POST(makeEvent([1], 'tok'));
-		await vi.advanceTimersByTimeAsync(1200);
-		const response = await promise;
-		const data = await response.json();
+		const promise = POST(makeEvent({ releaseIds: [1], cookieToken: 'tok' }));
+		await vi.runAllTimersAsync();
+		const data = await (await promise).json();
 
 		expect(data.results[0].lowestPrice).toBe(25);
 	});
 
 	it('falls back to VG+ when NearMint missing', async () => {
-		mockFetch.mockResolvedValue(
-			makePriceResponse(undefined, { value: 15, currency: 'EUR' })
-		);
+		vi.mocked(fetch).mockResolvedValue(makePriceResponse(undefined, { value: 15, currency: 'EUR' }));
 
-		const promise = POST(makeEvent([1], 'tok'));
-		await vi.advanceTimersByTimeAsync(1200);
-		const response = await promise;
-		const data = await response.json();
+		const promise = POST(makeEvent({ releaseIds: [1], cookieToken: 'tok' }));
+		await vi.runAllTimersAsync();
+		const data = await (await promise).json();
 
 		expect(data.results[0].lowestPrice).toBe(15);
 		expect(data.results[0].currency).toBe('EUR');
 	});
 
 	it('returns null price when no conditions available', async () => {
-		mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) });
+		vi.mocked(fetch).mockResolvedValue(new Response('{}'));
 
-		const promise = POST(makeEvent([1], 'tok'));
-		await vi.advanceTimersByTimeAsync(1200);
-		const response = await promise;
-		const data = await response.json();
+		const promise = POST(makeEvent({ releaseIds: [1], cookieToken: 'tok' }));
+		await vi.runAllTimersAsync();
+		const data = await (await promise).json();
 
 		expect(data.results[0].lowestPrice).toBeNull();
 		expect(data.results[0].currency).toBe('USD');
 	});
 
 	it('aggregates totalValue and pricedCount', async () => {
-		mockFetch
+		vi.mocked(fetch)
 			.mockResolvedValueOnce(makePriceResponse({ value: 10, currency: 'USD' }))
 			.mockResolvedValueOnce(makePriceResponse({ value: 20, currency: 'USD' }))
-			.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+			.mockResolvedValueOnce(new Response('{}'));
 
-		const promise = POST(makeEvent([1, 2, 3], 'tok'));
-		await vi.advanceTimersByTimeAsync(4 * 1200);
-		const response = await promise;
-		const data = await response.json();
+		const promise = POST(makeEvent({ releaseIds: [1, 2, 3], cookieToken: 'tok' }));
+		await vi.runAllTimersAsync();
+		const data = await (await promise).json();
 
 		expect(data.totalValue).toBe(30);
 		expect(data.pricedCount).toBe(2);
@@ -177,14 +157,13 @@ describe('value endpoint', () => {
 	});
 
 	it('sums only the dominant currency when results are mixed (no FX mixing)', async () => {
-		mockFetch
+		vi.mocked(fetch)
 			.mockResolvedValueOnce(makePriceResponse({ value: 10, currency: 'USD' }))
 			.mockResolvedValueOnce(makePriceResponse({ value: 100, currency: 'EUR' }));
 
-		const promise = POST(makeEvent([1, 2], 'tok'));
-		await vi.advanceTimersByTimeAsync(2 * 1200);
-		const response = await promise;
-		const data = await response.json();
+		const promise = POST(makeEvent({ releaseIds: [1, 2], cookieToken: 'tok' }));
+		await vi.runAllTimersAsync();
+		const data = await (await promise).json();
 
 		// Display currency is the first priced result's; the EUR item is excluded
 		// from the total rather than added as if it were USD.
@@ -194,134 +173,115 @@ describe('value endpoint', () => {
 	});
 
 	it('returns null price on fetch failure', async () => {
-		mockFetch.mockRejectedValue(new Error('Network error'));
+		vi.mocked(fetch).mockRejectedValue(new Error('Network error'));
 
-		const promise = POST(makeEvent([1], 'tok'));
-		await vi.advanceTimersByTimeAsync(1200);
-		const response = await promise;
-		const data = await response.json();
+		const promise = POST(makeEvent({ releaseIds: [1], cookieToken: 'tok' }));
+		await vi.runAllTimersAsync();
+		const data = await (await promise).json();
 
 		expect(data.results[0].lowestPrice).toBeNull();
+		expect(data.failedCount).toBe(1);
 		expect(data.totalValue).toBe(0);
 	});
 
 	it('returns null price on non-ok response', async () => {
-		mockFetch.mockResolvedValue({ ok: false, status: 404 });
+		vi.mocked(fetch).mockResolvedValue(new Response('{}', { status: 404 }));
 
-		const promise = POST(makeEvent([1], 'tok'));
-		await vi.advanceTimersByTimeAsync(1200);
-		const response = await promise;
-		const data = await response.json();
+		const promise = POST(makeEvent({ releaseIds: [1], cookieToken: 'tok' }));
+		await vi.runAllTimersAsync();
+		const data = await (await promise).json();
 
 		expect(data.results[0].lowestPrice).toBeNull();
+		expect(data.failedCount).toBe(1);
 	});
 
 	it('returns cached data without fetching again', async () => {
-		mockFetch.mockResolvedValue(makePriceResponse({ value: 42, currency: 'USD' }));
+		vi.mocked(fetch).mockResolvedValue(makePriceResponse({ value: 42, currency: 'USD' }));
 
-		// First call populates cache
-		const promise1 = POST(makeEvent([100], 'tok'));
-		await vi.advanceTimersByTimeAsync(1200);
+		const promise1 = POST(makeEvent({ releaseIds: [100], cookieToken: 'tok' }));
+		await vi.runAllTimersAsync();
 		await promise1;
 
-		expect(mockFetch).toHaveBeenCalledTimes(1);
+		expect(fetch).toHaveBeenCalledTimes(1);
 
-		// Second call should use cache
-		const promise2 = POST(makeEvent([100], 'tok'));
-		await vi.advanceTimersByTimeAsync(1200);
-		const response2 = await promise2;
-		const data = await response2.json();
+		const promise2 = POST(makeEvent({ releaseIds: [100], cookieToken: 'tok' }));
+		await vi.runAllTimersAsync();
+		const data = await (await promise2).json();
 
-		expect(mockFetch).toHaveBeenCalledTimes(1); // no additional fetch
+		expect(fetch).toHaveBeenCalledTimes(1); // no additional fetch
 		expect(data.results[0].lowestPrice).toBe(42);
 	});
 
-	it('refetches after cache TTL expires', async () => {
-		mockFetch
+	it('refetches after the price has expired', async () => {
+		vi.mocked(fetch)
 			.mockResolvedValueOnce(makePriceResponse({ value: 10, currency: 'USD' }))
 			.mockResolvedValueOnce(makePriceResponse({ value: 20, currency: 'USD' }));
 
-		// First call populates cache
-		const promise1 = POST(makeEvent([200], 'tok'));
-		await vi.advanceTimersByTimeAsync(1200);
+		const promise1 = POST(makeEvent({ releaseIds: [200], cookieToken: 'tok' }));
+		await vi.runAllTimersAsync();
 		await promise1;
 
-		// Advance past TTL (1 hour)
-		await vi.advanceTimersByTimeAsync(60 * 60 * 1000 + 1000);
+		// Advance past the 6-hour TTL
+		await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000 + 1000);
 
-		// Second call should refetch (cache expired)
-		const promise2 = POST(makeEvent([200], 'tok'));
-		await vi.advanceTimersByTimeAsync(1200);
-		const response2 = await promise2;
-		const data = await response2.json();
+		const promise2 = POST(makeEvent({ releaseIds: [200], cookieToken: 'tok' }));
+		await vi.runAllTimersAsync();
+		const data = await (await promise2).json();
 
-		expect(mockFetch).toHaveBeenCalledTimes(2);
+		expect(fetch).toHaveBeenCalledTimes(2);
 		expect(data.results[0].lowestPrice).toBe(20);
 	});
 
 	it('returns 400 on a malformed JSON body', async () => {
-		const event = {
-			params: { username: 'testuser' },
-			request: new Request('http://localhost/api/value/testuser', {
-				method: 'POST',
-				body: 'not-json{',
-				headers: { 'content-type': 'application/json', 'x-discogs-token': 'tok' }
-			})
-		} as any;
-		await expect(POST(event)).rejects.toMatchObject({ status: 400 });
+		await expect(
+			POST(makeEvent({ releaseIds: undefined, cookieToken: 'tok', body: 'not-json{' }))
+		).rejects.toMatchObject({ status: 400 });
 	});
 
 	it('returns 400 on a literal null JSON body (not a 500)', async () => {
-		const event = {
-			params: { username: 'testuser' },
-			request: new Request('http://localhost/api/value/testuser', {
-				method: 'POST',
-				body: 'null',
-				headers: { 'content-type': 'application/json', 'x-discogs-token': 'tok' }
-			})
-		} as any;
-		await expect(POST(event)).rejects.toMatchObject({ status: 400 });
+		await expect(
+			POST(makeEvent({ releaseIds: undefined, cookieToken: 'tok', body: 'null' }))
+		).rejects.toMatchObject({ status: 400 });
 	});
 
 	it('returns 400 when no valid positive integer ids remain', async () => {
-		await expect(POST(makeEvent(['x', -1, 0, 2.5], 'tok'))).rejects.toMatchObject({ status: 400 });
+		await expect(
+			POST(makeEvent({ releaseIds: ['x', -1, 0, 2.5], cookieToken: 'tok' }))
+		).rejects.toMatchObject({ status: 400 });
 	});
 
 	it('filters out non-integer ids and queries only the valid ones', async () => {
-		mockFetch.mockResolvedValue(makePriceResponse({ value: 5, currency: 'USD' }));
+		vi.mocked(fetch).mockImplementation(async () => makePriceResponse({ value: 5, currency: 'USD' }));
 
-		const promise = POST(makeEvent([1, 'x', -2, 3.5, 2], 'tok'));
-		await vi.advanceTimersByTimeAsync(3 * 1200);
-		const response = await promise;
-		const data = await response.json();
+		const promise = POST(makeEvent({ releaseIds: [1, 'x', -2, 3.5, 2], cookieToken: 'tok' }));
+		await vi.runAllTimersAsync();
+		const data = await (await promise).json();
 
 		expect(data.totalRequested).toBe(2);
-		expect(mockFetch).toHaveBeenCalledTimes(2);
+		expect(fetch).toHaveBeenCalledTimes(2);
 	});
 
-	it('prefers the discogs_token cookie over the env token', async () => {
-		mockEnv.DISCOGS_TOKEN = 'env-token';
-		mockFetch.mockResolvedValue(makePriceResponse({ value: 10, currency: 'USD' }));
+	it('stops at the first 429 and returns the partial result with retryAfterMs', async () => {
+		vi.mocked(fetch)
+			.mockResolvedValueOnce(new Response(JSON.stringify({ 'Near Mint (NM or M-)': { currency: 'USD', value: 10 } })))
+			.mockResolvedValueOnce(new Response('{}', { status: 429, headers: { 'Retry-After': '9' } }));
+		const p = POST(makeEvent({ cookieToken: 'tok', releaseIds: [1, 2, 3] }));
+		await vi.runAllTimersAsync();
+		const body = await (await p).json();
+		expect(fetch).toHaveBeenCalledTimes(2);
+		expect(body).toMatchObject({ retryAfterMs: 9000, totalRequested: 3, pricedCount: 1, totalValue: 10 });
+		expect(body.results.map((r: any) => r.releaseId)).toEqual([1]);
+	});
 
-		const event = {
-			params: { username: 'testuser' },
-			cookies: { get: (n: string) => (n === 'discogs_token' ? 'cookie-token' : undefined) },
-			request: new Request('http://localhost/api/value/testuser', {
-				method: 'POST',
-				body: JSON.stringify({ releaseIds: [1] }),
-				headers: { 'content-type': 'application/json' }
-			})
-		} as any;
-
-		const promise = POST(event);
-		await vi.advanceTimersByTimeAsync(1200);
-		await promise;
-
-		expect(mockFetch).toHaveBeenCalledWith(
-			expect.stringContaining('price_suggestions/1'),
-			expect.objectContaining({
-				headers: expect.objectContaining({ Authorization: 'Discogs token=cookie-token' })
-			})
-		);
+	it('uses a price stored within 6 hours without fetching, and refetches one older than 6 hours', async () => {
+		const store = getStore(undefined);
+		await store.putJSON('price:1', { lowestPrice: 5, currency: 'USD', timestamp: Date.now() - (6 * 3_600_000 - 1000) }, 99999);
+		await store.putJSON('price:2', { lowestPrice: 5, currency: 'USD', timestamp: Date.now() - 6 * 3_600_000 }, 99999);
+		vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ 'Near Mint (NM or M-)': { currency: 'USD', value: 8 } })));
+		const p = POST(makeEvent({ cookieToken: 'tok', releaseIds: [1, 2] }));
+		await vi.runAllTimersAsync();
+		const body = await (await p).json();
+		expect(fetch).toHaveBeenCalledTimes(1);
+		expect(body.totalValue).toBe(13);
 	});
 });

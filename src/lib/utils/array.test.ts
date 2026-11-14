@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { shuffleArray, sampleN } from './array';
+import { shuffleArray, sampleN, evenSample } from './array';
 
 describe('shuffleArray', () => {
 	it('returns a new array, not the same reference', () => {
@@ -55,5 +55,18 @@ describe('sampleN', () => {
 	it('returns an empty array for n = 0 or an empty input', () => {
 		expect(sampleN([1, 2, 3], 0)).toEqual([]);
 		expect(sampleN([], 5)).toEqual([]);
+	});
+});
+
+describe('evenSample', () => {
+	it('picks evenly spaced elements, the same ones every time', () => {
+		const a = Array.from({ length: 100 }, (_, i) => i);
+		expect(evenSample(a, 4)).toEqual([0, 25, 50, 75]);
+		expect(evenSample(a, 4)).toEqual(evenSample(a, 4));
+	});
+	it('returns everything when n exceeds the length, and [] for n <= 0 or an empty array', () => {
+		expect(evenSample([1, 2, 3], 20)).toEqual([1, 2, 3]);
+		expect(evenSample([1, 2, 3], 0)).toEqual([]);
+		expect(evenSample([], 5)).toEqual([]);
 	});
 });

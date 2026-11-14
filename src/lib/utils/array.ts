@@ -27,3 +27,16 @@ export function sampleN<T>(array: T[], n: number): T[] {
 	}
 	return result;
 }
+
+/**
+ * Returns `n` evenly spaced elements of `array` (all of it when n exceeds the
+ * length). Deterministic: the same input always gives the same sample.
+ */
+export function evenSample<T>(array: T[], n: number): T[] {
+	const count = Math.min(Math.max(n, 0), array.length);
+	const result: T[] = [];
+	for (let i = 0; i < count; i++) {
+		result.push(array[Math.floor((i * array.length) / count)]);
+	}
+	return result;
+}

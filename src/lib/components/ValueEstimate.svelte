@@ -1,23 +1,15 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
-	import { sampleN } from '$lib/utils/array';
+	import { evenSample } from '$lib/utils/array';
 
 	let { items, username }: { items: DiscogsCollectionItem[]; username: string } = $props();
 
-	// Memoize the sampled release ids so repeated estimates reuse the same set
-	// (and therefore the server's per-release price cache) instead of re-sampling.
-	let sampledIds: number[] | null = null;
-	// Invalidate the memoized sample when the collection changes (e.g. progressive
-	// loading grows `items`), so a re-estimate samples the current collection.
-	$effect(() => {
-		items;
-		sampledIds = null;
-	});
+	// The same 20 releases for every visitor and every visit (an even spread over
+	// the collection ordered by instance id), so the shared 6-hour price store is reused.
 	function getSampleIds(): number[] {
-		if (!sampledIds) {
-			sampledIds = sampleN(items, Math.min(items.length, 20)).map((i) => i.basic_information.id);
-		}
-		return sampledIds;
+		return evenSample([...items].sort((a, b) => a.instance_id - b.instance_id), 20).map(
+			(i) => i.basic_information.id
+		);
 	}
 
 	let loading = $state(false);
@@ -26,10 +18,12 @@
 		pricedCount: number;
 		totalRequested: number;
 		failedCount?: number;
+		retryAfterMs?: number;
 		currency: string;
 		results?: Array<{ releaseId: number; lowestPrice: number | null; currency: string }>;
 	} | null = $state(null);
 	let errorMsg = $state('');
+	let partial = $state(false);
 	let history = $state<Array<{ date: string; value: number; currency: string }>>([]);
 
 	// Top-priced items from the sampled results — surfaces the per-item prices the
@@ -54,6 +48,7 @@
 	async function estimateValue() {
 		loading = true;
 		errorMsg = '';
+		partial = false;
 		result = null;
 
 		try {
@@ -83,6 +78,9 @@
 			}
 
 			result = data;
+			partial = typeof data.retryAfterMs === 'number';
+			// A partial estimate (Discogs rate-limited us) must not become a snapshot.
+			if (partial) return;
 
 			// Record a value snapshot and load the trend (non-fatal if it fails).
 			try {
@@ -122,6 +120,9 @@
 					(extrapolated from 20-item sample)
 				{/if}
 			</span>
+			{#if partial}
+				<span class="value-warning">Discogs is busy — this is a partial estimate. Try again in a minute.</span>
+			{/if}
 			{#if result.failedCount && result.failedCount > 0}
 				<span class="value-warning">
 					⚠ {result.failedCount} price lookup{result.failedCount === 1 ? '' : 's'} failed — this estimate may be incomplete.

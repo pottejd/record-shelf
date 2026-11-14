@@ -1,8 +1,9 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
 import { USER_AGENT } from '$lib/constants';
-import { kvGetJSON, kvPutJSON } from '$lib/server/cache';
+import { DiscogsAPIError, discogsGet } from '$lib/api/discogs';
+import { getStore } from '$lib/server/store';
+import { PACE_MS, PRICE_TTL_SECONDS } from '$lib/sync/types';
 
 interface PriceSuggestion {
 	[condition: string]: {
@@ -17,86 +18,9 @@ interface CachedPrice {
 	timestamp: number;
 }
 
-// LRU price cache (survives across requests, cleared on redeploy)
-const MAX_CACHE_SIZE = 2000;
-const priceCache = new Map<number, CachedPrice>();
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-// Per-request id cap: the price loop sleeps ~1.1s before each uncached fetch, so
-// a fresh estimate runs ~N*1.1s. Cap N to keep a cold request well under typical
-// proxy/browser timeouts; results are extrapolated from the sample anyway.
+// Per-request id cap: each uncached id costs one paced Discogs call, so a cold
+// request runs ~N*1.1s. Results are extrapolated from the sample anyway.
 const MAX_RELEASE_IDS = 20;
-
-function getCached(key: number): CachedPrice | undefined {
-	const entry = priceCache.get(key);
-	if (!entry) return undefined;
-	// Move to end (most recently used)
-	priceCache.delete(key);
-	priceCache.set(key, entry);
-	return entry;
-}
-
-function setCache(key: number, value: CachedPrice) {
-	priceCache.delete(key); // Remove if exists to refresh position
-	if (priceCache.size >= MAX_CACHE_SIZE) {
-		// Evict oldest (first) entry
-		const oldest = priceCache.keys().next().value;
-		if (oldest !== undefined) priceCache.delete(oldest);
-	}
-	priceCache.set(key, value);
-}
-
-const CACHE_TTL_SECONDS = Math.floor(CACHE_TTL_MS / 1000);
-
-// KV-backed price cache (shared across isolates) with the in-memory LRU as a
-// fast/local fallback when KV isn't available (dev / adapter-node).
-async function getCachedPrice(
-	platform: App.Platform | undefined,
-	releaseId: number
-): Promise<CachedPrice | undefined> {
-	const fromKv = await kvGetJSON<CachedPrice>(platform, `price:${releaseId}`);
-	if (fromKv) return fromKv;
-	return getCached(releaseId);
-}
-
-async function setCachedPrice(
-	platform: App.Platform | undefined,
-	releaseId: number,
-	value: CachedPrice
-): Promise<void> {
-	setCache(releaseId, value);
-	await kvPutJSON(platform, `price:${releaseId}`, value, CACHE_TTL_SECONDS);
-}
-
-// Serialized rate limiter using a promise chain to prevent race conditions
-let rateLimitChain = Promise.resolve();
-const MIN_DELAY_MS = 1100; // ~54 req/min, safely under Discogs' 60/min limit
-
-async function rateLimitedFetch(url: string, headers: Record<string, string>): Promise<Response> {
-	let resolve!: (value: Response) => void;
-	let reject!: (reason: unknown) => void;
-	const result = new Promise<Response>((res, rej) => { resolve = res; reject = rej; });
-
-	rateLimitChain = rateLimitChain.then(async () => {
-		try {
-			await new Promise((r) => setTimeout(r, MIN_DELAY_MS));
-			let response = await fetch(url, { headers });
-			// Retry transient 429s (unlike before, where a 429 silently yielded null).
-			let retries = 0;
-			while (response.status === 429 && retries < 2) {
-				const retryAfter = response.headers.get('Retry-After');
-				const wait = retryAfter ? parseInt(retryAfter, 10) * 1000 : MIN_DELAY_MS * (retries + 1);
-				await new Promise((r) => setTimeout(r, wait));
-				response = await fetch(url, { headers });
-				retries++;
-			}
-			resolve(response);
-		} catch (e) {
-			reject(e);
-		}
-	});
-
-	return result;
-}
 
 export const POST: RequestHandler = async ({ params, request, cookies, platform }) => {
 	const { username } = params;
@@ -123,61 +47,54 @@ export const POST: RequestHandler = async ({ params, request, cookies, platform 
 		throw error(400, 'releaseIds must contain at least one valid release id');
 	}
 
-	// Resolve the token the same way /api/collection does: the caller's own
-	// cookie token first, so an authenticated user's quota is used rather than
-	// the server env token (which is only a last-resort fallback).
-	const token =
-		cookies?.get('discogs_token') || request.headers.get('x-discogs-token') || env.DISCOGS_TOKEN || '';
+	// Only the visitor's own cookie token is ever used for Discogs.
+	const token = cookies.get('discogs_token');
 	if (!token) {
 		throw error(401, 'Discogs token required for marketplace data');
 	}
 
-	const headers: Record<string, string> = {
-		'User-Agent': USER_AGENT,
-		'Authorization': `Discogs token=${token}`,
-		'Accept': 'application/vnd.discogs.v2.discogs+json'
-	};
-
+	const store = getStore(platform);
 	const results: Array<{ releaseId: number; lowestPrice: number | null; currency: string }> = [];
-	let failedCount = 0; // requests that errored (auth/rate-limit/network), distinct from "no data"
+	let failedCount = 0; // requests that errored (auth/network/upstream), distinct from "no data"
+	let retryAfterMs: number | undefined;
+	let fetched = false;
 	const now = Date.now();
 
 	for (const releaseId of ids) {
-		// Check cache first (KV, then in-memory)
-		const cached = await getCachedPrice(platform, releaseId);
-		if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
+		const cached = await store.getJSON<CachedPrice>(`price:${releaseId}`);
+		if (cached && now - cached.timestamp < PRICE_TTL_SECONDS * 1000) {
 			results.push({ releaseId, lowestPrice: cached.lowestPrice, currency: cached.currency });
 			continue;
 		}
 
+		// Pace our own Discogs calls: wait before every call except the first.
+		if (fetched) await new Promise((r) => setTimeout(r, PACE_MS));
+		fetched = true;
+
 		try {
-			const response = await rateLimitedFetch(
-				`https://api.discogs.com/marketplace/price_suggestions/${releaseId}`,
-				headers
+			const { data } = await discogsGet<PriceSuggestion>(
+				`/marketplace/price_suggestions/${releaseId}`,
+				{ userAgent: USER_AGENT, token }
 			);
-
-			if (response.ok) {
-				const data: PriceSuggestion = await response.json();
-				const vgPlus = data['Very Good Plus (VG+)'];
-				const nearMint = data['Near Mint (NM or M-)'];
-				const ref = nearMint || vgPlus;
-
-				const result = {
-					releaseId,
-					lowestPrice: ref?.value ?? null,
-					currency: ref?.currency ?? 'USD'
-				};
-				results.push(result);
-				await setCachedPrice(platform, releaseId, {
-					lowestPrice: result.lowestPrice,
-					currency: result.currency,
-					timestamp: Date.now()
-				});
-			} else {
-				failedCount++;
-				results.push({ releaseId, lowestPrice: null, currency: 'USD' });
+			const ref = data['Near Mint (NM or M-)'] || data['Very Good Plus (VG+)'];
+			const result = {
+				releaseId,
+				lowestPrice: ref?.value ?? null,
+				currency: ref?.currency ?? 'USD'
+			};
+			results.push(result);
+			// A failed cache write is already logged by the store; the estimate stands.
+			await store.putJSON(
+				`price:${releaseId}`,
+				{ lowestPrice: result.lowestPrice, currency: result.currency, timestamp: Date.now() },
+				PRICE_TTL_SECONDS
+			);
+		} catch (e) {
+			if (e instanceof DiscogsAPIError && e.code === 'RATE_LIMITED') {
+				// Stop cleanly; the client reports a partial estimate.
+				retryAfterMs = e.retryAfterMs;
+				break;
 			}
-		} catch {
 			failedCount++;
 			results.push({ releaseId, lowestPrice: null, currency: 'USD' });
 		}
@@ -200,6 +117,8 @@ export const POST: RequestHandler = async ({ params, request, cookies, platform 
 		// rather than presenting a confidently-wrong total).
 		failedCount,
 		currency,
-		results
+		results,
+		// Present only when a 429 stopped the loop: the estimate covers just the ids priced so far.
+		...(retryAfterMs !== undefined && { retryAfterMs })
 	});
 };

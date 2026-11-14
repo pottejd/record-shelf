@@ -1,8 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { Cookies } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
-import { kvGetJSON, kvPutJSON } from '$lib/server/cache';
+import { getStore } from '$lib/server/store';
 
 interface Snapshot {
 	date: string; // YYYY-MM-DD
@@ -18,11 +17,11 @@ function historyKey(username: string): string {
 	return `value-history:${username.toLowerCase()}`;
 }
 
-// Match the auth model of /api/collection and /api/value: a Discogs token
-// (cookie or server env) is required. The app has no user accounts, so this
+// Match the auth model of /api/collection and /api/value: the visitor's own
+// Discogs token cookie is required. The app has no user accounts, so this
 // gates out anonymous reads/writes rather than enforcing per-user ownership.
 function requireToken(cookies: Cookies): void {
-	const token = cookies.get('discogs_token') || env.DISCOGS_TOKEN;
+	const token = cookies.get('discogs_token');
 	if (!token) throw error(401, 'Discogs token required');
 }
 
@@ -32,7 +31,7 @@ async function readHistory(
 	platform: App.Platform | undefined,
 	username: string
 ): Promise<Snapshot[]> {
-	const stored = await kvGetJSON<unknown>(platform, historyKey(username));
+	const stored = await getStore(platform).getJSON<unknown>(historyKey(username));
 	return Array.isArray(stored) ? (stored as Snapshot[]) : [];
 }
 
@@ -72,7 +71,8 @@ export const POST: RequestHandler = async ({ params, request, platform, cookies 
 	else history.push(snapshot);
 
 	const trimmed = history.slice(-MAX_SNAPSHOTS);
-	await kvPutJSON(platform, historyKey(params.username), trimmed, TTL_SECONDS);
+	const saved = await getStore(platform).putJSON(historyKey(params.username), trimmed, TTL_SECONDS);
+	if (!saved) throw error(500, 'Could not save value history');
 
 	return json({ history: trimmed });
 };
