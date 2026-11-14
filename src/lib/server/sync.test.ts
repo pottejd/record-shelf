@@ -94,16 +94,19 @@ describe('startSync', () => {
 	});
 	it('maps NOT_FOUND, BAD_TOKEN and unexpected errors', async () => {
 		const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const boom = new Error('boom');
 		for (const [err, code] of [
 			[new DiscogsAPIError('x', 404, 'NOT_FOUND'), 'NOT_FOUND'],
-			[new Error('boom'), 'UPSTREAM']
+			[boom, 'UPSTREAM']
 		] as const) {
 			const deps = makeDeps(); deps.discogs.listPage.mockRejectedValue(err);
 			expect(await startSync('collection', 'u', 'tok', false, deps)).toMatchObject({ status: 'error', code });
 		}
-		// Only the unexpected Error is logged, and never with the token.
+		// Only the unexpected Error is logged: exactly the prefix and the error, nothing else.
 		expect(logged).toHaveBeenCalledTimes(1);
-		expect(logged.mock.calls[0].map(String).join(' ')).not.toContain('tok');
+		expect(logged.mock.calls[0]).toHaveLength(2);
+		expect(logged.mock.calls[0][0]).toBe('[record-shelf] sync: unexpected error');
+		expect(logged.mock.calls[0][1]).toBe(boom);
 		const deps = makeDeps();
 		deps.discogs.listPage.mockImplementation(async (_k, _u, _p, _pp, token) => {
 			if (token === undefined) return pageOf(1, 1, 1, 1);
@@ -164,22 +167,22 @@ describe('startSync', () => {
 			now = T0 + REFRESH_COOLDOWN_MS;
 			expect(await startSync('collection', 'u', 'tok', true, deps)).toMatchObject({ status: 'ok', source: 'discogs' });
 		});
-		it('ignores a current snapshot whose page 1 has gone from the store', async () => {
+		it('trusts meta.current as recorded: page 1 gone still gives fresh, no Discogs call, current kept', async () => {
 			const deps = makeDeps(); await completed(deps);
 			await deps.store.delete(pageKey('collection', 'u', SNAP, 1));
 			now = T0 + 60 * 60_000;
-			expect(await startSync('collection', 'u', 'tok', false, deps)).toMatchObject({ status: 'ok', source: 'discogs' });
-		});
-		it('drops a dead current snapshot so readStored falls through to the new pending one', async () => {
-			const deps = makeDeps(); await completed(deps);
-			await deps.store.delete(pageKey('collection', 'u', SNAP, 1));
-			now = T0 + 60 * 60_000;
-			const next = snapshotIdAt(now);
-			expect(await startSync('collection', 'u', 'tok', false, deps)).toMatchObject({ status: 'ok', snapshot: next });
+			expect(await startSync('collection', 'u', 'tok', false, deps)).toEqual({ status: 'fresh', snapshot: SNAP });
+			expect(deps.discogs.listPage).not.toHaveBeenCalled();
 			const meta: any = await deps.store.getJSON(metaKey('collection', 'u'));
-			expect(meta.current).toBeNull();
-			expect(meta.pending.id).toBe(next);
-			expect(await readStored('collection', 'u', deps.store, now)).toMatchObject({ complete: false, snapshot: next });
+			expect(meta.current).toMatchObject({ id: SNAP });
+		});
+		it('a new snapshot carries current forward unchanged', async () => {
+			const deps = makeDeps(); await completed(deps);
+			await deps.store.delete(pageKey('collection', 'u', SNAP, 1));
+			now = T0 + FRESH_MS;
+			expect(await startSync('collection', 'u', 'tok', false, deps)).toMatchObject({ status: 'ok', source: 'discogs' });
+			const meta: any = await deps.store.getJSON(metaKey('collection', 'u'));
+			expect(meta.current).toMatchObject({ id: SNAP, completedAt: T0 });
 		});
 	});
 });
@@ -251,16 +254,40 @@ describe('getPage', () => {
 		deps.discogs.listPage.mockResolvedValue({ ...pageOf(2, 3, 250), remaining: 2 });
 		expect(await getPage('collection', 'u', 'tok', SNAP, 2, deps)).toMatchObject({ nextDelayMs: 15000 });
 	});
-	it('without a stored page 1 (private list) the page is returned but not stored', async () => {
+	it('without meta (private list) the page is returned but not stored', async () => {
 		const deps = makeDeps();
 		deps.discogs.listPage.mockResolvedValue(pageOf(2, 3, 250));
 		expect(await getPage('collection', 'u', 'tok', SNAP, 2, deps)).toMatchObject({ status: 'ok', stored: false });
 		expect(await deps.store.listKeys('v2:')).toEqual([]);
 	});
+	it('uses meta, not the page-1 record, as the marker: page 1 is never read', async () => {
+		const deps = makeDeps(); await started(deps);
+		const read = vi.spyOn(deps.store, 'getJSON');
+		expect(await getPage('collection', 'u', 'tok', SNAP, 2, deps)).toMatchObject({ status: 'ok', stored: true });
+		expect(read.mock.calls.map(([key]) => key)).not.toContain(pageKey('collection', 'u', SNAP, 1));
+	});
 	it('Discogs 404 on a page beyond the first is an empty page, stored (Review Focus 1)', async () => {
 		const deps = makeDeps(); await started(deps);
 		deps.discogs.listPage.mockRejectedValue(new DiscogsAPIError('gone', 404, 'NOT_FOUND'));
 		expect(await getPage('collection', 'u', 'tok', SNAP, 3, deps)).toMatchObject({ status: 'ok', page: 3, items: [], totalPages: 3, totalItems: 250, stored: true });
+	});
+	it('Discogs 404 beyond the snapshot\'s page count → BAD_REQUEST, nothing stored', async () => {
+		const deps = makeDeps(); await started(deps);
+		const before = await deps.store.listKeys('v2:');
+		deps.discogs.listPage.mockRejectedValue(new DiscogsAPIError('gone', 404, 'NOT_FOUND'));
+		expect(await getPage('collection', 'u', 'tok', SNAP, 4, deps)).toMatchObject({ status: 'error', code: 'BAD_REQUEST' });
+		expect(await deps.store.listKeys('v2:')).toEqual(before);
+	});
+	it('Discogs 404 without meta → BAD_REQUEST, nothing stored', async () => {
+		const deps = makeDeps();
+		deps.discogs.listPage.mockRejectedValue(new DiscogsAPIError('gone', 404, 'NOT_FOUND'));
+		expect(await getPage('collection', 'u', 'tok', SNAP, 2, deps)).toMatchObject({ status: 'error', code: 'BAD_REQUEST' });
+		expect(await deps.store.listKeys('v2:')).toEqual([]);
+	});
+	it('a page Discogs returns beyond the recorded count is still stored (the list grew)', async () => {
+		const deps = makeDeps(); await started(deps);
+		deps.discogs.listPage.mockResolvedValue(pageOf(4, 4, 350));
+		expect(await getPage('collection', 'u', 'tok', SNAP, 4, deps)).toMatchObject({ status: 'ok', page: 4, stored: true });
 	});
 	it('store write failure → stored false (Review Focus 4)', async () => {
 		const deps = makeDeps(); await started(deps);
@@ -297,6 +324,16 @@ describe('completeSync', () => {
 		const first = await completeSync('collection', 'u', SNAP, deps);
 		now = T0 + 99_000;
 		expect(await completeSync('collection', 'u', SNAP, deps)).toEqual(first);
+		now = T0 + SNAPSHOT_BUCKET_MS + SNAPSHOT_OPEN_MS; // closed, but current
+		expect(await completeSync('collection', 'u', SNAP, deps)).toEqual(first);
+	});
+	it('a closed snapshot that is not current → SNAPSHOT_EXPIRED, meta unchanged', async () => {
+		const deps = makeDeps(); publicList(deps, 1, 40);
+		await startSync('collection', 'u', 'tok', false, deps);
+		const before = await deps.store.getJSON(metaKey('collection', 'u'));
+		now = T0 + SNAPSHOT_BUCKET_MS + SNAPSHOT_OPEN_MS;
+		expect(await completeSync('collection', 'u', SNAP, deps)).toMatchObject({ status: 'error', code: 'SNAPSHOT_EXPIRED' });
+		expect(await deps.store.getJSON(metaKey('collection', 'u'))).toEqual(before);
 	});
 	it('wantlist meta has an empty recent list', async () => {
 		const deps = makeDeps(); publicList(deps, 1, 40);
@@ -324,4 +361,52 @@ describe('readStored', () => {
 		expect(await readStored('collection', 'u', deps.store, T0 + 1)).toMatchObject({ complete: false, completedAt: null, snapshot: SNAP });
 		expect(await readStored('collection', 'u', deps.store, T0 + SNAPSHOT_BUCKET_MS + SNAPSHOT_OPEN_MS)).toBeNull();
 	});
+	it('falls back to the open pending snapshot when current\'s page 1 is gone', async () => {
+		const deps = makeDeps(); publicList(deps, 1, 40);
+		await startSync('collection', 'u', 'tok', false, deps);
+		await completeSync('collection', 'u', SNAP, deps);
+		now = T0 + FRESH_MS;
+		const next = snapshotIdAt(now);
+		await startSync('collection', 'u', 'tok', false, deps);
+		await deps.store.delete(pageKey('collection', 'u', SNAP, 1));
+		expect(await readStored('collection', 'u', deps.store, now)).toMatchObject({ complete: false, completedAt: null, snapshot: next });
+	});
+});
+
+describe('owner-only fields are never stored or returned', () => {
+	const ownerProfile = { username: 'Owner', avatar_url: 'o.png', location: 'Leeds', email: 'owner@example.com' } as any;
+	const ownerItem = (n: number) => ({
+		id: n, instance_id: n, folder_id: 7, rating: 3, date_added: '2020-01-01T00:00:00-08:00',
+		basic_information: { id: n, title: `T${n}`, artists: [{ name: 'Art' }] },
+		notes: [{ field_id: 1, value: 'paid $5' }]
+	});
+	for (const kind of ['collection', 'wantlist'] as const) {
+		it(`${kind}: profile and items are reduced to public fields`, async () => {
+			const deps = makeDeps();
+			deps.discogs.profile.mockResolvedValue({ data: ownerProfile, remaining: 50 });
+			deps.discogs.listPage.mockImplementation(async (_k, _u, page, _pp, token) => ({
+				data: {
+					items: token === undefined ? [ownerItem(1)] : [ownerItem(page * 10 + 1), ownerItem(page * 10 + 2)],
+					pagination: { page, pages: 2, per_page: 100, items: 150, urls: {} }
+				},
+				remaining: 50
+			}));
+			const put = vi.spyOn(deps.store, 'putJSON');
+			const started = await startSync(kind, 'Owner', 'tok', false, deps);
+			const next = await getPage(kind, 'Owner', 'tok', SNAP, 2, deps);
+			expect(started).toMatchObject({ status: 'ok', stored: true });
+			expect(next).toMatchObject({ status: 'ok', stored: true });
+			const everything = JSON.stringify([started, next, put.mock.calls]);
+			for (const secret of ['owner@example.com', 'paid $5', 'folder_id', 'notes']) {
+				expect(everything).not.toContain(secret);
+			}
+			expect((started as any).profile).toEqual({ username: 'Owner', avatar_url: 'o.png', location: 'Leeds' });
+			const kept = (n: number) => {
+				const { folder_id: _f, notes: _n, instance_id, ...rest } = ownerItem(n);
+				return kind === 'collection' ? { ...rest, instance_id } : rest;
+			};
+			expect((started as any).items).toEqual([kept(11), kept(12)]);
+			expect((next as any).items).toEqual([kept(21), kept(22)]);
+		});
+	}
 });

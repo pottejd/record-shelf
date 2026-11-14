@@ -21,6 +21,7 @@ import {
 	SNAPSHOT_OPEN_MS,
 	SNAPSHOT_TTL_SECONDS,
 	type PageRecord,
+	type PublicProfile,
 	type SnapshotMeta,
 	type SnapshotRef,
 	type StoredInitial,
@@ -137,9 +138,25 @@ function fromStore<T>(snapshot: string, record: PageRecord<T>): SyncOk<T> {
 	};
 }
 
-/** Presence check by key listing, so no page of records is parsed. */
-async function hasKey(store: Store, key: string): Promise<boolean> {
-	return (await store.listKeys(key)).includes(key);
+// Authenticated responses carry owner-only fields (profile email, item notes,
+// folder ids). Everything is reduced to an allowlist as soon as it arrives, so
+// the same public shape is stored and returned to every visitor.
+function publicProfile(p: DiscogsUserProfile): PublicProfile {
+	return { username: p.username, avatar_url: p.avatar_url ?? '', location: p.location ?? '' };
+}
+
+const PUBLIC_ITEM_KEYS: Record<SyncKind, readonly string[]> = {
+	collection: ['id', 'instance_id', 'rating', 'date_added', 'basic_information'],
+	wantlist: ['id', 'rating', 'date_added', 'basic_information']
+};
+
+function publicItems(kind: SyncKind, items: unknown[]): unknown[] {
+	return items.map((item) => {
+		const source = (typeof item === 'object' && item !== null ? item : {}) as Record<string, unknown>;
+		const out: Record<string, unknown> = {};
+		for (const key of PUBLIC_ITEM_KEYS[kind]) if (key in source) out[key] = source[key];
+		return out;
+	});
 }
 
 async function deleteSnapshot(store: Store, kind: SyncKind, username: string, snapshot: string): Promise<void> {
@@ -158,10 +175,9 @@ export async function startSync(
 	const now = deps.now();
 	const meta = await store.getJSON<SnapshotMeta>(metaKey(kind, username));
 
-	const current =
-		meta?.current && (await hasKey(store, pageKey(kind, username, meta.current.id, 1)))
-			? meta.current
-			: null;
+	// Used exactly as recorded: a presence check here would rest on listKeys, which
+	// can come back short on a backend error and make a good copy look dead.
+	const current = meta?.current ?? null;
 	if (current) {
 		const age = current.completedAt === null ? Infinity : now - current.completedAt;
 		if (!force && age < FRESH_MS) return { status: 'fresh', snapshot: current.id };
@@ -192,31 +208,24 @@ export async function startSync(
 	}
 
 	let first: DiscogsResult<ListPage>;
-	let profile: DiscogsResult<DiscogsUserProfile>;
+	let profileResult: DiscogsResult<DiscogsUserProfile>;
 	try {
 		first = await discogs.listPage(kind, username, 1, PAGE_SIZE, token);
-		profile = await discogs.profile(username, token);
+		profileResult = await discogs.profile(username, token);
 	} catch (e) {
 		return failure(e);
 	}
 
-	const { items, pagination } = first.data;
-	const totalPages = Math.max(1, pagination.pages);
-	const totalItems = pagination.items;
+	const items = publicItems(kind, first.data.items);
+	const profile = publicProfile(profileResult.data);
+	const totalPages = Math.max(1, first.data.pagination.pages);
+	const totalItems = first.data.pagination.items;
 
 	let stored = false;
 	if (isPublic) {
-		const record: PageRecord = {
-			items,
-			page: 1,
-			totalPages,
-			totalItems,
-			profile: profile.data,
-			startedAt: now
-		};
+		const record: PageRecord = { items, page: 1, totalPages, totalItems, profile, startedAt: now };
 		const nextMeta: SnapshotMeta = {
-			profile: profile.data,
-			// A current snapshot whose page 1 is gone is dead; dropping it lets readStored use pending.
+			profile,
 			current,
 			pending: { id: snapshot, totalItems, totalPages, startedAt: now, completedAt: null },
 			recent: meta?.recent ?? []
@@ -239,8 +248,8 @@ export async function startSync(
 		items,
 		source: 'discogs',
 		stored,
-		nextDelayMs: paceFor(lowest([probeRemaining, first.remaining, profile.remaining])),
-		profile: profile.data
+		nextDelayMs: paceFor(lowest([probeRemaining, first.remaining, profileResult.remaining])),
+		profile
 	};
 }
 
@@ -256,20 +265,21 @@ export async function getPage(
 	const { store, discogs } = deps;
 	const now = deps.now();
 	const open = isSnapshotOpen(snapshot, now);
+	const meta = await store.getJSON<SnapshotMeta>(metaKey(kind, username));
 
 	// Snapshot ids are guessable, so a stored page alone is not enough: it must
 	// belong to an open snapshot or to the list's current one.
 	const storedPage = await store.getJSON<PageRecord>(pageKey(kind, username, snapshot, page));
 	if (storedPage) {
-		if (open) return fromStore(snapshot, storedPage);
-		const meta = await store.getJSON<SnapshotMeta>(metaKey(kind, username));
-		if (meta?.current?.id === snapshot) return fromStore(snapshot, storedPage);
+		if (open || meta?.current?.id === snapshot) return fromStore(snapshot, storedPage);
 		return error('SNAPSHOT_EXPIRED');
 	}
 	if (!open) return error('SNAPSHOT_EXPIRED');
 
-	// Page 1 marks the list as confirmed public; it is the page just read when page is 1.
-	const first = page === 1 ? null : await store.getJSON<PageRecord>(pageKey(kind, username, snapshot, 1));
+	// Meta names a snapshot only after the list was confirmed public, so it is the
+	// marker for storing. A missing or stale meta is safe: the page goes unstored.
+	const ref =
+		meta?.pending?.id === snapshot ? meta.pending : meta?.current?.id === snapshot ? meta.current : null;
 
 	let record: PageRecord;
 	let remaining: number | null = null;
@@ -277,17 +287,20 @@ export async function getPage(
 		const r = await discogs.listPage(kind, username, page, PAGE_SIZE, token);
 		remaining = r.remaining;
 		record = {
-			items: r.data.items,
+			items: publicItems(kind, r.data.items),
 			page,
 			totalPages: Math.max(1, r.data.pagination.pages),
 			totalItems: r.data.pagination.items
 		};
 	} catch (e) {
 		if (!(page > 1 && codeOf(e) === 'NOT_FOUND')) return failure(e);
-		record = { items: [], page, totalPages: first?.totalPages ?? page, totalItems: first?.totalItems ?? 0 };
+		// Only a page inside the snapshot's known range becomes an empty page, so
+		// arbitrary page numbers cannot fill the store with empty records.
+		if (!ref || page > ref.totalPages) return error('BAD_REQUEST');
+		record = { items: [], page, totalPages: ref.totalPages, totalItems: ref.totalItems };
 	}
 
-	const stored = first
+	const stored = ref
 		? await store.putJSON(pageKey(kind, username, snapshot, page), record, SNAPSHOT_TTL_SECONDS)
 		: false;
 
@@ -327,6 +340,14 @@ export async function completeSync(
 ): Promise<SyncCompleteResult> {
 	if (!SNAPSHOT_ID.test(snapshot)) return error('BAD_REQUEST');
 	const { store } = deps;
+	const now = deps.now();
+	const meta = await store.getJSON<SnapshotMeta>(metaKey(kind, username));
+	if (meta?.current?.id === snapshot && meta.current.completedAt !== null) {
+		return { status: 'complete', snapshot, completedAt: meta.current.completedAt };
+	}
+	// A tab resuming late must not roll current back to an older pass stamped as fresh.
+	if (!isSnapshotOpen(snapshot, now)) return error('SNAPSHOT_EXPIRED');
+
 	const first = await store.getJSON<PageRecord>(pageKey(kind, username, snapshot, 1));
 	if (!first) return { status: 'incomplete', missing: [1] };
 
@@ -337,14 +358,8 @@ export async function completeSync(
 	for (let p = 2; p <= first.totalPages; p++) if (!present.has(p)) missing.push(p);
 	if (missing.length) return { status: 'incomplete', missing };
 
-	const meta = await store.getJSON<SnapshotMeta>(metaKey(kind, username));
-	if (meta?.current?.id === snapshot && meta.current.completedAt !== null) {
-		return { status: 'complete', snapshot, completedAt: meta.current.completedAt };
-	}
-
 	const profile = first.profile ?? meta?.profile;
 	if (!profile) return error('UPSTREAM');
-	const now = deps.now();
 	const current: SnapshotRef = {
 		id: snapshot,
 		totalItems: first.totalItems,
@@ -365,18 +380,23 @@ export async function readStored(
 ): Promise<StoredInitial<unknown> | null> {
 	const meta = await store.getJSON<SnapshotMeta>(metaKey(kind, username));
 	if (!meta) return null;
-	const complete = meta.current !== null;
-	const ref = meta.current ?? (meta.pending && isSnapshotOpen(meta.pending.id, now) ? meta.pending : null);
-	if (!ref) return null;
-	const first = await store.getJSON<PageRecord>(pageKey(kind, username, ref.id, 1));
-	if (!first) return null;
-	return {
-		profile: meta.profile,
-		snapshot: ref.id,
-		complete,
-		completedAt: complete ? ref.completedAt : null,
-		totalItems: ref.totalItems,
-		totalPages: ref.totalPages,
-		firstPage: first.items
-	};
+	// Current first, then an open pending one. A missing page 1 costs no parse, so
+	// at most one page of records is parsed even when current's page 1 is gone.
+	const candidates: Array<{ ref: SnapshotRef; complete: boolean }> = [];
+	if (meta.current) candidates.push({ ref: meta.current, complete: true });
+	if (meta.pending && isSnapshotOpen(meta.pending.id, now)) candidates.push({ ref: meta.pending, complete: false });
+	for (const { ref, complete } of candidates) {
+		const first = await store.getJSON<PageRecord>(pageKey(kind, username, ref.id, 1));
+		if (!first) continue;
+		return {
+			profile: meta.profile,
+			snapshot: ref.id,
+			complete,
+			completedAt: complete ? ref.completedAt : null,
+			totalItems: ref.totalItems,
+			totalPages: ref.totalPages,
+			firstPage: first.items
+		};
+	}
+	return null;
 }

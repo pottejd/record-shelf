@@ -1,4 +1,5 @@
-import type { DiscogsUserProfile } from '$lib/types/discogs';
+/** The only profile fields stored or returned: never owner-only data such as email. */
+export interface PublicProfile { username: string; avatar_url: string; location: string }
 
 export type SyncKind = 'collection' | 'wantlist';
 
@@ -24,7 +25,7 @@ export interface SnapshotRef {
 	startedAt: number; completedAt: number | null;
 }
 export interface SnapshotMeta {
-	profile: DiscogsUserProfile;
+	profile: PublicProfile;
 	current: SnapshotRef | null;
 	pending: SnapshotRef | null;
 	recent: Array<{ artist: string; title: string }>;
@@ -32,13 +33,13 @@ export interface SnapshotMeta {
 export interface PageRecord<T = unknown> {
 	items: T[]; page: number; totalPages: number; totalItems: number;
 	/** Present on page 1 only. */
-	profile?: DiscogsUserProfile; startedAt?: number;
+	profile?: PublicProfile; startedAt?: number;
 }
 
 export interface SyncOk<T> {
 	status: 'ok'; snapshot: string; page: number; totalPages: number; totalItems: number;
 	items: T[]; source: 'store' | 'discogs'; stored: boolean; nextDelayMs: number;
-	profile?: DiscogsUserProfile;
+	profile?: PublicProfile;
 }
 export interface SyncWait { status: 'wait'; retryAfterMs: number }
 export interface SyncError { status: 'error'; code: SyncErrorCode; message: string }
@@ -51,6 +52,6 @@ export type SyncCompleteResult =
 	| { status: 'incomplete'; missing: number[] } | SyncError;
 
 export interface StoredInitial<T> {
-	profile: DiscogsUserProfile; snapshot: string; complete: boolean;
+	profile: PublicProfile; snapshot: string; complete: boolean;
 	completedAt: number | null; totalItems: number; totalPages: number; firstPage: T[];
 }
