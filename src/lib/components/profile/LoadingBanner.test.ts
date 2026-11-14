@@ -42,6 +42,17 @@ describe('LoadingBanner', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
 		expect(onRetry).toHaveBeenCalled();
 	});
+	it('loading before the total is known shows no counts', () => {
+		show({ phase: 'loading', totalItems: 0, loaded: 0 });
+		expect(screen.getByText('Loading collection…')).toBeInTheDocument();
+	});
+	it('any error the page does not handle shows the generic alert and Retry', async () => {
+		const onRetry = vi.fn();
+		show({ phase: 'error', error: { code: 'BAD_REQUEST', message: 'x' }, items: new Array(300) }, { onRetry });
+		expect(screen.getByRole('alert')).toHaveTextContent("Couldn't reach Discogs — showing 300 of 1500 records.");
+		await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+		expect(onRetry).toHaveBeenCalled();
+	});
 	it('cooldown', () => {
 		show({ cooldownUntil: Date.now() + 60_000 });
 		expect(screen.getByText('Already refreshed in the last 10 minutes.')).toBeInTheDocument();

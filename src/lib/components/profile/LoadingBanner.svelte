@@ -7,7 +7,8 @@
 		onRetry: () => void;
 	} = $props();
 
-	const RETRYABLE = ['NETWORK', 'UPSTREAM', 'SNAPSHOT_EXPIRED'];
+	// The page shows its own message or redirect for these; every other error gets the Retry alert.
+	const PAGE_HANDLED = ['NOT_FOUND', 'PRIVATE', 'TOKEN_REQUIRED', 'BAD_TOKEN'];
 
 	// Ticks once a second for the wait countdown, the copy's age and the cooldown line.
 	let now = $state(Date.now());
@@ -29,13 +30,15 @@
 	let progress = $derived(s.totalItems > 0 ? Math.min(s.loaded / s.totalItems, 1) : 0);
 	let seconds = $derived(s.resumeAt === null ? 0 : Math.max(0, Math.ceil((s.resumeAt - now) / 1000)));
 	let coolingDown = $derived(s.cooldownUntil !== null && s.cooldownUntil > now);
-	let retryable = $derived(s.phase === 'error' && s.error !== null && RETRYABLE.includes(s.error.code));
+	let retryable = $derived(s.phase === 'error' && s.error !== null && !PAGE_HANDLED.includes(s.error.code));
 </script>
 
 {#if s.phase === 'loading' || s.phase === 'refreshing'}
 	<div class="loading-banner" aria-live="polite">
 		<div class="loading-text">
-			{#if s.phase === 'loading'}
+			{#if s.phase === 'loading' && s.totalItems === 0}
+				Loading {label}…
+			{:else if s.phase === 'loading'}
 				Loading {label}: {s.loaded} of {s.totalItems} records…
 			{:else if s.asOf !== null}
 				Showing a copy from {formatAge(now - s.asOf)} ago — updating ({s.loaded} of {s.totalItems})…
