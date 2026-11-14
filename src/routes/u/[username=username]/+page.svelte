@@ -15,10 +15,12 @@
 	import ProfileShare from '$lib/components/profile/ProfileShare.svelte';
 	import OldestNewestHighlights from '$lib/components/profile/OldestNewestHighlights.svelte';
 	import SiteFooter from '$lib/components/SiteFooter.svelte';
+	import BrandNav from '$lib/components/BrandNav.svelte';
+	import SkeletonProfile from '$lib/components/SkeletonProfile.svelte';
 	import { findDuplicates, groupAlbums } from '$lib/utils/albums';
 	import { computeCollectionStats } from '$lib/api/discogs';
-	import { invalidateAll } from '$app/navigation';
-	import { browser } from '$app/environment';
+	import { goto } from '$app/navigation';
+	import { createLoader } from '$lib/sync/loader.svelte';
 	import { keyboardNav } from '$lib/actions/keyboardNav';
 	import { sampleN } from '$lib/utils/array';
 	import { toChartData } from '$lib/utils/chart';
@@ -37,95 +39,47 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let profile = $derived(data.collection.profile);
-	let totalDiscogsItems = $derived(data.collection.totalDiscogsItems);
+	// Random highlights: sampled once per collection, the first time records are on
+	// screen, rather than on every batch the loader appends (which reshuffled the
+	// grid and re-downloaded covers each time).
+	let randomHighlights = $state<DiscogsCollectionItem[]>([]);
 
-	// Mutable items array for progressive loading
-	let items: DiscogsCollectionItem[] = $state(data.collection.items);
-	let isLoadingMore = $state(false);
-	let loadProgress = $state(0);
-	let loadError = $state(false);
-
-	// Recompute stats reactively as more items load
+	// One loader per username: it starts from the stored copy and fetches the rest
+	// through the sync API. Navigating to another user stops the old one.
+	const loader = $derived(
+		createLoader<DiscogsCollectionItem>({
+			kind: 'collection',
+			username: data.username,
+			initial: data.stored,
+			keyOf: (i) => i.instance_id
+		})
+	);
+	$effect(() => {
+		const l = loader;
+		randomHighlights = [];
+		l.run();
+		return () => l.stop();
+	});
+	let s = $derived(loader.state);
+	let items = $derived(s.items);
 	let stats = $derived(computeCollectionStats(items));
 
-	// Reset items when navigating to a different user
-	$effect(() => {
-		items = data.collection.items;
-	});
-
-	// Progressive loading: fetch remaining pages client-side.
-	// Pages are buffered and flushed to the reactive `items` array every few
-	// pages so stats + ~13 derived consumers recompute a handful of times
-	// instead of once per page (which was O(n^2) over the growing collection).
-	const FLUSH_EVERY_PAGES = 3;
+	let profile = $derived(s.profile);
+	let totalDiscogsItems = $derived(s.totalItems);
 
 	$effect(() => {
-		if (!browser) return;
-		const initialItems = data.collection.items;
-		const total = data.collection.totalDiscogsItems;
-		if (initialItems.length >= total) return;
-
-		let cancelled = false;
-		isLoadingMore = true;
-		loadError = false;
-
-		async function loadRemaining() {
-			let nextPage = 2;
-			let buffer = [...initialItems];
-			let sinceFlush = 0;
-			const flush = () => {
-				items = buffer;
-				loadProgress = Math.min(items.length / total, 1);
-				sinceFlush = 0;
-			};
-
-			try {
-				while (!cancelled) {
-					const response = await fetch(
-						`/api/collection/${data.collection.profile.username}?page=${nextPage}`
-					);
-					if (cancelled) return;
-					if (!response.ok) {
-						loadError = true;
-						break;
-					}
-					const pageData = await response.json();
-					if (cancelled) return;
-					if (!pageData.items?.length) break;
-
-					buffer = [...buffer, ...pageData.items];
-					if (++sinceFlush >= FLUSH_EVERY_PAGES) flush();
-
-					if (pageData.pagination.page >= pageData.pagination.pages) break;
-					nextPage++;
-				}
-			} catch {
-				loadError = true;
-			} finally {
-				if (!cancelled) {
-					flush(); // ensure the last buffered pages are shown
-					isLoadingMore = false;
-				}
-			}
+		if (randomHighlights.length === 0 && items.length > 0) {
+			randomHighlights = sampleN(items, GRID_PREVIEW_LIMIT);
 		}
-
-		loadRemaining();
-		return () => { cancelled = true; };
 	});
 
-	// Refresh state
-	let refreshing = $state(false);
-
-	async function refreshCollection() {
-		refreshing = true;
-		try {
-			await fetch(`/api/collection/${profile.username}`, { method: 'DELETE' });
-			await invalidateAll();
-		} finally {
-			refreshing = false;
+	// The token cookie is missing or rejected: send the visitor to settings.
+	$effect(() => {
+		const code = s.error?.code;
+		if (code === 'TOKEN_REQUIRED' || code === 'BAD_TOKEN') {
+			goto(`/settings?redirect=/u/${encodeURIComponent(data.username)}`);
 		}
-	}
+	});
 
 	// Drawer state
 	let drawerOpen = $state(false);
@@ -191,15 +145,6 @@
 		toChartData(stats.styleBreakdown, { sort: 'value-desc', limit: CHART_LIMITS.TOP_STYLES })
 	);
 
-	// Random highlights — shuffle the collection for variety
-	// Sample highlights from the initial (server-rendered) page once per collection
-	// rather than re-deriving from `items` on every progressive append — that
-	// reshuffled the grid and re-downloaded covers on each page load.
-	let randomHighlights = $state<DiscogsCollectionItem[]>([]);
-	$effect(() => {
-		randomHighlights = sampleN(data.collection.items, GRID_PREVIEW_LIMIT);
-	});
-
 	// Fun personality badges
 	let badges = $derived(calculateBadges(stats));
 
@@ -216,22 +161,39 @@
 </script>
 
 <svelte:head>
-	<title>{profile.username}'s Collection - Record Shelf</title>
-	<meta
-		name="description"
-		content="Explore {profile.username}'s record collection: {stats.totalItems} items across {stats.totalArtists} artists"
-	/>
-	<meta property="og:title" content="{profile.username}'s Collection - Record Shelf" />
-	<meta property="og:description" content="{stats.totalItems} records, {stats.totalArtists} artists, top genre: {stats.dominantGenre || 'Various'}" />
-	<meta property="og:type" content="profile" />
-	{#if profile.avatar_url}
-		<meta property="og:image" content={profile.avatar_url} />
+	{#if profile}
+		<title>{profile.username}'s Collection - Record Shelf</title>
+		<meta
+			name="description"
+			content="{profile.username}'s record collection: {totalDiscogsItems} records on Record Shelf"
+		/>
+		<meta property="og:title" content="{profile.username}'s Collection - Record Shelf" />
+		<meta property="og:description" content="{profile.username}'s record collection: {totalDiscogsItems} records on Record Shelf" />
+		<meta property="og:type" content="profile" />
+		{#if profile.avatar_url}
+			<meta property="og:image" content={profile.avatar_url} />
+		{/if}
+		<meta name="twitter:card" content="summary" />
+		<meta name="twitter:title" content="{profile.username}'s Record Collection" />
+		<meta name="twitter:description" content="{profile.username}'s record collection: {totalDiscogsItems} records on Record Shelf" />
+	{:else}
+		<title>Record Shelf</title>
 	{/if}
-	<meta name="twitter:card" content="summary" />
-	<meta name="twitter:title" content="{profile.username}'s Record Collection" />
-	<meta name="twitter:description" content="{stats.totalItems} records across {stats.totalArtists} artists on Record Shelf" />
 </svelte:head>
 
+{#if s.error?.code === 'NOT_FOUND' || s.error?.code === 'PRIVATE'}
+<main id="main-content" class="profile">
+	<BrandNav />
+	<div class="card" role="alert">
+		{#if s.error.code === 'NOT_FOUND'}
+			No Discogs user named "{data.username}".
+		{:else}
+			{data.username}'s collection is private.
+		{/if}
+	</div>
+	<SiteFooter />
+</main>
+{:else if profile}
 <main
 	id="main-content"
 	class="profile"
@@ -242,18 +204,16 @@
 		onShowHelp: () => (showHelp = true)
 	}}
 >
-	<ProfileHeader {profile} {badges} {refreshing} onRefresh={refreshCollection} />
+	<ProfileHeader
+		{profile}
+		{badges}
+		refreshing={s.phase === 'loading' || s.phase === 'waiting' || s.phase === 'refreshing'}
+		onRefresh={() => loader.refresh()}
+	/>
 
 	<SectionNav sections={navSections} />
 
-	<LoadingBanner
-		{isLoadingMore}
-		{loadError}
-		loaded={items.length}
-		total={totalDiscogsItems}
-		{loadProgress}
-		onRetry={() => invalidateAll()}
-	/>
+	<LoadingBanner state={s} onRetry={() => loader.run()} />
 
 	<ProfileOverview
 		{stats}
@@ -304,6 +264,13 @@
 
 <FloatingActions onHelp={() => (showHelp = true)} />
 <KeyboardHelp open={showHelp} onClose={() => (showHelp = false)} />
+{:else}
+<main id="main-content" class="profile">
+	<BrandNav />
+	<LoadingBanner state={s} onRetry={() => loader.run()} />
+	<SkeletonProfile />
+</main>
+{/if}
 
 <style>
 	.profile {
