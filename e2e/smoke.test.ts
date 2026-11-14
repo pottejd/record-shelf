@@ -1,16 +1,45 @@
 import { test, expect } from '@playwright/test';
 
-// Note: `/` server-redirects to the configured profile (/u/pottejd). Without a
-// token configured (the CI default), that profile bounces on to /settings. The
-// old home-page search form is therefore not reachable at `/`, so these tests
-// target the redirect and the directly-reachable pages instead.
+// `/` is the username search: anyone can look up any Discogs username from it.
+// Opening a profile still needs a token, so without one the visitor is sent to
+// Settings and brought back to the profile they asked for.
 
-test.describe('Home redirect', () => {
-	test('redirects to the configured profile, then to settings without a token', async ({ page }) => {
+test.describe('Home page', () => {
+	test('shows the username search, with no token needed to see it', async ({ page }) => {
 		await page.goto('/');
+		expect(new URL(page.url()).pathname).toBe('/');
+		await expect(page.locator('h1')).toHaveText('Record Shelf');
+		await expect(page.getByLabel('Discogs username')).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Explore' })).toBeVisible();
+	});
+
+	test('looking up a username without a token goes to Settings and remembers the profile asked for', async ({ page }) => {
+		await page.goto('/');
+		await page.getByLabel('Discogs username').fill('someuser');
+		await page.getByRole('button', { name: 'Explore' }).click();
 		await page.waitForURL('**/settings**');
-		// The settings redirect preserves the intended profile destination.
-		expect(decodeURIComponent(page.url())).toContain('/u/pottejd');
+		expect(decodeURIComponent(page.url())).toContain('redirect=/u/someuser');
+	});
+
+	test('looking up a username with a token opens that profile', async ({ page }) => {
+		await page.context().addCookies([{ name: 'discogs_token', value: 'e2e', url: 'http://localhost:4173' }]);
+		await page.route('**/api/collection/anotheruser**', (route) =>
+			route.fulfill({ status: 404, json: { status: 'error', code: 'NOT_FOUND', message: 'User not found' } }));
+		await page.goto('/');
+		await page.getByLabel('Discogs username').fill('anotheruser');
+		await page.getByRole('button', { name: 'Explore' }).click();
+		await page.waitForURL('**/u/anotheruser');
+		await expect(page.getByRole('alert')).toHaveText('No Discogs user named "anotheruser".');
+	});
+
+	test('the brand link on a profile leads back to the search', async ({ page }) => {
+		await page.context().addCookies([{ name: 'discogs_token', value: 'e2e', url: 'http://localhost:4173' }]);
+		await page.route('**/api/collection/anotheruser**', (route) =>
+			route.fulfill({ status: 404, json: { status: 'error', code: 'NOT_FOUND', message: 'User not found' } }));
+		await page.goto('/u/anotheruser');
+		await page.locator('a.home-link').click();
+		await page.waitForURL((url) => url.pathname === '/');
+		await expect(page.getByLabel('Discogs username')).toBeVisible();
 	});
 });
 
