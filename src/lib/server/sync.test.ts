@@ -74,6 +74,7 @@ describe('startSync', () => {
 		expect(JSON.stringify(put.mock.calls)).not.toContain('SECRET-TOKEN');
 	});
 	it('private list (tokenless probe gets PRIVATE): returns the page unstored and deletes any meta', async () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const deps = makeDeps();
 		await deps.store.putJSON(metaKey('collection', 'TestUser'), { profile, current: null, pending: null, recent: [] }, 60);
 		deps.discogs.listPage.mockImplementation(async (_k, _u, page, _pp, token) => {
@@ -199,6 +200,106 @@ describe('startSync', () => {
 	});
 });
 
+describe('a list seen to be not public loses its stored copy, whoever visits (F1)', () => {
+	type Deps = ReturnType<typeof makeDeps>;
+	const privateErr = () => new DiscogsAPIError('private', 403, 'PRIVATE');
+	const removedLine = ['[record-shelf] sync: removed stored copy', 'collection', 'testuser'];
+	/** A completed copy of a one-page list, 6 h old, so the next start probes Discogs. */
+	async function storedCopy(deps: Deps) {
+		publicList(deps, 1, 40);
+		await startSync('collection', 'TestUser', 'tok', false, deps);
+		await completeSync('collection', 'TestUser', SNAP, deps);
+		now = T0 + FRESH_MS;
+	}
+	/** The tokenless probe and the authenticated calls answer as given (null: success). */
+	function answers(deps: Deps, probe: Error | null, authed: Error | null, onAuthed: () => Promise<void> = async () => {}) {
+		deps.discogs.listPage.mockReset();
+		deps.discogs.profile.mockClear();
+		deps.discogs.listPage.mockImplementation(async (_k, _u, page, _pp, token) => {
+			if (token === undefined) {
+				if (probe) throw probe;
+				return pageOf(1, 40, 40, 1);
+			}
+			await onAuthed();
+			if (authed) throw authed;
+			return pageOf(page, 1, 40, 40);
+		});
+	}
+	const metaOf = (deps: Deps) => deps.store.getJSON<any>(metaKey('collection', 'TestUser'));
+
+	it('non-owner token: probe and page 1 both PRIVATE → the copy is removed first and the result is PRIVATE', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const deps = makeDeps(); await storedCopy(deps);
+		const metaAtAuthedCall: unknown[] = [];
+		answers(deps, privateErr(), privateErr(), async () => { metaAtAuthedCall.push(await metaOf(deps)); });
+		expect(await startSync('collection', 'TestUser', 'friend-token', false, deps)).toMatchObject({ status: 'error', code: 'PRIVATE' });
+		expect(metaAtAuthedCall).toEqual([null]);
+		expect(await metaOf(deps)).toBeNull();
+		expect(await deps.store.listKeys('v2:collection:testuser:')).toEqual([]);
+		expect(warn.mock.calls).toEqual([removedLine]);
+	});
+	it('a probe answering BAD_TOKEN (401) is treated as not public and removes the copy', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const deps = makeDeps(); await storedCopy(deps);
+		answers(deps, new DiscogsAPIError('bad', 401, 'BAD_TOKEN'), privateErr());
+		expect(await startSync('collection', 'TestUser', 'friend-token', false, deps)).toMatchObject({ status: 'error', code: 'PRIVATE' });
+		expect(await deps.store.listKeys('v2:collection:testuser:')).toEqual([]);
+		expect(warn.mock.calls).toEqual([removedLine]);
+	});
+	it('meta with both current and pending: the pages of both snapshots are removed', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const deps = makeDeps(); await storedCopy(deps);
+		const next = snapshotIdAt(now);
+		await startSync('collection', 'TestUser', 'tok', false, deps);
+		now += SNAPSHOT_BUCKET_MS + SNAPSHOT_OPEN_MS; // pending has closed, so the next start probes
+		expect(await metaOf(deps)).toMatchObject({ current: { id: SNAP }, pending: { id: next } });
+		expect(await deps.store.getJSON(pageKey('collection', 'TestUser', next, 1))).not.toBeNull();
+		answers(deps, privateErr(), privateErr());
+		expect(await startSync('collection', 'TestUser', 'friend-token', false, deps)).toMatchObject({ status: 'error', code: 'PRIVATE' });
+		expect(await deps.store.getJSON(pageKey('collection', 'TestUser', SNAP, 1))).toBeNull();
+		expect(await deps.store.getJSON(pageKey('collection', 'TestUser', next, 1))).toBeNull();
+		expect(await deps.store.listKeys('v2:collection:testuser:')).toEqual([]);
+		expect(warn.mock.calls).toEqual([removedLine]);
+	});
+	it('a probe answering NOT_FOUND removes the copy and returns NOT_FOUND without an authenticated call', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const deps = makeDeps(); await storedCopy(deps);
+		answers(deps, new DiscogsAPIError('gone', 404, 'NOT_FOUND'), null);
+		expect(await startSync('collection', 'TestUser', 'tok', false, deps)).toMatchObject({ status: 'error', code: 'NOT_FOUND' });
+		expect(deps.discogs.listPage).toHaveBeenCalledTimes(1);
+		expect(deps.discogs.profile).not.toHaveBeenCalled();
+		expect(await deps.store.listKeys('v2:collection:testuser:')).toEqual([]);
+		expect(warn.mock.calls).toEqual([removedLine]);
+	});
+	it('without meta nothing is deleted: no delete or listKeys call, nothing logged', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		for (const probe of [privateErr(), new DiscogsAPIError('bad', 401, 'BAD_TOKEN'), new DiscogsAPIError('gone', 404, 'NOT_FOUND')]) {
+			const deps = makeDeps();
+			const del = vi.spyOn(deps.store, 'delete');
+			const list = vi.spyOn(deps.store, 'listKeys');
+			answers(deps, probe, null);
+			await startSync('collection', 'TestUser', 'owner-token', false, deps);
+			expect(del).not.toHaveBeenCalled();
+			expect(list).not.toHaveBeenCalled();
+			del.mockRestore(); list.mockRestore();
+		}
+		expect(warn).not.toHaveBeenCalled();
+	});
+	it('a rate-limited or failed probe removes nothing', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		for (const [probe, status] of [[rateLimited(), 'wait'], [new DiscogsAPIError('down', 502, 'UPSTREAM_ERROR'), 'error']] as const) {
+			const deps = makeDeps(); await storedCopy(deps);
+			const before = await metaOf(deps);
+			answers(deps, probe, null);
+			expect(await startSync('collection', 'TestUser', 'tok', false, deps)).toMatchObject({ status });
+			expect(await metaOf(deps)).toEqual(before);
+			expect(await deps.store.getJSON(pageKey('collection', 'TestUser', SNAP, 1))).not.toBeNull();
+			resetMemoryStoreForTests(); now = T0;
+		}
+		expect(warn).not.toHaveBeenCalled();
+	});
+});
+
 describe('getPage', () => {
 	async function started(deps: ReturnType<typeof makeDeps>) {
 		publicList(deps); await startSync('collection', 'u', 'tok', false, deps);
@@ -223,6 +324,13 @@ describe('getPage', () => {
 		expect(two).not.toHaveProperty('profile');
 		expect(two).not.toHaveProperty('startedAt');
 	});
+	it('page 1 answered from Discogs carries the profile from meta; other pages do not (F3)', async () => {
+		const deps = makeDeps(); await started(deps);
+		const meta: any = await deps.store.getJSON(metaKey('collection', 'u'));
+		await deps.store.delete(pageKey('collection', 'u', SNAP, 1));
+		expect(await getPage('collection', 'u', 'tok', SNAP, 1, deps)).toMatchObject({ status: 'ok', page: 1, source: 'discogs', profile: meta.profile });
+		expect(await getPage('collection', 'u', 'tok', SNAP, 2, deps)).not.toHaveProperty('profile');
+	});
 	it('serves a stored page with no Discogs call and no delay', async () => {
 		const deps = makeDeps(); await started(deps);
 		await getPage('collection', 'u', 'tok', SNAP, 2, deps);
@@ -243,6 +351,7 @@ describe('getPage', () => {
 		expect(await getPage('collection', 'u', 'tok', SNAP, 1, deps)).toMatchObject({ status: 'error', code: 'SNAPSHOT_EXPIRED' });
 	});
 	it('a list that turned private: its stored pages are deleted and no longer served', async () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const deps = makeDeps(); publicList(deps, 1, 40);
 		await startSync('collection', 'u', 'tok', false, deps);
 		await completeSync('collection', 'u', SNAP, deps);
@@ -359,6 +468,29 @@ describe('completeSync', () => {
 		now = T0 + SNAPSHOT_BUCKET_MS + SNAPSHOT_OPEN_MS;
 		expect(await completeSync('collection', 'u', SNAP, deps)).toMatchObject({ status: 'error', code: 'SNAPSHOT_EXPIRED' });
 		expect(await deps.store.getJSON(metaKey('collection', 'u'))).toEqual(before);
+	});
+	it('a late complete of an older snapshot than current → SNAPSHOT_EXPIRED, nothing written (F6)', async () => {
+		const deps = makeDeps(); publicList(deps, 1, 40);
+		await startSync('collection', 'u', 'tok', false, deps);
+		now = T0 + 2 * SNAPSHOT_BUCKET_MS; // SNAP is still open
+		const newer = { id: snapshotIdAt(now), totalItems: 41, totalPages: 1, startedAt: now - 1000, completedAt: now - 500 };
+		await deps.store.putJSON(metaKey('collection', 'u'), { profile, current: newer, pending: null, recent: [] }, 60);
+		const before = await deps.store.getJSON(metaKey('collection', 'u'));
+		const put = vi.spyOn(deps.store, 'putJSON');
+		expect(await completeSync('collection', 'u', SNAP, deps)).toMatchObject({ status: 'error', code: 'SNAPSHOT_EXPIRED' });
+		expect(put).not.toHaveBeenCalled();
+		expect(await deps.store.getJSON(metaKey('collection', 'u'))).toEqual(before);
+	});
+	it('completing keeps a pending snapshot that is a different one (F6)', async () => {
+		const deps = makeDeps(); publicList(deps, 1, 40);
+		await startSync('collection', 'u', 'tok', false, deps);
+		now = T0 + SNAPSHOT_BUCKET_MS;
+		const other = { id: snapshotIdAt(now), totalItems: 41, totalPages: 1, startedAt: now, completedAt: null };
+		await deps.store.putJSON(metaKey('collection', 'u'), { profile, current: null, pending: other, recent: [] }, 60);
+		expect(await completeSync('collection', 'u', SNAP, deps)).toMatchObject({ status: 'complete', snapshot: SNAP });
+		const meta: any = await deps.store.getJSON(metaKey('collection', 'u'));
+		expect(meta.current).toMatchObject({ id: SNAP });
+		expect(meta.pending).toEqual(other);
 	});
 	it('wantlist meta has an empty recent list', async () => {
 		const deps = makeDeps(); publicList(deps, 1, 40);

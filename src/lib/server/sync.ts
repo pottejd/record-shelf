@@ -113,7 +113,8 @@ function failure(e: unknown): SyncWait | SyncError {
 	}
 	const code = codeOf(e);
 	if (code === 'BAD_TOKEN' || code === 'NOT_FOUND' || code === 'PRIVATE') return error(code);
-	// Discogs errors are already logged where they are raised; anything else is unexpected.
+	// Discogs errors are not logged here (where raised, an unexpected status is
+	// logged and BAD_RESPONSE is not); anything else is unexpected and is logged.
 	if (!(e instanceof DiscogsAPIError)) console.error('[record-shelf] sync: unexpected error', e);
 	return error('UPSTREAM');
 }
@@ -164,6 +165,14 @@ async function deleteSnapshot(store: Store, kind: SyncKind, username: string, sn
 	await Promise.all(keys.map((key) => store.delete(key)));
 }
 
+/** Deletes the pages of every snapshot meta names, then meta itself. */
+async function removeStoredCopy(store: Store, kind: SyncKind, username: string, meta: SnapshotMeta): Promise<void> {
+	const ids = [meta.current?.id, meta.pending?.id].filter((id): id is string => !!id);
+	for (const id of new Set(ids)) await deleteSnapshot(store, kind, username, id);
+	await store.delete(metaKey(kind, username));
+	console.warn('[record-shelf] sync: removed stored copy', kind, username.toLowerCase());
+}
+
 export async function startSync(
 	kind: SyncKind,
 	username: string,
@@ -207,7 +216,11 @@ export async function startSync(
 		isPublic = true;
 	} catch (e) {
 		const code = codeOf(e);
-		if (code !== 'PRIVATE' && code !== 'BAD_TOKEN') return failure(e);
+		if (code !== 'PRIVATE' && code !== 'BAD_TOKEN' && code !== 'NOT_FOUND') return failure(e);
+		// Not public, or the user is gone: the stored copy goes now, whatever the
+		// visitor's token can still read, so no visit keeps serving it.
+		if (meta) await removeStoredCopy(store, kind, username, meta);
+		if (code === 'NOT_FOUND') return failure(e);
 		isPublic = false;
 	}
 
@@ -237,10 +250,6 @@ export async function startSync(
 		const pageOk = await store.putJSON(pageKey(kind, username, snapshot, 1), record, SNAPSHOT_TTL_SECONDS);
 		const metaOk = await store.putJSON(metaKey(kind, username), nextMeta, SNAPSHOT_TTL_SECONDS);
 		stored = pageOk && metaOk;
-	} else {
-		const old = [meta?.current?.id, meta?.pending?.id].filter((id): id is string => !!id);
-		for (const id of new Set(old)) await deleteSnapshot(store, kind, username, id);
-		await store.delete(metaKey(kind, username));
 	}
 
 	return {
@@ -319,7 +328,9 @@ export async function getPage(
 		items: record.items,
 		source: 'discogs',
 		stored,
-		nextDelayMs: paceFor(remaining)
+		nextDelayMs: paceFor(remaining),
+		// A pass opened from a `fresh` answer reads the profile from its page 1.
+		...(page === 1 && meta ? { profile: meta.profile } : {})
 	};
 }
 
@@ -352,6 +363,7 @@ export async function completeSync(
 		return { status: 'complete', snapshot, completedAt: meta.current.completedAt };
 	}
 	// A tab resuming late must not roll current back to an older pass stamped as fresh.
+	if (meta?.current && Number(meta.current.id) > Number(snapshot)) return error('SNAPSHOT_EXPIRED');
 	if (!isSnapshotOpen(snapshot, now)) return error('SNAPSHOT_EXPIRED');
 
 	const first = await store.getJSON<PageRecord>(pageKey(kind, username, snapshot, 1));
@@ -373,7 +385,9 @@ export async function completeSync(
 		startedAt: first.startedAt ?? now,
 		completedAt: now
 	};
-	const nextMeta: SnapshotMeta = { profile, current, pending: null, recent: recentFrom(kind, first.items) };
+	// Another tab's pending snapshot is not this pass's to drop.
+	const pending = meta?.pending && meta.pending.id !== snapshot ? meta.pending : null;
+	const nextMeta: SnapshotMeta = { profile, current, pending, recent: recentFrom(kind, first.items) };
 	if (!(await store.putJSON(metaKey(kind, username), nextMeta, SNAPSHOT_TTL_SECONDS))) return error('UPSTREAM');
 	return { status: 'complete', snapshot, completedAt: now };
 }
