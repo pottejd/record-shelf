@@ -297,6 +297,20 @@ Removal has to hold against guessing. Snapshot ids are predictable, so a stored
 page is only served while its snapshot is still being filled or is the current
 one for that user; anything else is refused even if the record still exists.
 
+A public list is not the same as a public payload. Pages and the profile are
+fetched with the visitor's token, and when the visitor owns the list Discogs
+adds owner-only fields: the account email in the profile, private notes on
+records. So everything from Discogs is cut down to an allowlist the moment it
+arrives, and that reduced shape is what gets stored and what every visitor is
+sent, the owner included:
+
+- profile: username, avatar, location;
+- collection record: id, instance id, rating, date added, release information;
+- wantlist record: id, rating, date added, release information.
+
+These are the only fields the app displays today. A later feature that needs
+notes or folders has to fetch them per visitor and keep them out of the store.
+
 If the tokenless request is itself rate-limited, the endpoint answers "wait"
 like any other rate limit and the browser tries again. Collection and wantlist
 visibility are separate settings on Discogs, so each kind is checked on its

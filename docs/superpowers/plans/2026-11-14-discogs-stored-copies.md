@@ -232,8 +232,10 @@ git commit -m "feat: add KV-or-memory store module"
   	id: string; totalItems: number; totalPages: number;
   	startedAt: number; completedAt: number | null;
   }
+  /** The only profile fields ever stored or sent to the browser (amended in Task 3). */
+  export interface PublicProfile { username: string; avatar_url: string; location: string }
   export interface SnapshotMeta {
-  	profile: DiscogsUserProfile;
+  	profile: PublicProfile;
   	current: SnapshotRef | null;
   	pending: SnapshotRef | null;
   	recent: Array<{ artist: string; title: string }>;
@@ -241,13 +243,13 @@ git commit -m "feat: add KV-or-memory store module"
   export interface PageRecord<T = unknown> {
   	items: T[]; page: number; totalPages: number; totalItems: number;
   	/** Present on page 1 only. */
-  	profile?: DiscogsUserProfile; startedAt?: number;
+  	profile?: PublicProfile; startedAt?: number;
   }
 
   export interface SyncOk<T> {
   	status: 'ok'; snapshot: string; page: number; totalPages: number; totalItems: number;
   	items: T[]; source: 'store' | 'discogs'; stored: boolean; nextDelayMs: number;
-  	profile?: DiscogsUserProfile;
+  	profile?: PublicProfile;
   }
   export interface SyncWait { status: 'wait'; retryAfterMs: number }
   export interface SyncError { status: 'error'; code: SyncErrorCode; message: string }
@@ -260,7 +262,7 @@ git commit -m "feat: add KV-or-memory store module"
   	| { status: 'incomplete'; missing: number[] } | SyncError;
 
   export interface StoredInitial<T> {
-  	profile: DiscogsUserProfile; snapshot: string; complete: boolean;
+  	profile: PublicProfile; snapshot: string; complete: boolean;
   	completedAt: number | null; totalItems: number; totalPages: number; firstPage: T[];
   }
   ```
@@ -390,6 +392,23 @@ git commit -m "feat: add single-call Discogs client that reads rate-limit header
   export function readStored(kind: SyncKind, username: string, store: Store, now: number): Promise<StoredInitial<unknown> | null>;
   ```
 
+> **Amended during execution** (rulings in the SDD ledger, fix round 1). The
+> behaviour list below is the amended version and is authoritative. The test
+> listing in Step 1 predates the amendments; the committed
+> `src/lib/server/sync.test.ts` is the authoritative test file.
+>
+> - Everything received from Discogs is reduced to an allowlist before it is
+>   stored or returned: profile → `PublicProfile { username, avatar_url, location }`;
+>   collection item → `id, instance_id, rating, date_added, basic_information`;
+>   wantlist item → `id, rating, date_added, basic_information`.
+> - `startSync` makes no presence check on the current snapshot's pages.
+> - `getPage` uses meta, not the page-1 record, as the "public" marker and the
+>   source of totals, so it never parses two pages.
+> - A 404 beyond the snapshot's `totalPages` is `BAD_REQUEST`, not a stored page.
+> - `completeSync` requires an open snapshot unless it is already current.
+> - `readStored` falls back to the open pending snapshot when the current
+>   snapshot's page 1 cannot be read.
+
 **Behaviour the tests pin (write the code to these, in this order):**
 
 `isSnapshotOpen(s, now)`: `s` matches `/^\d{1,12}$/`, and with `start = Number(s) * SNAPSHOT_BUCKET_MS`: `start <= now && now < start + SNAPSHOT_BUCKET_MS + SNAPSHOT_OPEN_MS`.
@@ -397,9 +416,9 @@ git commit -m "feat: add single-call Discogs client that reads rate-limit header
 `paceFor`: `null` or `> 10` → `PACE_MS`; `<= 10` → `PACE_LOW_MS`; `<= 3` → `PACE_CRITICAL_MS`.
 
 `startSync`:
-1. Read meta. "Current is usable" means `meta.current` exists **and** its page 1 is still in the store.
-2. Not forced, current usable, `now - completedAt < FRESH_MS` → `{ status: 'fresh', snapshot }`.
-3. Forced, current usable, `now - completedAt < REFRESH_COOLDOWN_MS` → `{ status: 'cooldown', retryAfterMs: <time left> }`.
+1. Read meta. No presence check is made on the current snapshot's pages: meta and pages share one expiry, so a current young enough to hit the shortcuts below still has its pages.
+2. Not forced, `meta.current` set, `now - completedAt < FRESH_MS` → `{ status: 'fresh', snapshot }`.
+3. Forced, `meta.current` set, `now - completedAt < REFRESH_COOLDOWN_MS` → `{ status: 'cooldown', retryAfterMs: <time left> }`.
 4. Snapshot id = `meta.pending.id` if that is open and differs from `current.id`, else `snapshotIdAt(now)`. If it equals `current.id` → `fresh`.
 5. If page 1 of that snapshot is already stored → return it (`source: 'store'`, `stored: true`, `nextDelayMs: 0`, with `profile`). No Discogs call.
 6. Visibility check: `discogs.listPage(kind, username, 1, 1, undefined)`. Success → public. `PRIVATE` or `BAD_TOKEN` → not public. `RATE_LIMITED` → `wait`. `NOT_FOUND` → error `NOT_FOUND`. Anything else → error `UPSTREAM`.
@@ -412,17 +431,17 @@ git commit -m "feat: add single-call Discogs client that reads rate-limit header
 1. `page` must be an integer `>= 1` and `snapshot` must match `/^\d{1,12}$/`, else error `BAD_REQUEST`.
 2. A stored page is served (`ok` from store, `nextDelayMs: 0`) only if its snapshot is open, or is `meta.current` (read meta only when the snapshot is not open). A stored page of any other snapshot → error `SNAPSHOT_EXPIRED`. This is what makes an old copy unreachable once a list turns private or is superseded; snapshot ids are guessable, so the store alone must not be the gate.
 3. Not stored and snapshot not open → error `SNAPSHOT_EXPIRED`.
-4. Read page 1 of the snapshot (the "public" marker and the source of totals).
-5. Fetch from Discogs with the token. `NOT_FOUND` on `page > 1` is an empty page (`items: []`, totals from page 1, or `page`/`0` if page 1 is absent). Other errors map as in `startSync` step 7.
-6. Store the page only if the page-1 record exists. `stored` reports whether it was stored.
+4. Meta is the "public" marker and the source of totals. `ref` is `meta.pending` if its id is this snapshot, else `meta.current` if its id is this snapshot, else none. The page-1 record is never read here.
+5. Fetch from Discogs with the token. `NOT_FOUND` on `page > 1` is an empty page (`items: []`, totals from `ref`) only when `ref` exists and `page <= ref.totalPages`; otherwise it is `BAD_REQUEST` and nothing is stored. Other errors map as in `startSync` step 7.
+6. Store the page only if `ref` exists. `stored` reports whether it was stored. A missing or stale meta is safe: the page is returned unstored.
 
 `completeSync`:
-1. Bad snapshot format → `BAD_REQUEST`. Page 1 missing → `{ status: 'incomplete', missing: [1] }`.
+1. Bad snapshot format → `BAD_REQUEST`. If the snapshot is already `meta.current` → `complete` with the stored `completedAt`. Otherwise the snapshot must be open, else `SNAPSHOT_EXPIRED`. Page 1 missing → `{ status: 'incomplete', missing: [1] }`.
 2. `listKeys` on the snapshot's page prefix; any page `1..totalPages` absent → `incomplete` with those numbers, ascending.
 3. If `meta.current.id` is already this snapshot → `complete` with the stored `completedAt`.
 4. Write meta: `profile` from page 1; `current = { id, totalItems, totalPages, startedAt, completedAt: now }`; `pending: null`; `recent` = for `collection`, the first 3 page-1 items as `{ artist: cleanArtistName(first artist name) || 'Unknown', title }`, for `wantlist` `[]`. Failed put → error `UPSTREAM`.
 
-`readStored`: use `meta.current`, else `meta.pending` if open; read its page 1; either missing → `null`. `complete` is true only for `current`.
+`readStored`: use `meta.current` if its page 1 can be read; otherwise `meta.pending` if it is open and its page 1 can be read; otherwise `null`. `complete` is true only for `current`.
 
 - [ ] **Step 1: Write the failing tests** in `src/lib/server/sync.test.ts`
 
@@ -939,7 +958,7 @@ git commit -m "feat: add sync route factory, status endpoint, and crawler rules"
   // src/lib/sync/engine.ts
   export type LoaderPhase = 'idle' | 'loading' | 'waiting' | 'refreshing' | 'done' | 'error';
   export interface EngineState<T> {
-  	profile: DiscogsUserProfile | null;
+  	profile: PublicProfile | null;   // from src/lib/sync/types.ts
   	items: T[];               // what is on screen
   	totalItems: number;
   	loaded: number;           // records fetched so far in the active pass
