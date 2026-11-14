@@ -112,6 +112,8 @@ function failure(e: unknown): SyncWait | SyncError {
 	}
 	const code = codeOf(e);
 	if (code === 'BAD_TOKEN' || code === 'NOT_FOUND' || code === 'PRIVATE') return error(code);
+	// Discogs errors are already logged where they are raised; anything else is unexpected.
+	if (!(e instanceof DiscogsAPIError)) console.error('[record-shelf] sync: unexpected error', e);
 	return error('UPSTREAM');
 }
 
@@ -214,7 +216,8 @@ export async function startSync(
 		};
 		const nextMeta: SnapshotMeta = {
 			profile: profile.data,
-			current: meta?.current ?? null,
+			// A current snapshot whose page 1 is gone is dead; dropping it lets readStored use pending.
+			current,
 			pending: { id: snapshot, totalItems, totalPages, startedAt: now, completedAt: null },
 			recent: meta?.recent ?? []
 		};

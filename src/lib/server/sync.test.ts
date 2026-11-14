@@ -93,6 +93,7 @@ describe('startSync', () => {
 		expect(deps.discogs.profile).not.toHaveBeenCalled();
 	});
 	it('maps NOT_FOUND, BAD_TOKEN and unexpected errors', async () => {
+		const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
 		for (const [err, code] of [
 			[new DiscogsAPIError('x', 404, 'NOT_FOUND'), 'NOT_FOUND'],
 			[new Error('boom'), 'UPSTREAM']
@@ -100,6 +101,9 @@ describe('startSync', () => {
 			const deps = makeDeps(); deps.discogs.listPage.mockRejectedValue(err);
 			expect(await startSync('collection', 'u', 'tok', false, deps)).toMatchObject({ status: 'error', code });
 		}
+		// Only the unexpected Error is logged, and never with the token.
+		expect(logged).toHaveBeenCalledTimes(1);
+		expect(logged.mock.calls[0].map(String).join(' ')).not.toContain('tok');
 		const deps = makeDeps();
 		deps.discogs.listPage.mockImplementation(async (_k, _u, _p, _pp, token) => {
 			if (token === undefined) return pageOf(1, 1, 1, 1);
@@ -165,6 +169,17 @@ describe('startSync', () => {
 			await deps.store.delete(pageKey('collection', 'u', SNAP, 1));
 			now = T0 + 60 * 60_000;
 			expect(await startSync('collection', 'u', 'tok', false, deps)).toMatchObject({ status: 'ok', source: 'discogs' });
+		});
+		it('drops a dead current snapshot so readStored falls through to the new pending one', async () => {
+			const deps = makeDeps(); await completed(deps);
+			await deps.store.delete(pageKey('collection', 'u', SNAP, 1));
+			now = T0 + 60 * 60_000;
+			const next = snapshotIdAt(now);
+			expect(await startSync('collection', 'u', 'tok', false, deps)).toMatchObject({ status: 'ok', snapshot: next });
+			const meta: any = await deps.store.getJSON(metaKey('collection', 'u'));
+			expect(meta.current).toBeNull();
+			expect(meta.pending.id).toBe(next);
+			expect(await readStored('collection', 'u', deps.store, now)).toMatchObject({ complete: false, snapshot: next });
 		});
 	});
 });
