@@ -13,13 +13,14 @@ const RESPONSE_HEADERS = {
 
 type WidgetItem = { label: string; value: string; type: string };
 
-function body(origin: string, items: WidgetItem[]) {
+/** `updatedAt` is when the data was fetched: the stored copy's completion time. */
+function body(origin: string, items: WidgetItem[], updatedAt: number) {
 	return {
 		appName: 'Record Shelf',
 		icon: '🎵',
 		url: origin,
 		items,
-		updatedAt: new Date().toISOString()
+		updatedAt: new Date(updatedAt).toISOString()
 	};
 }
 
@@ -29,7 +30,7 @@ export const GET: RequestHandler = async ({ platform, url }) => {
 	const meta = await getStore(platform).getJSON<SnapshotMeta>(metaKey('collection', username));
 
 	if (!meta?.current) {
-		return json(body(url.origin, [{ label: 'Status', value: 'Not loaded yet', type: 'secondary' }]), {
+		return json(body(url.origin, [{ label: 'Status', value: 'Not loaded yet', type: 'secondary' }], Date.now()), {
 			headers: RESPONSE_HEADERS
 		});
 	}
@@ -40,5 +41,6 @@ export const GET: RequestHandler = async ({ platform, url }) => {
 	for (const r of meta.recent.slice(0, 3)) {
 		items.push({ label: 'Recent', value: `${r.artist} - ${r.title}`, type: 'secondary' });
 	}
-	return json(body(url.origin, items), { headers: RESPONSE_HEADERS });
+	// A current snapshot is always completed; the fallback only satisfies the type.
+	return json(body(url.origin, items, meta.current.completedAt ?? Date.now()), { headers: RESPONSE_HEADERS });
 };

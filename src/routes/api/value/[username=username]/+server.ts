@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { USER_AGENT } from '$lib/constants';
 import { DiscogsAPIError, discogsGet } from '$lib/api/discogs';
 import { getStore } from '$lib/server/store';
-import { PACE_MS, PRICE_TTL_SECONDS } from '$lib/sync/types';
+import { DEFAULT_RETRY_AFTER_MS, PACE_MS, PRICE_TTL_SECONDS } from '$lib/sync/types';
 
 interface PriceSuggestion {
 	[condition: string]: {
@@ -90,9 +90,13 @@ export const POST: RequestHandler = async ({ params, request, cookies, platform 
 				PRICE_TTL_SECONDS
 			);
 		} catch (e) {
+			if (e instanceof DiscogsAPIError && e.code === 'BAD_TOKEN') {
+				// A rejected token fails every call: stop at once rather than spend more.
+				throw error(401, 'Invalid or expired Discogs token');
+			}
 			if (e instanceof DiscogsAPIError && e.code === 'RATE_LIMITED') {
 				// Stop cleanly; the client reports a partial estimate.
-				retryAfterMs = e.retryAfterMs;
+				retryAfterMs = e.retryAfterMs ?? DEFAULT_RETRY_AFTER_MS;
 				break;
 			}
 			failedCount++;

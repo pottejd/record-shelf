@@ -30,6 +30,7 @@ describe('widget endpoint', () => {
 			{ label: 'Recent', value: 'C - Three', type: 'secondary' }
 		]);
 		expect(body.url).toBe('https://shelf.example');
+		expect(body.updatedAt).toBe(new Date(2).toISOString());
 		expect(res.headers.get('access-control-allow-origin')).toBe('*');
 		expect(res.headers.get('cache-control')).toBe('public, max-age=300');
 		expect(fetchSpy).not.toHaveBeenCalled();

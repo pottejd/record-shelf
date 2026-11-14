@@ -314,7 +314,7 @@ describe('discogsGet', () => {
 		await discogsGet('/x', { userAgent: 'T/1' });
 		expect((f.mock.calls[0][1] as RequestInit).headers).not.toHaveProperty('Authorization');
 	});
-	it('maps 401, 403, 404 and other statuses like fetchDiscogs', async () => {
+	it('maps 401, 403, 404 and other statuses to error codes', async () => {
 		vi.spyOn(console, 'error').mockImplementation(() => {});
 		for (const [status, code] of [[401, 'BAD_TOKEN'], [403, 'PRIVATE'], [404, 'NOT_FOUND'], [500, 'UPSTREAM_ERROR']] as const) {
 			vi.stubGlobal('fetch', vi.fn(async () => res(status, {})));

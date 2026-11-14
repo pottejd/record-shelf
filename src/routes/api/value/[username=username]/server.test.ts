@@ -273,6 +273,15 @@ describe('value endpoint', () => {
 		expect(body.results.map((r: any) => r.releaseId)).toEqual([1]);
 	});
 
+	it('a rejected token (401) stops at once with a 401, after a single Discogs call', async () => {
+		vi.mocked(fetch).mockImplementation(async () => new Response('{}', { status: 401 }));
+		const p = POST(makeEvent({ cookieToken: 'bad', releaseIds: [1, 2, 3] }));
+		const rejected = expect(p).rejects.toMatchObject({ status: 401 });
+		await vi.runAllTimersAsync();
+		await rejected;
+		expect(fetch).toHaveBeenCalledTimes(1);
+	});
+
 	it('uses a price stored within 6 hours without fetching, and refetches one older than 6 hours', async () => {
 		const store = getStore(undefined);
 		await store.putJSON('price:1', { lowestPrice: 5, currency: 'USD', timestamp: Date.now() - (6 * 3_600_000 - 1000) }, 99999);
