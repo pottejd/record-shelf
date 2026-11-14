@@ -194,7 +194,11 @@ export async function startSync(
 	if (snapshot === current?.id) return { status: 'fresh', snapshot };
 
 	const storedFirst = await store.getJSON<PageRecord>(pageKey(kind, username, snapshot, 1));
-	if (storedFirst) return fromStore(snapshot, storedFirst);
+	if (storedFirst) {
+		const joined = fromStore(snapshot, storedFirst);
+		const joinedProfile = storedFirst.profile ?? meta?.profile;
+		return joinedProfile ? { ...joined, profile: joinedProfile } : joined;
+	}
 
 	let isPublic: boolean;
 	let probeRemaining: number | null = null;
@@ -290,7 +294,9 @@ export async function getPage(
 			items: publicItems(kind, r.data.items),
 			page,
 			totalPages: Math.max(1, r.data.pagination.pages),
-			totalItems: r.data.pagination.items
+			totalItems: r.data.pagination.items,
+			// Page 1 is where start and completion read the profile and start time from.
+			...(page === 1 && ref && meta ? { profile: meta.profile, startedAt: ref.startedAt } : {})
 		};
 	} catch (e) {
 		if (!(page > 1 && codeOf(e) === 'NOT_FOUND')) return failure(e);

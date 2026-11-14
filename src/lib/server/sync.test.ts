@@ -124,6 +124,18 @@ describe('startSync', () => {
 		expect(deps.discogs.listPage).not.toHaveBeenCalled();
 		expect(deps.discogs.profile).not.toHaveBeenCalled();
 	});
+	it('joining a stored page 1 that has no profile returns the profile from meta', async () => {
+		const deps = makeDeps(); publicList(deps);
+		await startSync('collection', 'TestUser', 'tok', false, deps);
+		const meta: any = await deps.store.getJSON(metaKey('collection', 'TestUser'));
+		const key = pageKey('collection', 'TestUser', SNAP, 1);
+		const { profile: _p, startedAt: _s, ...bare }: any = await deps.store.getJSON(key);
+		await deps.store.putJSON(key, bare, 60);
+		deps.discogs.listPage.mockClear();
+		const r: any = await startSync('collection', 'TestUser', 'tok', false, deps);
+		expect(r).toMatchObject({ status: 'ok', source: 'store', profile: meta.profile });
+		expect(deps.discogs.listPage).not.toHaveBeenCalled();
+	});
 	it('empty list: totalPages is 1 and items is [] (Review Focus 2)', async () => {
 		const deps = makeDeps();
 		deps.discogs.listPage.mockResolvedValue({ data: { items: [], pagination: { page: 1, pages: 0, per_page: 100, items: 0, urls: {} } }, remaining: 50 });
@@ -197,6 +209,19 @@ describe('getPage', () => {
 		const r = await getPage('collection', 'u', 'tok', SNAP, 2, deps);
 		expect(r).toMatchObject({ status: 'ok', page: 2, source: 'discogs', stored: true, nextDelayMs: 1100 });
 		expect(deps.discogs.listPage).toHaveBeenCalledWith('collection', 'u', 2, 100, 'tok');
+	});
+	it('storing page 1 keeps the profile and start time; other pages carry neither', async () => {
+		const deps = makeDeps(); await started(deps);
+		const meta: any = await deps.store.getJSON(metaKey('collection', 'u'));
+		await deps.store.delete(pageKey('collection', 'u', SNAP, 1));
+		expect(await getPage('collection', 'u', 'tok', SNAP, 1, deps)).toMatchObject({ status: 'ok', page: 1, stored: true });
+		const one: any = await deps.store.getJSON(pageKey('collection', 'u', SNAP, 1));
+		expect(one.profile).toEqual(meta.profile);
+		expect(one.startedAt).toBe(meta.pending.startedAt);
+		await getPage('collection', 'u', 'tok', SNAP, 2, deps);
+		const two: any = await deps.store.getJSON(pageKey('collection', 'u', SNAP, 2));
+		expect(two).not.toHaveProperty('profile');
+		expect(two).not.toHaveProperty('startedAt');
 	});
 	it('serves a stored page with no Discogs call and no delay', async () => {
 		const deps = makeDeps(); await started(deps);
