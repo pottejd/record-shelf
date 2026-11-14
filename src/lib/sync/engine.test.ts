@@ -264,3 +264,60 @@ describe('controller decisions', () => {
 		expect(h.engine.state.items.map((i) => i.instance_id)).toEqual(items(1, 150).map((i) => i.instance_id));
 	});
 });
+
+describe('review fixes', () => {
+	it('shows page 1 as soon as start answers, before page 2 is requested', async () => {
+		const seen: EngineState<Item>[] = [];
+		let seenAtGet2: EngineState<Item>[] = [];
+		const h = harness((method, url, body) => {
+			if (method === 'GET' && pageOfUrl(url) === 2 && !seenAtGet2.length) seenAtGet2 = seen.slice();
+			if (method === 'POST') return body.action === 'start' ? ok(1, 3, 250, items(1, 100), { profile }) : { status: 'complete', snapshot: 'S1', completedAt: T0 };
+			return ok(pageOfUrl(url), 3, 250, items((pageOfUrl(url) - 1) * 100 + 1, pageOfUrl(url) === 3 ? 50 : 100));
+		}, null, { autoRefresh: false, onChange: (s: EngineState<Item>) => seen.push(s) });
+		await h.engine.run();
+		expect(seenAtGet2.some((s) => s.items.length === 100)).toBe(true);
+		expect(h.engine.state.items).toHaveLength(250);
+	});
+	it('a complete copy switches to paced fetching once a page is answered from Discogs', async () => {
+		const order: string[] = [];
+		let paced = false;
+		let inFlight = 0;
+		let maxInFlightWhenPaced = 0;
+		const fetchFn = (async (url: string) => {
+			const page = pageOfUrl(url);
+			order.push(`GET${page}`);
+			inFlight++;
+			if (paced) maxInFlightWhenPaced = Math.max(maxInFlightWhenPaced, inFlight);
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			inFlight--;
+			const extra = page === 2 ? { snapshot: 'S0', source: 'store', nextDelayMs: 0 } : { snapshot: 'S0' };
+			return new Response(JSON.stringify(ok(page, 8, 800, items((page - 1) * 100 + 1, 100), extra)));
+		}) as any;
+		const engine = createEngine<Item>({
+			kind: 'collection', username: 'u', initial: stored(8, 800) as any, keyOf: (i) => i.instance_id, autoRefresh: false,
+			deps: { fetchFn, sleep: async (ms) => { paced = true; order.push(`sleep${ms}`); }, now: () => T0 },
+			onChange: () => {}
+		});
+		await engine.run();
+		const firstSleep = order.indexOf('sleep1100');
+		expect(firstSleep).toBeGreaterThan(0);
+		const after = order.slice(firstSleep);
+		expect(after.length).toBeGreaterThanOrEqual(2);
+		after.forEach((entry, i) => expect(entry.startsWith(i % 2 === 0 ? 'sleep1100' : 'GET')).toBe(true));
+		expect(maxInFlightWhenPaced).toBe(1);
+		expect(order.filter((e) => e.startsWith('GET')).sort()).toEqual(['GET2', 'GET3', 'GET4', 'GET5', 'GET6', 'GET7', 'GET8']);
+		expect(engine.state.phase).toBe('done');
+		expect(engine.state.items.map((i) => i.instance_id)).toEqual(items(1, 800).map((i) => i.instance_id));
+	});
+	it('an unexpected exception ends the flow as a NETWORK error and is logged once', async () => {
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			const h = harness(() => ({ status: 'ok' }), null, { autoRefresh: false });
+			await expect(h.engine.run()).resolves.toBeUndefined();
+			expect(h.engine.state).toMatchObject({ phase: 'error', error: { code: 'NETWORK' }, background: false });
+			expect(log).toHaveBeenCalledTimes(1);
+		} finally {
+			log.mockRestore();
+		}
+	});
+});

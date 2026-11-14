@@ -248,12 +248,15 @@ export function createEngine<T>(options: EngineOptions<T>): Engine<T> {
 			phase: activePhase,
 			background,
 			resumeAt: null,
-			error: null
+			error: null,
+			// Page 1 goes on screen at once; only the pages after it are batched.
+			...(background ? {} : { items: itemsOf(pass) })
 		});
 		return pass;
 	}
 
-	async function fetchPage(pass: Pass<T>, page: number, guard?: Guard): Promise<void> {
+	/** Fetches one page into the pass and returns its nextDelayMs. */
+	async function fetchPage(pass: Pass<T>, page: number, guard?: Guard): Promise<number> {
 		const reply = await getPage(pass.snapshot, page, guard);
 		pass.pages[page] = reply.items;
 		pass.allStored &&= reply.stored;
@@ -261,6 +264,7 @@ export function createEngine<T>(options: EngineOptions<T>): Engine<T> {
 		const flush = ++pass.sinceFlush >= FLUSH_EVERY_PAGES;
 		if (flush) pass.sinceFlush = 0;
 		update({ loaded: loadedOf(pass), ...(flush && !pass.background ? { items: itemsOf(pass) } : {}) });
+		return reply.nextDelayMs;
 	}
 
 	/** One page at a time, sleeping the last response's nextDelayMs before each. */
@@ -271,19 +275,31 @@ export function createEngine<T>(options: EngineOptions<T>): Engine<T> {
 		}
 	}
 
-	/** Pages 2.. of a complete stored copy, STORED_CONCURRENCY at a time, no sleeping. */
+	/**
+	 * Pages 2.. of a complete stored copy, STORED_CONCURRENCY at a time, no sleeping.
+	 * The first reply asking for a delay (a page missed the store and came from
+	 * Discogs) stops new concurrent requests; the rest of the pass is paced.
+	 */
 	async function fetchStored(pass: Pass<T>): Promise<void> {
 		const guard: Guard = { cancelled: false };
 		let next = 2;
+		// The latest delay above zero any reply asked for.
+		let delay = pass.nextDelayMs;
 		const worker = async () => {
 			try {
-				while (next <= pass.totalPages) await fetchPage(pass, next++, guard);
+				while (delay <= 0 && next <= pass.totalPages) {
+					const ms = await fetchPage(pass, next++, guard);
+					if (ms > 0) delay = ms;
+				}
 			} catch (e) {
 				guard.cancelled = true;
 				throw e;
 			}
 		};
 		await Promise.all(Array.from({ length: Math.min(STORED_CONCURRENCY, pass.totalPages - 1) }, worker));
+		// A store hit finishing after the switch must not erase the delay Discogs asked for.
+		if (delay > 0) pass.nextDelayMs = delay;
+		await fetchPaced(pass, range(next, pass.totalPages));
 	}
 
 	async function runPass(pass: Pass<T>): Promise<void> {
@@ -338,9 +354,11 @@ export function createEngine<T>(options: EngineOptions<T>): Engine<T> {
 		busy = true;
 		try {
 			await flow();
-		} catch (e) {
-			if (e instanceof Stopped) return;
-			if (!(e instanceof Failure)) throw e;
+		} catch (caught) {
+			if (caught instanceof Stopped) return;
+			// A malformed reply or a bug: end the flow rather than leave a loader spinning.
+			if (!(caught instanceof Failure)) console.error('[record-shelf] sync engine: unexpected error', caught);
+			const e = caught instanceof Failure ? caught : new Failure('NETWORK', NETWORK_MESSAGE);
 			update({
 				phase: 'error',
 				error: { code: e.code, message: e.message },
