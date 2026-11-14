@@ -77,7 +77,7 @@
 	$effect(() => {
 		const code = s.error?.code;
 		if (code === 'TOKEN_REQUIRED' || code === 'BAD_TOKEN') {
-			goto(`/settings?redirect=/u/${encodeURIComponent(data.username)}`);
+			goto(`/settings?redirect=/u/${encodeURIComponent(data.username)}`, { replaceState: true });
 		}
 	});
 

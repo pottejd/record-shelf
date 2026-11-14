@@ -1,13 +1,43 @@
 <script lang="ts">
-	import type { DiscogsUserProfile, DiscogsWantlistItem } from '$lib/types/discogs';
+	import type { PageData } from './$types';
+	import type { DiscogsWantlistItem } from '$lib/types/discogs';
 	import { formatArtists } from '$lib/utils/discogs';
+	import { goto } from '$app/navigation';
+	import { createLoader } from '$lib/sync/loader.svelte';
 	import LazyImage from '$lib/components/LazyImage.svelte';
 	import SearchBar from '$lib/components/browser/SearchBar.svelte';
+	import LoadingBanner from '$lib/components/profile/LoadingBanner.svelte';
+	import SkeletonWantlist from '$lib/components/SkeletonWantlist.svelte';
 
-	let { data }: { data: { profile: DiscogsUserProfile; wantlist: DiscogsWantlistItem[] } } = $props();
+	let { data }: { data: PageData } = $props();
 
-	let profile = $derived(data.profile);
-	let wantlist = $derived(data.wantlist);
+	// One loader per username: it starts from the stored copy and fetches the rest
+	// through the sync API. Navigating to another user stops the old one.
+	const loader = $derived(
+		createLoader<DiscogsWantlistItem>({
+			kind: 'wantlist',
+			username: data.username,
+			initial: data.stored,
+			keyOf: (i) => i.id
+		})
+	);
+	$effect(() => {
+		const l = loader;
+		l.run();
+		return () => l.stop();
+	});
+	let s = $derived(loader.state);
+
+	let profile = $derived(s.profile);
+	let wantlist = $derived(s.items);
+
+	// The token cookie is missing or rejected: send the visitor to settings.
+	$effect(() => {
+		const code = s.error?.code;
+		if (code === 'TOKEN_REQUIRED' || code === 'BAD_TOKEN') {
+			goto(`/settings?redirect=/u/${encodeURIComponent(data.username)}/wantlist`, { replaceState: true });
+		}
+	});
 
 	let searchQuery = $state('');
 	let sortBy = $state<'added' | 'artist' | 'title' | 'year'>('added');
@@ -41,13 +71,28 @@
 </script>
 
 <svelte:head>
-	<title>{profile.username}'s Wantlist - Record Shelf</title>
-	<meta name="description" content="Browse {profile.username}'s wantlist on Record Shelf" />
-	<meta property="og:title" content="{profile.username}'s Wantlist - Record Shelf" />
-	<meta property="og:description" content="See what records {profile.username} is looking for" />
-	<meta property="og:type" content="website" />
+	{#if profile}
+		<title>{profile.username}'s Wantlist - Record Shelf</title>
+		<meta name="description" content="Browse {profile.username}'s wantlist on Record Shelf" />
+		<meta property="og:title" content="{profile.username}'s Wantlist - Record Shelf" />
+		<meta property="og:description" content="See what records {profile.username} is looking for" />
+		<meta property="og:type" content="website" />
+	{:else}
+		<title>Record Shelf</title>
+	{/if}
 </svelte:head>
 
+{#if s.error?.code === 'NOT_FOUND' || s.error?.code === 'PRIVATE'}
+<main id="main-content" class="wantlist-page">
+	<div class="card" role="alert">
+		{#if s.error.code === 'NOT_FOUND'}
+			No Discogs user named "{data.username}".
+		{:else}
+			{data.username}'s wantlist is private.
+		{/if}
+	</div>
+</main>
+{:else if profile}
 <main id="main-content" class="wantlist-page">
 	<nav class="nav-bar">
 		<a href="/u/{profile.username}" class="back-link">
@@ -65,10 +110,12 @@
 			{/if}
 			<div>
 				<h1>{profile.username}'s Wantlist</h1>
-				<p class="count">{wantlist.length} items</p>
+				<p class="count">{s.totalItems} items</p>
 			</div>
 		</div>
 	</header>
+
+	<LoadingBanner state={s} label="wantlist" onRetry={() => loader.run()} />
 
 	<div class="controls">
 		<div class="search-bar">
@@ -124,7 +171,7 @@
 		{/each}
 	</div>
 
-	{#if filteredItems.length === 0}
+	{#if filteredItems.length === 0 && (searchQuery || (s.phase === 'done' && s.totalItems === 0))}
 		<div class="empty-state">
 			{#if searchQuery}
 				<p class="empty-title">No results</p>
@@ -144,6 +191,12 @@
 		</div>
 	{/if}
 </main>
+{:else}
+<main id="main-content" class="wantlist-page">
+	<LoadingBanner state={s} label="wantlist" onRetry={() => loader.run()} />
+	<SkeletonWantlist />
+</main>
+{/if}
 
 <style>
 	.wantlist-page {

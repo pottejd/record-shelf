@@ -1,44 +1,18 @@
-import { error, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { fetchUserProfile, fetchUserWantlist, DiscogsAPIError } from '$lib/api/discogs';
-import { env } from '$env/dynamic/private';
-import { USER_AGENT } from '$lib/constants';
+import type { DiscogsWantlistItem } from '$lib/types/discogs';
+import type { StoredInitial } from '$lib/sync/types';
+import { readStored } from '$lib/server/sync';
+import { getStore } from '$lib/server/store';
 
-export const load: PageServerLoad = async ({ params, cookies }) => {
+// Reads only the stored copy: the browser fetches the records through the sync API.
+export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 	const { username } = params;
-
-	if (!username) {
-		throw error(400, 'Username is required');
-	}
-
-	const cookieToken = cookies.get('discogs_token');
-	const token = cookieToken || env.DISCOGS_TOKEN;
-
-	if (!token) {
+	if (!cookies.get('discogs_token')) {
 		throw redirect(303, `/settings?redirect=/u/${encodeURIComponent(username)}/wantlist`);
 	}
-
-	try {
-		const [profile, wantlist] = await Promise.all([
-			fetchUserProfile(username, { userAgent: USER_AGENT, token }),
-			fetchUserWantlist(username, { userAgent: USER_AGENT, token })
-		]);
-
-		return {
-			profile,
-			wantlist
-		};
-	} catch (e) {
-		if (e instanceof DiscogsAPIError) {
-			if (e.code === 'NOT_FOUND') {
-				throw error(404, { message: `User "${username}" not found on Discogs` });
-			}
-			if (e.code === 'RATE_LIMITED') {
-				throw error(429, { message: 'Rate limited by Discogs. Please try again in a minute.' });
-			}
-			throw error(e.status, { message: e.message });
-		}
-		console.error('Unexpected error:', e);
-		throw error(500, { message: 'An unexpected error occurred' });
-	}
+	const stored = (await readStored('wantlist', username, getStore(platform), Date.now())) as
+		| StoredInitial<DiscogsWantlistItem>
+		| null;
+	return { username, stored };
 };
