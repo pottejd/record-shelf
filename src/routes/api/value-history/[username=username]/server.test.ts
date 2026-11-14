@@ -15,7 +15,11 @@ vi.mock('@sveltejs/kit', () => ({
 	}
 }));
 
+const { mockEnv } = vi.hoisted(() => ({ mockEnv: {} as Record<string, string> }));
+vi.mock('$env/dynamic/private', () => ({ env: mockEnv }));
+
 import { GET, POST } from './+server';
+import { fingerprint, resetWritersWarningForTests } from '$lib/server/writers';
 import { getStore, resetMemoryStoreForTests } from '$lib/server/store';
 
 const KEY = 'value-history:testuser';
@@ -34,7 +38,11 @@ function event(opts: { token?: string; body?: unknown } = {}) {
 }
 
 describe('value-history endpoint', () => {
-	beforeEach(() => {
+	beforeEach(async () => {
+		resetWritersWarningForTests();
+		for (const k of Object.keys(mockEnv)) delete mockEnv[k];
+		// 'tok' is the one token allowed to write to the shared store.
+		mockEnv.STORE_WRITERS = await fingerprint('tok');
 		resetMemoryStoreForTests();
 	});
 
@@ -74,6 +82,27 @@ describe('value-history endpoint', () => {
 		expect(data.history).toHaveLength(1);
 		expect(data.history[0]).toMatchObject({ value: 250, currency: 'USD' });
 		expect(data.history[0].date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+	});
+
+	it('POST from a visitor who may not write records nothing and returns the series as it stands', async () => {
+		await POST(event({ token: 'tok', body: { value: 250, currency: 'USD' } }));
+		const put = vi.spyOn(getStore(undefined), 'putJSON');
+		const res = await POST(event({ token: 'someone-elses-token', body: { value: 999_999, currency: 'USD' } }));
+		const data = await res.json();
+		expect(data.recorded).toBe(false);
+		expect(data.history).toHaveLength(1);
+		expect(data.history[0].value).toBe(250);
+		expect(put).not.toHaveBeenCalled();
+		// Reading stays open to any visitor with a token.
+		expect((await (await GET(event({ token: 'someone-elses-token' }))).json()).history).toHaveLength(1);
+	});
+
+	it('POST records nothing for anyone when no writer is configured', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		delete mockEnv.STORE_WRITERS;
+		const res = await POST(event({ token: 'tok', body: { value: 250, currency: 'USD' } }));
+		expect(await res.json()).toEqual({ history: [], recorded: false });
+		expect(await getStore(undefined).getJSON(KEY)).toBeNull();
 	});
 
 	it('POST fails with a 5xx when the history cannot be written', async () => {

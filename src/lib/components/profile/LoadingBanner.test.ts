@@ -22,7 +22,7 @@ describe('LoadingBanner', () => {
 	it('waiting counts down from resumeAt', () => {
 		vi.useFakeTimers(); vi.setSystemTime(1_000_000);
 		show({ phase: 'waiting', resumeAt: 1_020_000 });
-		expect(screen.getByText('Discogs is busy — resuming in 20s.')).toBeInTheDocument();
+		expect(screen.getByText('Discogs is busy or unreachable — retrying in 20s.')).toBeInTheDocument();
 		vi.useRealTimers();
 	});
 	it('refreshing shows the age of the copy on screen', () => {

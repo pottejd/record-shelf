@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { Cookies } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getStore } from '$lib/server/store';
+import { isWriter } from '$lib/server/writers';
 
 interface Snapshot {
 	date: string; // YYYY-MM-DD
@@ -17,12 +18,13 @@ function historyKey(username: string): string {
 	return `value-history:${username.toLowerCase()}`;
 }
 
-// Match the auth model of /api/collection and /api/value: the visitor's own
-// Discogs token cookie is required. The app has no user accounts, so this
-// gates out anonymous reads/writes rather than enforcing per-user ownership.
-function requireToken(cookies: Cookies): void {
+// Match the auth model of /api/collection: a Discogs token cookie is required to
+// read, and only a visitor the site owner has listed (writers.ts) may record a
+// snapshot. The app has no user accounts, so there is no per-user ownership.
+function requireToken(cookies: Cookies): string {
 	const token = cookies.get('discogs_token');
 	if (!token) throw error(401, 'Discogs token required');
+	return token;
 }
 
 // Read the stored series, tolerating a non-array (manual KV edit / schema drift)
@@ -42,7 +44,12 @@ export const GET: RequestHandler = async ({ params, platform, cookies }) => {
 };
 
 export const POST: RequestHandler = async ({ params, request, platform, cookies }) => {
-	requireToken(cookies);
+	const token = requireToken(cookies);
+	// A visitor who may not write gets the series as it stands: their estimate is
+	// theirs to see, and is not recorded for everyone else.
+	if (!(await isWriter(token))) {
+		return json({ history: await readHistory(platform, params.username), recorded: false });
+	}
 
 	let body: { value?: unknown; currency?: unknown } | null;
 	try {
@@ -74,5 +81,5 @@ export const POST: RequestHandler = async ({ params, request, platform, cookies 
 	const saved = await getStore(platform).putJSON(historyKey(params.username), trimmed, TTL_SECONDS);
 	if (!saved) throw error(500, 'Could not save value history');
 
-	return json({ history: trimmed });
+	return json({ history: trimmed, recorded: true });
 };

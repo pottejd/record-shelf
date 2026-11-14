@@ -1,11 +1,17 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import {
+	checkToken,
 	computeCollectionStats,
 	DiscogsAPIError,
 	discogsGet,
+	fetchIdentity,
 	fetchListPage,
-	lastRateReading
+	fetchPriceSuggestions,
+	fetchProfile,
+	isBusy,
+	setPaceForTests
 } from './discogs';
+import { PACE_MS } from '$lib/sync/types';
 import type { DiscogsCollectionItem } from '$lib/types/discogs';
 
 function makeItem(overrides: Partial<{
@@ -278,69 +284,173 @@ describe('DiscogsAPIError', () => {
 	});
 });
 
-describe('discogsGet', () => {
-	const opts = { userAgent: 'T/1', token: 'tok' };
-	const res = (status: number, body: unknown, headers: Record<string, string> = {}) =>
-		new Response(JSON.stringify(body), { status, headers });
+const res =(status: number, body: unknown = {}) => new Response(JSON.stringify(body), { status });
 
+describe('discogsGet (called from the browser)', () => {
+	beforeEach(() => setPaceForTests(0));
 	afterEach(() => {
+		setPaceForTests(null);
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 	});
 
-	it('returns data and the remaining budget from X-Discogs-Ratelimit-Remaining', async () => {
-		vi.stubGlobal('fetch', vi.fn(async () => res(200, { a: 1 }, { 'X-Discogs-Ratelimit-Remaining': '42' })));
-		expect(await discogsGet('/x', opts)).toEqual({ data: { a: 1 }, remaining: 42 });
-		expect(lastRateReading().remaining).toBe(42);
-	});
-	it('reports remaining as null when the header is absent', async () => {
-		vi.stubGlobal('fetch', vi.fn(async () => res(200, {})));
-		expect((await discogsGet('/x', opts)).remaining).toBeNull();
-	});
-	it('on 429 throws RATE_LIMITED at once, without a second fetch', async () => {
-		const f = vi.fn(async () => res(429, {}, { 'Retry-After': '7' }));
+	it('sends the token in the query string, with no headers and no cookies, so there is no preflight', async () => {
+		const f = vi.fn(async (_url: string, _init?: RequestInit) => res(200, { a: 1 }));
 		vi.stubGlobal('fetch', f);
-		await expect(discogsGet('/x', opts)).rejects.toMatchObject({ code: 'RATE_LIMITED', retryAfterMs: 7000 });
-		expect(f).toHaveBeenCalledTimes(1);
-		expect(lastRateReading().last429At).not.toBeNull();
+		expect(await discogsGet('/x', 'to ken')).toEqual({ a: 1 });
+		expect(await discogsGet('/y?page=2', 'tok')).toEqual({ a: 1 });
+		expect(f.mock.calls.map((c) => c[0])).toEqual([
+			'https://api.discogs.com/x?token=to%20ken',
+			'https://api.discogs.com/y?page=2&token=tok'
+		]);
+		expect(f.mock.calls[0][1]).toEqual({ credentials: 'omit' });
 	});
-	it('uses 30000 ms when Retry-After is missing or not a number', async () => {
-		vi.stubGlobal('fetch', vi.fn(async () => res(429, {}, { 'Retry-After': 'Wed, 21 Oct 2026 07:28:00 GMT' })));
-		await expect(discogsGet('/x', opts)).rejects.toMatchObject({ retryAfterMs: 30000 });
-	});
-	it('sends no Authorization header when no token is given', async () => {
-		const f = vi.fn(async (_url: string, _init?: RequestInit) => res(200, {}));
+	it('sends no token when none is given', async () => {
+		const f = vi.fn(async (_url: string) => res(200));
 		vi.stubGlobal('fetch', f);
-		await discogsGet('/x', { userAgent: 'T/1' });
-		expect((f.mock.calls[0][1] as RequestInit).headers).not.toHaveProperty('Authorization');
+		await discogsGet('/x?page=1');
+		expect(f.mock.calls[0][0]).toBe('https://api.discogs.com/x?page=1');
 	});
-	it('maps 401, 403, 404 and other statuses to error codes', async () => {
+	it('a 429 is RATE_LIMITED and a request with no readable answer is UNREACHABLE; both count as busy, one fetch each', async () => {
+		const limited = vi.fn(async () => res(429));
+		vi.stubGlobal('fetch', limited);
+		const first = await discogsGet('/x', 'tok').catch((e) => e);
+		expect(first).toMatchObject({ code: 'RATE_LIMITED', status: 429 });
+		expect(limited).toHaveBeenCalledTimes(1);
+
+		// What a browser sees for Discogs' 429: it carries no CORS header.
+		const blocked = vi.fn(async () => { throw new TypeError('Failed to fetch'); });
+		vi.stubGlobal('fetch', blocked);
+		const second = await discogsGet('/x', 'tok').catch((e) => e);
+		expect(second).toMatchObject({ code: 'UNREACHABLE' });
+		expect(second).toBeInstanceOf(DiscogsAPIError);
+		expect(blocked).toHaveBeenCalledTimes(1);
+
+		expect([isBusy(first), isBusy(second)]).toEqual([true, true]);
+		expect([isBusy(new DiscogsAPIError('x', 404, 'NOT_FOUND')), isBusy(new Error('x')), isBusy(null)]).toEqual([false, false, false]);
+	});
+	it('maps 401, 403, 404, other statuses and an unreadable body to error codes', async () => {
 		vi.spyOn(console, 'error').mockImplementation(() => {});
 		for (const [status, code] of [[401, 'BAD_TOKEN'], [403, 'PRIVATE'], [404, 'NOT_FOUND'], [500, 'UPSTREAM_ERROR']] as const) {
-			vi.stubGlobal('fetch', vi.fn(async () => res(status, {})));
-			await expect(discogsGet('/x', opts)).rejects.toMatchObject({ code });
+			vi.stubGlobal('fetch', vi.fn(async () => res(status)));
+			await expect(discogsGet('/x', 'tok')).rejects.toMatchObject({ code });
 		}
+		vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>', { status: 200 })));
+		await expect(discogsGet('/x', 'tok')).rejects.toMatchObject({ code: 'BAD_RESPONSE' });
+	});
+	it('never puts the token in an error', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		vi.stubGlobal('fetch', vi.fn(async () => res(500)));
+		const e = (await discogsGet('/x', 'SECRET-TOKEN').catch((err) => err)) as Error;
+		expect(`${e.message} ${e.stack} ${JSON.stringify(vi.mocked(console.error).mock.calls)}`).not.toContain('SECRET-TOKEN');
 	});
 });
 
-describe('fetchListPage', () => {
+describe('one shared queue paces every Discogs call', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		setPaceForTests(null);
+	});
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.unstubAllGlobals();
 	});
 
-	it('requests the collection endpoint and returns releases as items', async () => {
-		const f = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ pagination: { page: 2, pages: 3, per_page: 100, items: 250, urls: {} }, releases: [{ id: 1 }] })));
-		vi.stubGlobal('fetch', f);
-		const r = await fetchListPage('collection', 'Some User', 2, 100, { userAgent: 'T/1', token: 't' });
-		expect(f.mock.calls[0][0]).toBe('https://api.discogs.com/users/Some%20User/collection/folders/0/releases?page=2&per_page=100&sort=added&sort_order=desc');
-		expect(r.data.items).toEqual([{ id: 1 }]);
-		expect(r.data.pagination.pages).toBe(3);
+	it('calls made together leave PACE_MS apart, whatever they are for', async () => {
+		const at: number[] = [];
+		vi.stubGlobal('fetch', vi.fn(async () => { at.push(Date.now()); return res(200, { pagination: {}, releases: [], username: 'u' }); }));
+		const t0 = Date.now();
+		const all = Promise.all([
+			fetchListPage('collection', 'u', 1, 100, 'tok'),
+			fetchProfile('u', 'tok'),
+			fetchPriceSuggestions(7, 'tok'),
+			fetchIdentity('tok')
+		]);
+		await vi.advanceTimersByTimeAsync(PACE_MS * 3);
+		await all;
+		expect(at.map((t) => t - t0)).toEqual([0, PACE_MS, PACE_MS * 2, PACE_MS * 3]);
 	});
-	it('requests the wants endpoint and returns wants as items', async () => {
-		const f = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ pagination: { page: 1, pages: 1, per_page: 1, items: 1, urls: {} }, wants: [{ id: 9 }] })));
+	it('a call made after a quiet spell goes at once', async () => {
+		const f = vi.fn(async () => res(200));
 		vi.stubGlobal('fetch', f);
-		const r = await fetchListPage('wantlist', 'u', 1, 1, { userAgent: 'T/1' });
+		await discogsGet('/a');
+		await vi.advanceTimersByTimeAsync(PACE_MS * 5);
+		const t = Date.now();
+		await discogsGet('/b');
+		expect(Date.now()).toBe(t);
+		expect(f).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('endpoints', () => {
+	beforeEach(() => setPaceForTests(0));
+	afterEach(() => {
+		setPaceForTests(null);
+		vi.unstubAllGlobals();
+	});
+	const stub = (body: unknown) => {
+		const f = vi.fn(async (_url: string, _init?: RequestInit) => res(200, body));
+		vi.stubGlobal('fetch', f);
+		return f;
+	};
+
+	it('fetchListPage requests the collection endpoint and returns releases as items', async () => {
+		const f = stub({ pagination: { page: 2, pages: 3, per_page: 100, items: 250, urls: {} }, releases: [{ id: 1 }] });
+		const r = await fetchListPage('collection', 'Some User', 2, 100, 't');
+		expect(f.mock.calls[0][0]).toBe('https://api.discogs.com/users/Some%20User/collection/folders/0/releases?page=2&per_page=100&sort=added&sort_order=desc&token=t');
+		expect(r.items).toEqual([{ id: 1 }]);
+		expect(r.pagination.pages).toBe(3);
+	});
+	it('fetchListPage requests the wants endpoint and returns wants as items; no token, no token parameter', async () => {
+		const f = stub({ pagination: { page: 1, pages: 1, per_page: 1, items: 1, urls: {} }, wants: [{ id: 9 }] });
+		const r = await fetchListPage('wantlist', 'u', 1, 1, undefined);
 		expect(f.mock.calls[0][0]).toBe('https://api.discogs.com/users/u/wants?page=1&per_page=1&sort=added&sort_order=desc');
-		expect(r.data.items).toEqual([{ id: 9 }]);
+		expect(r.items).toEqual([{ id: 9 }]);
+	});
+	it('fetchProfile, fetchIdentity and fetchPriceSuggestions ask the right addresses', async () => {
+		const f = stub({ username: 'u' });
+		await fetchProfile('Some User', 't');
+		expect(await fetchIdentity('t')).toEqual({ username: 'u' });
+		await fetchPriceSuggestions(42, 't');
+		expect(f.mock.calls.map((c) => c[0])).toEqual([
+			'https://api.discogs.com/users/Some%20User?token=t',
+			'https://api.discogs.com/oauth/identity?token=t',
+			'https://api.discogs.com/marketplace/price_suggestions/42?token=t'
+		]);
+	});
+	it('fetchIdentity rejects an answer with no username', async () => {
+		stub({ id: 1 });
+		await expect(fetchIdentity('t')).rejects.toMatchObject({ code: 'BAD_RESPONSE' });
+	});
+});
+
+describe('checkToken (the Settings page test)', () => {
+	beforeEach(() => setPaceForTests(0));
+	afterEach(() => {
+		setPaceForTests(null);
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it('asks Discogs directly who the token belongs to', async () => {
+		const f = vi.fn(async (_url: string) => res(200, { username: 'someone' }));
+		vi.stubGlobal('fetch', f);
+		expect(await checkToken('tok')).toEqual({ success: true, message: 'Connected as: someone' });
+		expect(f.mock.calls.map((c) => c[0])).toEqual(['https://api.discogs.com/oauth/identity?token=tok']);
+	});
+	it('says a rejected token is invalid', async () => {
+		vi.stubGlobal('fetch', vi.fn(async () => res(401)));
+		expect(await checkToken('tok')).toEqual({ success: false, message: 'Invalid token' });
+	});
+	it('says so when Discogs is busy or cannot be reached, rather than blaming the token', async () => {
+		vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+		const result = await checkToken('tok');
+		expect(result.success).toBe(false);
+		expect(result.message).toMatch(/busy or unreachable/);
+	});
+	it('reports any other failure plainly', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		vi.stubGlobal('fetch', vi.fn(async () => res(500)));
+		expect(await checkToken('tok')).toEqual({ success: false, message: 'Failed to verify token' });
 	});
 });

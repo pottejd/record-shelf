@@ -2161,3 +2161,81 @@ Run: `npx wrangler pages deploy .svelte-kit/cloudflare`
 5. Open `/api/widget`. Expected: the record count and three recent titles.
 
 **If step 3 shows `"stored":false` for a collection the owner knows is public:** stop. Discogs is not serving that list without a token, so the visibility check needs the fallback described in the spec under "Only public collections are stored" (store only when the token's own username, from `/oauth/identity`, differs from the requested one). Report this to the owner before changing anything.
+
+---
+
+## Amendment (2026-11-14): Option A — the browser calls Discogs
+
+See the amendment at the end of the design spec for why and what. Built in one
+pass, tests first, after Tasks 1–10; it replaces the Discogs-calling parts of
+Tasks 2, 3 and 9.
+
+- [x] `src/lib/sync/types.ts` — new wire contract: `start` answers `fresh` /
+  `cooldown` / `ok` (join) / `open`; `GET` answers `ok` / `missing`; new
+  `page` (hand a page over) and `drop` actions. No `wait`, `source`,
+  `stored` or `nextDelayMs`. Expiry 30 days.
+- [x] `src/lib/server/sync.ts`, `syncRoute.ts` — store only. `storePage`
+  applies the allowlist and the bounds; `dropStored` removes a copy.
+- [x] `src/lib/api/discogs.ts` — the browser's Discogs client: token in the
+  query string, one shared paced queue, `UNREACHABLE` / `RATE_LIMITED` = busy.
+- [x] `src/lib/sync/engine.ts` — makes the Discogs calls (public check, page 1,
+  profile, pages), hands pages over, waits 30 s then 60 s while Discogs is busy.
+- [x] Settings asks Discogs directly (`checkToken`); `/api/test-token` removed.
+- [x] `src/lib/value/estimate.ts` — the value estimate in the browser, prices
+  remembered in localStorage for six hours; `/api/value` removed.
+- [x] `/api/status` no longer reports a rate-limit reading.
+- [x] Tests: unit, the engine + client + handlers integration test, and e2e
+  with both `/api/*` and `api.discogs.com` stubbed.
+
+### Task 11, Step 8 under Option A (replaces the old Step 8)
+
+1. Open `/api/status`. Expected: `"store":"kv"`.
+2. In a private window open `/`. Expected: lands on Settings.
+3. Settings → Test Token with the owner's token. Expected: "Connected as: …".
+   In the network tab: one `GET` to `api.discogs.com/oauth/identity`, no
+   `OPTIONS` request.
+4. Open the owner's profile with the network tab open. Expected: a `POST`
+   answering `"status":"open"`; then requests to `api.discogs.com` about a
+   second apart (the first with no token); after each page a `POST` to
+   `/api/collection/<user>` answering `"status":"stored"`; last a `POST`
+   answering `"status":"complete"`.
+5. Reload. Expected: no request to `api.discogs.com`; `GET`s to
+   `/api/collection/<user>` answering `"status":"ok"`.
+6. Open `/api/widget`. Expected: the record count and three recent titles.
+
+**Stop and report if**, for a collection the owner knows is public, step 4
+shows a `POST` with `"action":"drop"` (Discogs refused the tokenless check) or
+`"status":"unstored"` on page 1 (a store write failed: tail the logs).
+
+### Added the same day: only listed writers may write ("go stronger")
+
+- [x] `src/lib/server/writers.ts` — `STORE_WRITERS` holds SHA-256 fingerprints
+  of the tokens that may write; `isWriter(token)`; fails closed and logs once
+  when unset.
+- [x] `sync.ts` / `syncRoute.ts` — `deps.writer`: `start` answers
+  `open` with `store: true|false`; `storePage` answers `unstored` and
+  `dropStored` answers `refused` for anyone else. `complete` and reads stay open
+  to any token cookie.
+- [x] `/api/value-history` POST records only for a writer (`recorded`).
+- [x] `/api/status` adds `writers` (count), and for the visitor `writer` and
+  `fingerprint` (of their own token).
+- [x] Engine: no public check and no handover when `store` is false.
+- [x] Checked in Cloudflare's runtime locally (`wrangler pages dev` with
+  `--kv COLLECTION_CACHE --binding STORE_WRITERS=…`, made-up tokens).
+
+**Task 11 gains two steps, and Step 8 two checks:**
+
+- After the first deploy (Step 7), with the owner's token saved in Settings on
+  the live site, open `/api/status` and copy the `fingerprint` value. Expected
+  at this point: `"writers":0,"writer":false`.
+- Set it as a secret, then deploy again (a Pages secret takes effect on the
+  next deployment):
+  `npx wrangler pages secret put STORE_WRITERS` (paste the fingerprint at the
+  prompt; add `--project record-shelf` if it asks which project).
+- Step 8.1 also expects `"writers":1,"writer":true` in the owner's browser.
+- Step 8.4's first `POST` must answer `"status":"open"` with `"store":true`. If
+  it says `"store":false`, the secret is missing, mistyped, or not yet
+  deployed: nothing will be stored. Stop and fix that first.
+- Friends who paste the owner's token are writers. A visitor using a token of
+  their own sees their list but it is not stored; to let one store, add their
+  fingerprint to `STORE_WRITERS` (comma-separated).

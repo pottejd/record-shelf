@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { settings } from '$lib/stores/settings';
+	import { checkToken } from '$lib/api/discogs';
 	import { version } from '$app/environment';
 	import { safeRedirectTarget } from '$lib/utils/redirect';
 
@@ -46,27 +47,9 @@
 		testing = true;
 		testResult = null;
 
-		try {
-			const response = await fetch('/api/test-token', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-Discogs-Token': token.trim()
-				}
-			});
-
-			const data = await response.json();
-
-			if (response.ok) {
-				testResult = { success: true, message: `Connected as: ${data.username}` };
-			} else {
-				testResult = { success: false, message: data.error || 'Invalid token' };
-			}
-		} catch (e) {
-			testResult = { success: false, message: 'Failed to test token' };
-		} finally {
-			testing = false;
-		}
+		// Asked of Discogs straight from this browser: the site's server never calls Discogs.
+		testResult = await checkToken(token.trim());
+		testing = false;
 	}
 </script>
 

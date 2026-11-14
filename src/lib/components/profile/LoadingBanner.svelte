@@ -52,7 +52,7 @@
 	</div>
 {:else if s.phase === 'waiting'}
 	<div class="loading-banner" aria-live="polite">
-		<div class="loading-text banner-only">Discogs is busy — resuming in {seconds}s.</div>
+		<div class="loading-text banner-only">Discogs is busy or unreachable — retrying in {seconds}s.</div>
 	</div>
 {:else if retryable}
 	<div class="loading-banner load-error" role="alert">

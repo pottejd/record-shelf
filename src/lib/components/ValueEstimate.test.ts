@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import ValueEstimate from './ValueEstimate.svelte';
+import { setPaceForTests } from '$lib/api/discogs';
 
 function makeItems(n: number) {
 	return Array.from({ length: n }, (_, i) => ({
@@ -10,35 +11,46 @@ function makeItems(n: number) {
 	})) as any;
 }
 
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+const releaseIdOf = (url: string) => Number(new URL(url).pathname.split('/').pop());
+
+/**
+ * Stubs the network: Discogs' price suggestions (answered by `price`, which may
+ * throw) and this site's value-history endpoint. Anything else fails the test.
+ */
+function stubNetwork(price: (releaseId: number, n: number) => Response = () => json({ 'Near Mint (NM or M-)': { value: 10, currency: 'USD' } })) {
+	const discogs: string[] = [];
+	const site: string[] = [];
+	vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+		if (url.startsWith('https://api.discogs.com/marketplace/price_suggestions/')) {
+			discogs.push(url);
+			return price(releaseIdOf(url), discogs.length);
+		}
+		if (url.startsWith('/api/value-history/')) {
+			site.push(url);
+			return json({ history: [] });
+		}
+		throw new Error(`unexpected fetch ${url}`);
+	}));
+	return { discogs, site };
+}
+
 describe('ValueEstimate component', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		setPaceForTests(0);
+		localStorage.clear();
+		document.cookie = 'discogs_token=visitor%20token;path=/';
 	});
 
 	afterEach(() => {
+		setPaceForTests(null);
 		vi.unstubAllGlobals();
+		document.cookie = 'discogs_token=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
 	});
 
-	it('estimates and extrapolates the value across the full collection', async () => {
-		const valuePayload = {
-			totalValue: 200,
-			pricedCount: 20,
-			totalRequested: 20,
-			currency: 'USD',
-			results: Array.from({ length: 20 }, (_, i) => ({
-				releaseId: i + 1,
-				lowestPrice: 10,
-				currency: 'USD'
-			}))
-		};
-		const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
-			if (url.includes('/api/value-history/')) {
-				return { ok: true, json: async () => ({ history: [] }) } as any;
-			}
-			return { ok: true, json: async () => valuePayload } as any;
-		});
-		vi.stubGlobal('fetch', fetchMock);
-
+	it('prices a sample straight from Discogs with the visitor\'s token and extrapolates across the collection', async () => {
+		const net = stubNetwork();
 		render(ValueEstimate, { props: { items: makeItems(40), username: 'tester' } });
 
 		await fireEvent.click(screen.getByText('Estimate Value'));
@@ -47,48 +59,60 @@ describe('ValueEstimate component', () => {
 		expect(await screen.findByText('$400')).toBeInTheDocument();
 		expect(screen.getByText(/extrapolated from 20-item sample/)).toBeInTheDocument();
 
-		// Posted to the value endpoint with at most 20 sampled ids
-		const valueCall = fetchMock.mock.calls.find(([u]) => u.includes('/api/value/'));
-		expect(valueCall).toBeTruthy();
-		const body = JSON.parse((valueCall![1] as RequestInit).body as string);
-		expect(body.releaseIds.length).toBeLessThanOrEqual(20);
+		expect(net.discogs).toHaveLength(20);
+		expect(net.discogs.every((url) => new URL(url).searchParams.get('token') === 'visitor token')).toBe(true);
+		// The finished estimate is recorded in value history.
+		expect(net.site).toEqual(['/api/value-history/tester']);
 	});
 
-	it('shows an error message when the estimate request fails', async () => {
-		const fetchMock = vi.fn(async () => ({
-			ok: false,
-			json: async () => ({ message: 'Discogs token required' })
-		}) as any);
-		vi.stubGlobal('fetch', fetchMock);
-
+	it('without a token it says so and calls nothing', async () => {
+		document.cookie = 'discogs_token=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+		const net = stubNetwork();
 		render(ValueEstimate, { props: { items: makeItems(5), username: 'tester' } });
 
 		await fireEvent.click(screen.getByText('Estimate Value'));
 
-		expect(await screen.findByText('Discogs token required')).toBeInTheDocument();
+		expect(await screen.findByText('Discogs token required for marketplace data')).toBeInTheDocument();
+		expect(net.discogs).toEqual([]);
 	});
 
-	it('requests the same release ids on every mount, regardless of item order', async () => {
-		const bodies: string[] = [];
-		vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-			if (url.includes('/api/value/')) bodies.push(init!.body as string);
-			return { ok: true, json: async () => ({ totalValue: 0, pricedCount: 0, totalRequested: 20, currency: 'USD', results: [], history: [] }) } as any;
-		}));
-		for (const list of [makeItems(200), makeItems(200).reverse()]) {
-			const { unmount } = render(ValueEstimate, { props: { items: list, username: 'u' } });
-			await fireEvent.click(screen.getByRole('button'));
-			await vi.waitFor(() => expect(bodies.length).toBeGreaterThan(0));
-			unmount();
-		}
-		expect(bodies[0]).toBe(bodies[1]);
-		expect(JSON.parse(bodies[0]).releaseIds).toHaveLength(20);
+	it('shows an error message when Discogs rejects the token', async () => {
+		const net = stubNetwork(() => json({}, 401));
+		render(ValueEstimate, { props: { items: makeItems(5), username: 'tester' } });
+
+		await fireEvent.click(screen.getByText('Estimate Value'));
+
+		expect(await screen.findByText('Invalid or expired Discogs token')).toBeInTheDocument();
+		expect(net.discogs).toHaveLength(1);
+		expect(net.site).toEqual([]);
 	});
+
+	it('prices the same releases on every mount, regardless of item order, and remembers them in this browser', async () => {
+		const net = stubNetwork();
+		const first = render(ValueEstimate, { props: { items: makeItems(200), username: 'u' } });
+		await fireEvent.click(screen.getByRole('button'));
+		await screen.findByText(/Estimated collection value/);
+		first.unmount();
+		expect(net.discogs).toHaveLength(20);
+
+		const second = render(ValueEstimate, { props: { items: makeItems(200).reverse(), username: 'u' } });
+		await fireEvent.click(screen.getByRole('button'));
+		await screen.findByText(/Estimated collection value/);
+		second.unmount();
+		// Same 20 releases, all remembered: no further Discogs call.
+		expect(net.discogs).toHaveLength(20);
+	});
+
 	it('a partial estimate says so and is not recorded in value history', async () => {
-		const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => ({ totalValue: 30, pricedCount: 3, totalRequested: 20, currency: 'USD', retryAfterMs: 30000, results: [] }) }) as any);
-		vi.stubGlobal('fetch', fetchMock);
+		// What a browser sees when Discogs rate-limits: no readable answer.
+		const net = stubNetwork((_id, n) => {
+			if (n > 3) throw new TypeError('Failed to fetch');
+			return json({ 'Near Mint (NM or M-)': { value: 10, currency: 'USD' } });
+		});
 		render(ValueEstimate, { props: { items: makeItems(200), username: 'u' } });
 		await fireEvent.click(screen.getByRole('button'));
 		expect(await screen.findByText('Discogs is busy — this is a partial estimate. Try again in a minute.')).toBeInTheDocument();
-		expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/api/value-history/'))).toBe(false);
+		expect(net.discogs).toHaveLength(4);
+		expect(net.site).toEqual([]);
 	});
 });

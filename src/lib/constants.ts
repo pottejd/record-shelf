@@ -1,5 +1,3 @@
-export const USER_AGENT = 'RecordShelf/0.10.0 +https://github.com/pottejd/record-shelf';
-
 // Similarity-score buckets for the head-to-head compare page.
 export const SIMILARITY_THRESHOLDS = {
 	TASTE_TWINS: 30,

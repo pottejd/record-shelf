@@ -587,3 +587,117 @@ read the stored pages, which is the same behaviour as today but much faster.
   without a token.
 - In-memory store for adapter-node and local dev.
 - Design doc is left uncommitted until the owner asks for a commit.
+
+## Amendment (2026-11-14): the browser calls Discogs — "Option A"
+
+**Why.** On the live site every Discogs call made by the server was refused with
+429, while the same token called from the owner's PC answered 200 with an idle
+allowance. Discogs throttles by source address, and a Cloudflare Pages Function
+reaches Discogs (itself behind Cloudflare) under one address shared by every
+Workers app, so the allowance there is permanently spent. Server-side Discogs
+calls from Cloudflare cannot be relied on.
+
+**Decision (owner, 2026-11-14).** The visitor's browser calls Discogs with the
+visitor's token and hands each page to the site, which stores and serves it.
+The owner accepted that the store then holds browser-supplied data ("a fun
+little side project… no personal information available").
+
+This replaces the following parts of the design above:
+
+- **Rules 2 and 3** become: *the server never calls Discogs.* Only the
+  visitor's browser does, with the visitor's token.
+- **Rule 5** becomes: only the server writes the store, with pages handed to it
+  by the browser of a visitor the owner has listed as a writer,
+  reduced to the public allowlist and bounded in size.
+- **The anti-goal** "data supplied by a browser is written into the shared
+  store" is withdrawn. The others stand: no token on the server, no rate-limit
+  error page, no page render that calls Discogs, no private list in the store.
+
+Checked against Discogs on 2026-11-14 (made-up tokens, `Origin` header):
+
+- 200, 401 and 404 answers are readable by a browser. **A 429 is not** (no
+  `access-control-allow-origin`): it looks exactly like a lost connection.
+- Only `Location` is exposed, so the rate-limit and `Retry-After` headers
+  cannot be read.
+- A token sent as a header costs a preflight per URL, and **the preflight
+  counts against the rate limit**. A token in the query string (`?token=`) is
+  accepted and needs no preflight.
+- Nothing in the app renders stored data as HTML (no `{@html}`, `innerHTML`
+  or `document.write`). Stored values appear as text, as image addresses, and
+  inside links that all begin with a fixed `https://www.discogs.com/…` or
+  same-site path, so a made-up value cannot run script or send a link to
+  another site.
+
+**Who may write (owner's decision, 2026-11-14: "go stronger").** The server
+cannot check a token without calling Discogs, so a token cookie proves
+nothing: on its own, anyone sending any `discogs_token` cookie could hand over
+made-up pages or drop copies for any username. So writing is limited to the
+visitors the owner lists:
+
+- `STORE_WRITERS` (a Cloudflare secret; an environment variable elsewhere)
+  holds one or more **fingerprints**, the SHA-256 of a Discogs token,
+  separated by commas or spaces. A fingerprint is one-way, and sending the
+  fingerprint as a token does not pass. No token is kept on the server, so
+  goal 7 stands as worded; this is the one place the server holds something
+  derived from a token.
+- A request whose token cookie matches a listed fingerprint is a **writer**. Only a
+  writer can hand over pages, drop a copy, or record a value-history snapshot.
+- Everyone else with a token cookie can still read stored copies, and still
+  sees any list their own token can read: the browser loads it straight from
+  Discogs and nothing is stored. `start` tells the browser (`store: false`),
+  so it skips the public check and hands nothing over; the server refuses
+  regardless (`unstored`, `refused`).
+- Anyone with a token cookie may still call `complete`: it only marks a
+  snapshot whose pages a writer has already stored.
+- With `STORE_WRITERS` unset, nobody is a writer and nothing is stored. That is
+  logged once, and `/api/status` shows `"writers": 0`.
+- `/api/status` shows a visitor the fingerprint of their own token (the value
+  to put in `STORE_WRITERS`) and whether it is listed (`"writer"`).
+
+What this leaves: friends given the owner's token are writers, and are trusted
+as the owner is. The server still checks the bounds of a handed-over page, not
+the shape of each record. A list that turns private stays stored until a
+writer's browser next syncs it (or it expires).
+
+**The browser.**
+
+- One Discogs client, used for everything (pages, profile, token test,
+  prices). It sends the token as `?token=`, and gives every call a slot from
+  one shared queue, one slot per 1.1 s.
+- A failure with no readable answer, or a 429, means "Discogs is busy": the
+  loader waits 30 s, then 60 s, and keeps trying, with what is loaded left on
+  screen. It never gives up on its own.
+- The loader keeps its phases, restarts, batching and banner.
+
+**The sync, step by step.**
+
+1. `start` — the server answers from its own records only: `fresh`,
+   `cooldown`, a stored page 1 to join (`ok`), or `open` with a snapshot id.
+2. On `open` the browser checks the list is public with one call that carries
+   no token. Not public, or no such user: it asks the server to drop any
+   stored copy (`drop`), and for a private list goes on to load the visitor's
+   own view straight from Discogs, handing nothing over.
+3. The browser fetches page 1 and the profile with the token and hands them
+   over (`page`). The server keeps only the allowlisted fields, checks the
+   bounds (open snapshot, at most 100 items, page within the recorded count,
+   body under 1 MB) and writes the page and meta.
+4. Pages 2..P the same way. When joining a snapshot someone else started, the
+   browser asks the store for each page first and goes to Discogs only for a
+   page that is `missing`.
+5. `complete` is unchanged.
+
+**Removed.** `/api/test-token` (Settings asks Discogs directly) and
+`/api/value` (the browser fetches the 20 prices itself). The server no longer
+has a Discogs client, a User-Agent, or a rate-limit reading in `/api/status`.
+
+**My calls, agreed by the owner on 2026-11-14.**
+
+- Prices are kept per browser (localStorage, six hours), not shared through
+  the store. Each visitor now has their own Discogs allowance, so sharing saves
+  little. Value history is recorded only for writers (see "Who may write").
+- ~~Anyone with a token cookie may trigger `drop`.~~ Superseded the same day:
+  only a writer may (see "Who may write").
+- Stored copies expire after 30 days instead of 7, so a copy nobody has opened
+  for a week still opens at once.
+- The token cookie is the one source of the token in the browser, as it is on
+  the server.

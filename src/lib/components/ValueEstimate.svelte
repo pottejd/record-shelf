@@ -1,11 +1,13 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import { evenSample } from '$lib/utils/array';
+	import { estimateValue as estimateFromDiscogs, type ValueEstimate } from '$lib/value/estimate';
+	import { tokenFromCookie } from '$lib/sync/token';
 
 	let { items, username }: { items: DiscogsCollectionItem[]; username: string } = $props();
 
-	// The same 20 releases for every visitor and every visit (an even spread over
-	// the collection ordered by instance id), so the shared 6-hour price store is reused.
+	// The same 20 releases on every visit (an even spread over the collection
+	// ordered by instance id), so the prices this browser remembers are reused.
 	function getSampleIds(): number[] {
 		return evenSample([...items].sort((a, b) => a.instance_id - b.instance_id), 20).map(
 			(i) => i.basic_information.id
@@ -13,17 +15,11 @@
 	}
 
 	let loading = $state(false);
-	let result: {
-		totalValue: number;
-		pricedCount: number;
-		totalRequested: number;
-		failedCount?: number;
-		retryAfterMs?: number;
-		currency: string;
-		results?: Array<{ releaseId: number; lowestPrice: number | null; currency: string }>;
-	} | null = $state(null);
+	let result: ValueEstimate | null = $state(null);
 	let errorMsg = $state('');
 	let partial = $state(false);
+	/** Releases priced so far in the running estimate. */
+	let progress = $state<{ done: number; total: number } | null>(null);
 	let history = $state<Array<{ date: string; value: number; currency: string }>>([]);
 
 	// Top-priced items from the sampled results — surfaces the per-item prices the
@@ -50,24 +46,18 @@
 		errorMsg = '';
 		partial = false;
 		result = null;
+		progress = null;
 
 		try {
 			// Sample up to 20 releases for estimation (stable across re-clicks)
 			const sampleSize = Math.min(items.length, 20);
-			const releaseIds = getSampleIds();
+			const token = tokenFromCookie();
+			if (!token) throw new Error('Discogs token required for marketplace data');
 
-			const response = await fetch(`/api/value/${username}`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ releaseIds })
+			// Asked of Discogs straight from this browser, one paced call per release.
+			const data = await estimateFromDiscogs(getSampleIds(), token, {
+				onProgress: (done, total) => (progress = { done, total })
 			});
-
-			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.message || 'Failed to estimate value');
-			}
-
-			const data = await response.json();
 
 			// Extrapolate to full collection if we sampled
 			if (data.pricedCount > 0 && items.length > sampleSize) {
@@ -78,8 +68,8 @@
 			}
 
 			result = data;
-			partial = typeof data.retryAfterMs === 'number';
-			// A partial estimate (Discogs rate-limited us) must not become a snapshot.
+			partial = data.partial;
+			// A partial estimate (Discogs was busy) must not become a snapshot.
 			if (partial) return;
 
 			// Record a value snapshot and load the trend (non-fatal if it fails).
@@ -123,7 +113,7 @@
 			{#if partial}
 				<span class="value-warning">Discogs is busy — this is a partial estimate. Try again in a minute.</span>
 			{/if}
-			{#if result.failedCount && result.failedCount > 0}
+			{#if result.failedCount > 0}
 				<span class="value-warning">
 					⚠ {result.failedCount} price lookup{result.failedCount === 1 ? '' : 's'} failed — this estimate may be incomplete.
 				</span>
@@ -173,7 +163,11 @@
 			<button class="estimate-btn" onclick={estimateValue} disabled={loading}>
 				{#if loading}
 					<span class="spinner"></span>
-					Estimating...
+					{#if progress}
+						Estimating… {progress.done} of {progress.total}
+					{:else}
+						Estimating...
+					{/if}
 				{:else}
 					Estimate Value
 				{/if}

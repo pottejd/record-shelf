@@ -8,7 +8,15 @@ import type {
 } from '$lib/types/discogs';
 import { TOP_LIST_LIMIT, GRID_PREVIEW_LIMIT } from '$lib/constants';
 import { cleanArtistName } from '$lib/utils/discogs';
-import { DEFAULT_RETRY_AFTER_MS, type SyncKind } from '$lib/sync/types';
+import { PACE_MS, type SyncKind } from '$lib/sync/types';
+
+// Every Discogs call is made by the visitor's browser, never by the server.
+// What a browser can and cannot do here was checked against Discogs on 2026-11-14:
+// - a 200, 401, 403 or 404 answer can be read; a 429 cannot (it carries no CORS
+//   header), so it looks exactly like a lost connection;
+// - the rate-limit and Retry-After headers cannot be read;
+// - a token sent as a header costs a preflight for every address, and the
+//   preflight counts against the rate limit. A token in the query string does not.
 
 const DISCOGS_API_BASE = 'https://api.discogs.com';
 
@@ -16,22 +24,16 @@ export class DiscogsAPIError extends Error {
 	constructor(
 		message: string,
 		public status: number,
-		public code?: string,
-		public retryAfterMs?: number
+		public code?: string
 	) {
 		super(message);
 		this.name = 'DiscogsAPIError';
 	}
 }
 
-interface FetchOptions {
-	userAgent: string;
-	token?: string;
-}
-
-export interface DiscogsResult<T> {
-	data: T;
-	remaining: number | null;
+/** Discogs is rate-limiting, or gave no answer a browser can read: wait and try again. */
+export function isBusy(e: unknown): boolean {
+	return e instanceof DiscogsAPIError && (e.code === 'RATE_LIMITED' || e.code === 'UNREACHABLE');
 }
 
 export interface ListPage {
@@ -39,110 +41,103 @@ export interface ListPage {
 	pagination: DiscogsPagination;
 }
 
-let lastRemaining: number | null = null;
-let lastReadingAt: number | null = null;
-let last429At: number | null = null;
+export interface PriceSuggestions {
+	[condition: string]: { currency: string; value: number };
+}
 
-export function lastRateReading(): {
-	remaining: number | null;
-	at: number | null;
-	last429At: number | null;
-} {
-	return { remaining: lastRemaining, at: lastReadingAt, last429At };
+// One queue for every Discogs call this page makes, whatever it is for: each
+// call takes the next free slot, and slots are PACE_MS apart.
+let paceMs = PACE_MS;
+let nextSlotAt = 0;
+
+function takeSlot(): Promise<void> {
+	const now = Date.now();
+	const at = Math.max(now, nextSlotAt);
+	nextSlotAt = at + paceMs;
+	return at > now ? new Promise((resolve) => setTimeout(resolve, at - now)) : Promise.resolve();
+}
+
+/** Sets the gap between calls, or restores it with `null`. Clears the queue either way. */
+export function setPaceForTests(ms: number | null): void {
+	paceMs = ms ?? PACE_MS;
+	nextSlotAt = 0;
 }
 
 /**
- * Makes exactly one request to Discogs. Never sleeps or retries: a 429 throws
- * RATE_LIMITED immediately with the server's suggested wait in retryAfterMs.
+ * Makes exactly one request to Discogs, in its turn. Never retries: the caller
+ * decides what a busy answer means.
  */
-export async function discogsGet<T>(
-	endpoint: string,
-	options: FetchOptions
-): Promise<DiscogsResult<T>> {
-	const headers: Record<string, string> = {
-		'User-Agent': options.userAgent,
-		Accept: 'application/vnd.discogs.v2.discogs+json'
-	};
-	if (options.token) {
-		headers['Authorization'] = `Discogs token=${options.token}`;
+export async function discogsGet<T>(endpoint: string, token?: string): Promise<T> {
+	await takeSlot();
+	const auth = token ? `${endpoint.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}` : '';
+
+	let response: Response;
+	try {
+		response = await fetch(`${DISCOGS_API_BASE}${endpoint}${auth}`, { credentials: 'omit' });
+	} catch {
+		throw new DiscogsAPIError('Could not reach Discogs', 0, 'UNREACHABLE');
 	}
-
-	const response = await fetch(`${DISCOGS_API_BASE}${endpoint}`, { headers });
-
-	const header = response.headers.get('X-Discogs-Ratelimit-Remaining');
-	const parsed = header === null ? NaN : parseInt(header, 10);
-	const remaining = Number.isFinite(parsed) ? parsed : null;
-	lastRemaining = remaining;
-	lastReadingAt = Date.now();
 
 	if (response.ok) {
 		try {
-			return { data: (await response.json()) as T, remaining };
+			return (await response.json()) as T;
 		} catch {
 			throw new DiscogsAPIError('Invalid response from Discogs', 502, 'BAD_RESPONSE');
 		}
 	}
-
-	if (response.status === 401) {
-		throw new DiscogsAPIError('Invalid or expired Discogs token', 401, 'BAD_TOKEN');
-	}
-	if (response.status === 404) {
-		throw new DiscogsAPIError('User not found', 404, 'NOT_FOUND');
-	}
-	if (response.status === 403) {
-		throw new DiscogsAPIError('Collection is private', 403, 'PRIVATE');
-	}
-	if (response.status === 429) {
-		last429At = Date.now();
-		// Retry-After may be a non-numeric HTTP-date; fall back to the default.
-		const retryAfter = parseInt(response.headers.get('Retry-After') ?? '', 10);
-		const retryAfterMs =
-			Number.isFinite(retryAfter) && retryAfter >= 0
-				? retryAfter * 1000
-				: DEFAULT_RETRY_AFTER_MS;
-		throw new DiscogsAPIError(
-			'Rate limited - please try again later',
-			429,
-			'RATE_LIMITED',
-			retryAfterMs
-		);
-	}
+	if (response.status === 401) throw new DiscogsAPIError('Invalid or expired Discogs token', 401, 'BAD_TOKEN');
+	if (response.status === 404) throw new DiscogsAPIError('User not found', 404, 'NOT_FOUND');
+	if (response.status === 403) throw new DiscogsAPIError('Collection is private', 403, 'PRIVATE');
+	if (response.status === 429) throw new DiscogsAPIError('Discogs is busy', 429, 'RATE_LIMITED');
 
 	console.error(`Unexpected Discogs API response: ${response.status} ${response.statusText}`);
 	throw new DiscogsAPIError('Discogs API request failed', 502, 'UPSTREAM_ERROR');
 }
 
-export function fetchProfile(
-	username: string,
-	options: FetchOptions
-): Promise<DiscogsResult<DiscogsUserProfile>> {
-	return discogsGet<DiscogsUserProfile>(`/users/${encodeURIComponent(username)}`, options);
+export function fetchProfile(username: string, token: string): Promise<DiscogsUserProfile> {
+	return discogsGet<DiscogsUserProfile>(`/users/${encodeURIComponent(username)}`, token);
 }
 
+/** One page of a list. With no token, Discogs answers only if the list is public. */
 export async function fetchListPage(
 	kind: SyncKind,
 	username: string,
 	page: number,
 	perPage: number,
-	options: FetchOptions
-): Promise<DiscogsResult<ListPage>> {
+	token: string | undefined
+): Promise<ListPage> {
 	const user = encodeURIComponent(username);
 	const query = `page=${page}&per_page=${perPage}&sort=added&sort_order=desc`;
 	if (kind === 'collection') {
-		const r = await discogsGet<DiscogsCollectionResponse>(
-			`/users/${user}/collection/folders/0/releases?${query}`,
-			options
-		);
-		return {
-			data: { items: r.data.releases, pagination: r.data.pagination },
-			remaining: r.remaining
-		};
+		const r = await discogsGet<DiscogsCollectionResponse>(`/users/${user}/collection/folders/0/releases?${query}`, token);
+		return { items: r.releases, pagination: r.pagination };
 	}
-	const r = await discogsGet<DiscogsWantlistResponse>(`/users/${user}/wants?${query}`, options);
-	return {
-		data: { items: r.data.wants, pagination: r.data.pagination },
-		remaining: r.remaining
-	};
+	const r = await discogsGet<DiscogsWantlistResponse>(`/users/${user}/wants?${query}`, token);
+	return { items: r.wants, pagination: r.pagination };
+}
+
+/** Who the token belongs to. */
+export async function fetchIdentity(token: string): Promise<{ username: string }> {
+	const data = await discogsGet<{ username?: unknown }>('/oauth/identity', token);
+	if (typeof data?.username !== 'string') {
+		throw new DiscogsAPIError('Unexpected response from Discogs', 502, 'BAD_RESPONSE');
+	}
+	return { username: data.username };
+}
+
+/** The Settings page's token test, as a line to show the visitor. */
+export async function checkToken(token: string): Promise<{ success: boolean; message: string }> {
+	try {
+		return { success: true, message: `Connected as: ${(await fetchIdentity(token)).username}` };
+	} catch (e) {
+		if (isBusy(e)) return { success: false, message: 'Discogs is busy or unreachable. Try again in a minute.' };
+		const rejected = e instanceof DiscogsAPIError && e.code === 'BAD_TOKEN';
+		return { success: false, message: rejected ? 'Invalid token' : 'Failed to verify token' };
+	}
+}
+
+export function fetchPriceSuggestions(releaseId: number, token: string): Promise<PriceSuggestions> {
+	return discogsGet<PriceSuggestions>(`/marketplace/price_suggestions/${releaseId}`, token);
 }
 
 export function computeCollectionStats(items: DiscogsCollectionItem[]): CollectionStats {

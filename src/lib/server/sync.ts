@@ -1,74 +1,45 @@
 import type { Store } from './store';
-import type { DiscogsUserProfile } from '$lib/types/discogs';
-import {
-	DiscogsAPIError,
-	fetchListPage,
-	fetchProfile,
-	type DiscogsResult,
-	type ListPage
-} from '$lib/api/discogs';
 import { cleanArtistName } from '$lib/utils/discogs';
-import { USER_AGENT } from '$lib/constants';
 import {
-	DEFAULT_RETRY_AFTER_MS,
 	FRESH_MS,
-	PACE_CRITICAL_MS,
-	PACE_LOW_MS,
-	PACE_MS,
+	MAX_TOTAL_PAGES,
 	PAGE_SIZE,
 	REFRESH_COOLDOWN_MS,
 	SNAPSHOT_BUCKET_MS,
 	SNAPSHOT_OPEN_MS,
 	SNAPSHOT_TTL_SECONDS,
+	SYNC_MESSAGES,
+	publicProfile,
 	type PageRecord,
 	type PublicProfile,
 	type SnapshotMeta,
 	type SnapshotRef,
 	type StoredInitial,
 	type SyncCompleteResult,
+	type SyncDropResult,
 	type SyncError,
 	type SyncErrorCode,
 	type SyncKind,
 	type SyncOk,
 	type SyncPageResult,
 	type SyncStartResult,
-	type SyncWait
+	type SyncStoreResult
 } from '$lib/sync/types';
 
-export interface DiscogsPort {
-	profile(username: string, token: string): Promise<DiscogsResult<DiscogsUserProfile>>;
-	listPage(
-		kind: SyncKind,
-		username: string,
-		page: number,
-		perPage: number,
-		token: string | undefined
-	): Promise<DiscogsResult<ListPage>>;
-}
+// The server never calls Discogs. The visitor's browser does, and hands each
+// page over; this module only reads and writes the store.
+//
+// It cannot check a token either, so writing is limited to the visitors the
+// site owner has listed (see writers.ts). Anyone with a token cookie may read.
 
 export interface SyncDeps {
 	store: Store;
-	discogs: DiscogsPort;
 	now: () => number;
+	/** This request may write to the shared store: hand pages over, drop a copy. */
+	writer: boolean;
 }
 
-export const discogsPort: DiscogsPort = {
-	profile: (username, token) => fetchProfile(username, { userAgent: USER_AGENT, token }),
-	listPage: (kind, username, page, perPage, token) =>
-		fetchListPage(kind, username, page, perPage, { userAgent: USER_AGENT, token })
-};
-
 const SNAPSHOT_ID = /^\d{1,12}$/;
-
-const MESSAGES: Record<SyncErrorCode, string> = {
-	TOKEN_REQUIRED: 'A Discogs token is required',
-	BAD_TOKEN: 'Invalid or expired Discogs token',
-	NOT_FOUND: 'Discogs user not found',
-	PRIVATE: 'This list is private',
-	SNAPSHOT_EXPIRED: 'This sync has expired; start a new one',
-	BAD_REQUEST: 'Bad request',
-	UPSTREAM: 'Discogs request failed'
-};
 
 export function metaKey(kind: SyncKind, username: string): string {
 	return `v2:${kind}:${username.toLowerCase()}:meta`;
@@ -92,36 +63,8 @@ export function isSnapshotOpen(snapshot: string, now: number): boolean {
 	return start <= now && now < start + SNAPSHOT_BUCKET_MS + SNAPSHOT_OPEN_MS;
 }
 
-export function paceFor(remaining: number | null): number {
-	if (remaining === null || remaining > 10) return PACE_MS;
-	if (remaining <= 3) return PACE_CRITICAL_MS;
-	return PACE_LOW_MS;
-}
-
 function error(code: SyncErrorCode): SyncError {
-	return { status: 'error', code, message: MESSAGES[code] };
-}
-
-function codeOf(e: unknown): string | undefined {
-	return e instanceof DiscogsAPIError ? e.code : undefined;
-}
-
-/** Maps a failed Discogs call to a result. Never retries: a 429 becomes `wait`. */
-function failure(e: unknown): SyncWait | SyncError {
-	if (e instanceof DiscogsAPIError && e.code === 'RATE_LIMITED') {
-		return { status: 'wait', retryAfterMs: e.retryAfterMs ?? DEFAULT_RETRY_AFTER_MS };
-	}
-	const code = codeOf(e);
-	if (code === 'BAD_TOKEN' || code === 'NOT_FOUND' || code === 'PRIVATE') return error(code);
-	// Discogs errors are not logged here (where raised, an unexpected status is
-	// logged and BAD_RESPONSE is not); anything else is unexpected and is logged.
-	if (!(e instanceof DiscogsAPIError)) console.error('[record-shelf] sync: unexpected error', e);
-	return error('UPSTREAM');
-}
-
-function lowest(values: Array<number | null>): number | null {
-	const known = values.filter((v): v is number => v !== null);
-	return known.length ? Math.min(...known) : null;
+	return { status: 'error', code, message: SYNC_MESSAGES[code] };
 }
 
 function fromStore<T>(snapshot: string, record: PageRecord<T>): SyncOk<T> {
@@ -132,20 +75,13 @@ function fromStore<T>(snapshot: string, record: PageRecord<T>): SyncOk<T> {
 		totalPages: record.totalPages,
 		totalItems: record.totalItems,
 		items: record.items,
-		source: 'store',
-		stored: true,
-		nextDelayMs: 0,
 		...(record.profile ? { profile: record.profile } : {})
 	};
 }
 
-// Authenticated responses carry owner-only fields (profile email, item notes,
-// folder ids). Everything is reduced to an allowlist as soon as it arrives, so
-// the same public shape is stored and returned to every visitor.
-function publicProfile(p: DiscogsUserProfile): PublicProfile {
-	return { username: p.username, avatar_url: p.avatar_url ?? '', location: p.location ?? '' };
-}
-
+// A page fetched with the owner's token carries owner-only fields (profile email,
+// item notes, folder ids). Everything handed over is reduced to an allowlist
+// before it is stored, so the same public shape is served to every visitor.
 const PUBLIC_ITEM_KEYS: Record<SyncKind, readonly string[]> = {
 	collection: ['id', 'instance_id', 'rating', 'date_added', 'basic_information'],
 	wantlist: ['id', 'rating', 'date_added', 'basic_information']
@@ -153,10 +89,22 @@ const PUBLIC_ITEM_KEYS: Record<SyncKind, readonly string[]> = {
 
 function publicItems(kind: SyncKind, items: unknown[]): unknown[] {
 	return items.map((item) => {
-		const source = (typeof item === 'object' && item !== null ? item : {}) as Record<string, unknown>;
+		const source = item as Record<string, unknown>;
 		const out: Record<string, unknown> = {};
 		for (const key of PUBLIC_ITEM_KEYS[kind]) if (key in source) out[key] = source[key];
 		return out;
+	});
+}
+
+/** The profile a browser handed over with page 1, if it is one for this user. */
+function handedProfile(value: unknown, username: string): PublicProfile | null {
+	if (typeof value !== 'object' || value === null) return null;
+	const p = value as { username?: unknown; avatar_url?: unknown; location?: unknown };
+	if (typeof p.username !== 'string' || p.username.toLowerCase() !== username.toLowerCase()) return null;
+	return publicProfile({
+		username: p.username,
+		avatar_url: typeof p.avatar_url === 'string' ? p.avatar_url : '',
+		location: typeof p.location === 'string' ? p.location : ''
 	});
 }
 
@@ -173,14 +121,14 @@ async function removeStoredCopy(store: Store, kind: SyncKind, username: string, 
 	console.warn('[record-shelf] sync: removed stored copy', kind, username.toLowerCase());
 }
 
+/** Answers from meta alone: is there a fresh copy, a sync to join, or one to open? */
 export async function startSync(
 	kind: SyncKind,
 	username: string,
-	token: string,
 	force: boolean,
 	deps: SyncDeps
 ): Promise<SyncStartResult<unknown>> {
-	const { store, discogs } = deps;
+	const { store } = deps;
 	const now = deps.now();
 	const meta = await store.getJSON<SnapshotMeta>(metaKey(kind, username));
 
@@ -203,135 +151,100 @@ export async function startSync(
 	if (snapshot === current?.id) return { status: 'fresh', snapshot };
 
 	const storedFirst = await store.getJSON<PageRecord>(pageKey(kind, username, snapshot, 1));
-	if (storedFirst) {
-		const joined = fromStore(snapshot, storedFirst);
-		const joinedProfile = storedFirst.profile ?? meta?.profile;
-		return joinedProfile ? { ...joined, profile: joinedProfile } : joined;
-	}
-
-	let isPublic: boolean;
-	let probeRemaining: number | null = null;
-	try {
-		probeRemaining = (await discogs.listPage(kind, username, 1, 1, undefined)).remaining;
-		isPublic = true;
-	} catch (e) {
-		const code = codeOf(e);
-		if (code !== 'PRIVATE' && code !== 'BAD_TOKEN' && code !== 'NOT_FOUND') return failure(e);
-		// Not public, or the user is gone: the stored copy goes now, whatever the
-		// visitor's token can still read, so no visit keeps serving it.
-		if (meta) await removeStoredCopy(store, kind, username, meta);
-		if (code === 'NOT_FOUND') return failure(e);
-		isPublic = false;
-	}
-
-	let first: DiscogsResult<ListPage>;
-	let profileResult: DiscogsResult<DiscogsUserProfile>;
-	try {
-		first = await discogs.listPage(kind, username, 1, PAGE_SIZE, token);
-		profileResult = await discogs.profile(username, token);
-	} catch (e) {
-		return failure(e);
-	}
-
-	const items = publicItems(kind, first.data.items);
-	const profile = publicProfile(profileResult.data);
-	const totalPages = Math.max(1, first.data.pagination.pages);
-	const totalItems = first.data.pagination.items;
-
-	let stored = false;
-	if (isPublic) {
-		const record: PageRecord = { items, page: 1, totalPages, totalItems, profile, startedAt: now };
-		const nextMeta: SnapshotMeta = {
-			profile,
-			current,
-			pending: { id: snapshot, totalItems, totalPages, startedAt: now, completedAt: null },
-			recent: meta?.recent ?? []
-		};
-		const pageOk = await store.putJSON(pageKey(kind, username, snapshot, 1), record, SNAPSHOT_TTL_SECONDS);
-		const metaOk = await store.putJSON(metaKey(kind, username), nextMeta, SNAPSHOT_TTL_SECONDS);
-		stored = pageOk && metaOk;
-	}
-
-	return {
-		status: 'ok',
-		snapshot,
-		page: 1,
-		totalPages,
-		totalItems,
-		items,
-		source: 'discogs',
-		stored,
-		nextDelayMs: paceFor(lowest([probeRemaining, first.remaining, profileResult.remaining])),
-		profile
-	};
+	if (!storedFirst) return { status: 'open', snapshot, store: deps.writer };
+	const joined = fromStore(snapshot, storedFirst);
+	const joinedProfile = storedFirst.profile ?? meta?.profile;
+	return joinedProfile ? { ...joined, profile: joinedProfile } : joined;
 }
 
 export async function getPage(
 	kind: SyncKind,
 	username: string,
-	token: string,
 	snapshot: string,
 	page: number,
 	deps: SyncDeps
 ): Promise<SyncPageResult<unknown>> {
 	if (!Number.isInteger(page) || page < 1 || !SNAPSHOT_ID.test(snapshot)) return error('BAD_REQUEST');
-	const { store, discogs } = deps;
-	const now = deps.now();
-	const open = isSnapshotOpen(snapshot, now);
-	const meta = await store.getJSON<SnapshotMeta>(metaKey(kind, username));
+	const { store } = deps;
+	const open = isSnapshotOpen(snapshot, deps.now());
 
+	const storedPage = await store.getJSON<PageRecord>(pageKey(kind, username, snapshot, page));
+	if (!storedPage) return open ? { status: 'missing' } : error('SNAPSHOT_EXPIRED');
+	if (open) return fromStore(snapshot, storedPage);
 	// Snapshot ids are guessable, so a stored page alone is not enough: it must
 	// belong to an open snapshot or to the list's current one.
-	const storedPage = await store.getJSON<PageRecord>(pageKey(kind, username, snapshot, page));
-	if (storedPage) {
-		if (open || meta?.current?.id === snapshot) return fromStore(snapshot, storedPage);
-		return error('SNAPSHOT_EXPIRED');
-	}
-	if (!open) return error('SNAPSHOT_EXPIRED');
+	const meta = await store.getJSON<SnapshotMeta>(metaKey(kind, username));
+	return meta?.current?.id === snapshot ? fromStore(snapshot, storedPage) : error('SNAPSHOT_EXPIRED');
+}
 
-	// Meta names a snapshot only after the list was confirmed public, so it is the
-	// marker for storing. A missing or stale meta is safe: the page goes unstored.
+const isCount = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0;
+
+/**
+ * Stores one page a browser fetched from Discogs. Page 1 opens the snapshot: it
+ * writes meta, and meta naming a snapshot is what lets its later pages in.
+ */
+export async function storePage(
+	kind: SyncKind,
+	username: string,
+	body: unknown,
+	deps: SyncDeps
+): Promise<SyncStoreResult> {
+	// Checked before anything else: a visitor who may not write gets the same
+	// answer whatever they send, and their own view carries on unstored.
+	if (!deps.writer) return { status: 'unstored' };
+	if (typeof body !== 'object' || body === null) return error('BAD_REQUEST');
+	const { snapshot, page, totalPages, totalItems, items, profile } = body as Record<string, unknown>;
+	if (
+		typeof snapshot !== 'string' || !SNAPSHOT_ID.test(snapshot) ||
+		!isCount(page) || page < 1 ||
+		!isCount(totalPages) || totalPages < 1 || totalPages > MAX_TOTAL_PAGES || page > totalPages ||
+		!isCount(totalItems) ||
+		!Array.isArray(items) || items.length > PAGE_SIZE ||
+		items.some((item) => typeof item !== 'object' || item === null)
+	) {
+		return error('BAD_REQUEST');
+	}
+	const { store } = deps;
+	const now = deps.now();
+	if (!isSnapshotOpen(snapshot, now)) return error('SNAPSHOT_EXPIRED');
+	const meta = await store.getJSON<SnapshotMeta>(metaKey(kind, username));
+	const key = pageKey(kind, username, snapshot, page);
+	const record: PageRecord = { items: publicItems(kind, items), page, totalPages, totalItems };
+
+	if (page === 1) {
+		const publicOne = handedProfile(profile, username);
+		// A completed copy never changes; a refresh arrives under a new snapshot id.
+		if (!publicOne || meta?.current?.id === snapshot) return error('BAD_REQUEST');
+		const nextMeta: SnapshotMeta = {
+			profile: publicOne,
+			current: meta?.current ?? null,
+			pending: { id: snapshot, totalItems, totalPages, startedAt: now, completedAt: null },
+			recent: meta?.recent ?? []
+		};
+		const pageOk = await store.putJSON(key, { ...record, profile: publicOne, startedAt: now }, SNAPSHOT_TTL_SECONDS);
+		const metaOk = await store.putJSON(metaKey(kind, username), nextMeta, SNAPSHOT_TTL_SECONDS);
+		return { status: pageOk && metaOk ? 'stored' : 'unstored' };
+	}
+
 	const ref =
 		meta?.pending?.id === snapshot ? meta.pending : meta?.current?.id === snapshot ? meta.current : null;
+	if (!ref) return { status: 'unstored' };
+	// Only pages inside the snapshot's recorded range, so arbitrary page numbers
+	// cannot fill the store.
+	if (page > ref.totalPages) return error('BAD_REQUEST');
+	return { status: (await store.putJSON(key, record, SNAPSHOT_TTL_SECONDS)) ? 'stored' : 'unstored' };
+}
 
-	let record: PageRecord;
-	let remaining: number | null = null;
-	try {
-		const r = await discogs.listPage(kind, username, page, PAGE_SIZE, token);
-		remaining = r.remaining;
-		record = {
-			items: publicItems(kind, r.data.items),
-			page,
-			totalPages: Math.max(1, r.data.pagination.pages),
-			totalItems: r.data.pagination.items,
-			// Page 1 is where start and completion read the profile and start time from.
-			...(page === 1 && ref && meta ? { profile: meta.profile, startedAt: ref.startedAt } : {})
-		};
-	} catch (e) {
-		if (!(page > 1 && codeOf(e) === 'NOT_FOUND')) return failure(e);
-		// Only a page inside the snapshot's known range becomes an empty page, so
-		// arbitrary page numbers cannot fill the store with empty records.
-		if (!ref || page > ref.totalPages) return error('BAD_REQUEST');
-		record = { items: [], page, totalPages: ref.totalPages, totalItems: ref.totalItems };
-	}
-
-	const stored = ref
-		? await store.putJSON(pageKey(kind, username, snapshot, page), record, SNAPSHOT_TTL_SECONDS)
-		: false;
-
-	return {
-		status: 'ok',
-		snapshot,
-		page,
-		totalPages: record.totalPages,
-		totalItems: record.totalItems,
-		items: record.items,
-		source: 'discogs',
-		stored,
-		nextDelayMs: paceFor(remaining),
-		// A pass opened from a `fresh` answer reads the profile from its page 1.
-		...(page === 1 && meta ? { profile: meta.profile } : {})
-	};
+/**
+ * Removes the stored copy. A browser asks for this when Discogs, asked without
+ * a token, says the list is not public or the user is gone. Only a visitor who
+ * may write is believed.
+ */
+export async function dropStored(kind: SyncKind, username: string, deps: SyncDeps): Promise<SyncDropResult> {
+	if (!deps.writer) return { status: 'refused' };
+	const meta = await deps.store.getJSON<SnapshotMeta>(metaKey(kind, username));
+	if (meta) await removeStoredCopy(deps.store, kind, username, meta);
+	return { status: 'dropped' };
 }
 
 interface RecentSource {
@@ -369,7 +282,7 @@ export async function completeSync(
 	const first = await store.getJSON<PageRecord>(pageKey(kind, username, snapshot, 1));
 	if (!first) return { status: 'incomplete', missing: [1] };
 
-	// listKeys may be partial; a page reported missing is re-requested and then served from the store.
+	// listKeys may be partial; a page reported missing is asked for again and then served from the store.
 	const prefix = pagePrefix(kind, username, snapshot);
 	const present = new Set((await store.listKeys(prefix)).map((key) => Number(key.slice(prefix.length))));
 	const missing: number[] = [];
