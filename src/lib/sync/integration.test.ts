@@ -35,8 +35,9 @@ function fakeDiscogs(username: string, total: number) {
 		const url = new URL(input);
 		if (url.hostname !== 'api.discogs.com') throw new Error(`unexpected fetch ${input}`);
 		if (inServer) throw new Error(`the server called Discogs: ${input}`);
-		if (init?.headers) throw new Error('a header would cost a preflight');
-		const token = url.searchParams.get('token');
+		if (url.searchParams.has('token')) throw new Error('the token was put in the address');
+		const token = /^Discogs token=(.+)$/.exec(new Headers(init?.headers).get('authorization') ?? '')?.[1] ?? null;
+		if (token === null && init?.headers) throw new Error('a call with no token must not cost a preflight');
 		const page = Number(url.searchParams.get('page'));
 		const perPage = Number(url.searchParams.get('per_page'));
 		const name = url.pathname === `/users/${username}` ? 'profile' : token === null ? 'probe' : `page ${page}`;

@@ -285,6 +285,8 @@ describe('DiscogsAPIError', () => {
 });
 
 const res =(status: number, body: unknown = {}) => new Response(JSON.stringify(body), { status });
+/** The Authorization header a call was made with, or null. */
+const authOf = (init?: RequestInit) => new Headers(init?.headers).get('authorization');
 
 describe('discogsGet (called from the browser)', () => {
 	beforeEach(() => setPaceForTests(0));
@@ -294,22 +296,29 @@ describe('discogsGet (called from the browser)', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('sends the token in the query string, with no headers and no cookies, so there is no preflight', async () => {
+	it('sends the token in the Authorization header, never in the address, and no cookies', async () => {
 		const f = vi.fn(async (_url: string, _init?: RequestInit) => res(200, { a: 1 }));
 		vi.stubGlobal('fetch', f);
 		expect(await discogsGet('/x', 'to ken')).toEqual({ a: 1 });
 		expect(await discogsGet('/y?page=2', 'tok')).toEqual({ a: 1 });
-		expect(f.mock.calls.map((c) => c[0])).toEqual([
-			'https://api.discogs.com/x?token=to%20ken',
-			'https://api.discogs.com/y?page=2&token=tok'
-		]);
-		expect(f.mock.calls[0][1]).toEqual({ credentials: 'omit' });
+		expect(f.mock.calls.map((c) => c[0])).toEqual(['https://api.discogs.com/x', 'https://api.discogs.com/y?page=2']);
+		expect(f.mock.calls.map((c) => authOf(c[1]))).toEqual(['Discogs token=to ken', 'Discogs token=tok']);
+		expect(f.mock.calls.map((c) => c[1]?.credentials)).toEqual(['omit', 'omit']);
 	});
-	it('sends no token when none is given', async () => {
-		const f = vi.fn(async (_url: string) => res(200));
+	it('sends no token and no headers when none is given, so that call needs no preflight', async () => {
+		const f = vi.fn(async (_url: string, _init?: RequestInit) => res(200));
 		vi.stubGlobal('fetch', f);
 		await discogsGet('/x?page=1');
-		expect(f.mock.calls[0][0]).toBe('https://api.discogs.com/x?page=1');
+		expect(f.mock.calls[0]).toEqual(['https://api.discogs.com/x?page=1', { credentials: 'omit' }]);
+	});
+	it('a token that cannot be sent as a header is a bad token, and Discogs is not called', async () => {
+		// A browser refuses to send such a header at all, which would otherwise look like "Discogs is busy".
+		const f = vi.fn(async () => res(200));
+		vi.stubGlobal('fetch', f);
+		for (const token of ['line\nbreak', 'snowman ☃']) {
+			await expect(discogsGet('/x', token)).rejects.toMatchObject({ code: 'BAD_TOKEN', status: 401 });
+		}
+		expect(f).not.toHaveBeenCalled();
 	});
 	it('a 429 is RATE_LIMITED and a request with no readable answer is UNREACHABLE; both count as busy, one fetch each', async () => {
 		const limited = vi.fn(async () => res(429));
@@ -356,9 +365,15 @@ describe('one shared queue paces every Discogs call', () => {
 		vi.unstubAllGlobals();
 	});
 
-	it('calls made together leave PACE_MS apart, whatever they are for', async () => {
+	/** Stubs Discogs and records when each call reaches it. */
+	const callTimes = () => {
 		const at: number[] = [];
-		vi.stubGlobal('fetch', vi.fn(async () => { at.push(Date.now()); return res(200, { pagination: {}, releases: [], username: 'u' }); }));
+		vi.stubGlobal('fetch', vi.fn(async () => { at.push(Date.now()); return res(200, { pagination: {}, releases: [], wants: [], username: 'u' }); }));
+		return at;
+	};
+
+	it('calls that carry a token leave two slots apart, whatever they are for: Discogs counts the preflight too', async () => {
+		const at = callTimes();
 		const t0 = Date.now();
 		const all = Promise.all([
 			fetchListPage('collection', 'u', 1, 100, 'tok'),
@@ -366,9 +381,32 @@ describe('one shared queue paces every Discogs call', () => {
 			fetchPriceSuggestions(7, 'tok'),
 			fetchIdentity('tok')
 		]);
-		await vi.advanceTimersByTimeAsync(PACE_MS * 3);
+		await vi.advanceTimersByTimeAsync(PACE_MS * 6);
 		await all;
-		expect(at.map((t) => t - t0)).toEqual([0, PACE_MS, PACE_MS * 2, PACE_MS * 3]);
+		expect(at.map((t) => t - t0)).toEqual([0, PACE_MS * 2, PACE_MS * 4, PACE_MS * 6]);
+	});
+	it('a call with no token takes one slot: it has no preflight', async () => {
+		const at = callTimes();
+		const t0 = Date.now();
+		const all = Promise.all([
+			fetchListPage('collection', 'u', 1, 1, undefined),
+			fetchListPage('collection', 'u', 1, 100, 'tok'),
+			fetchListPage('wantlist', 'u', 1, 1, undefined),
+			fetchProfile('u', 'tok')
+		]);
+		await vi.advanceTimersByTimeAsync(PACE_MS * 4);
+		await all;
+		expect(at.map((t) => t - t0)).toEqual([0, PACE_MS, PACE_MS * 3, PACE_MS * 4]);
+	});
+	it('a minute of calls that carry a token stays inside the 60 requests Discogs allows, counting each preflight', async () => {
+		const at = callTimes();
+		const all = Promise.all(Array.from({ length: 40 }, (_, i) => fetchPriceSuggestions(i + 1, 'tok')));
+		await vi.advanceTimersByTimeAsync(120_000);
+		await all;
+		const inFirstMinute = at.filter((t) => t - at[0] < 60_000).length;
+		expect(inFirstMinute * 2).toBeLessThanOrEqual(60);
+		// ...and is no slower than that needs.
+		expect(inFirstMinute).toBeGreaterThanOrEqual(25);
 	});
 	it('a call made after a quiet spell goes at once', async () => {
 		const f = vi.fn(async () => res(200));
@@ -394,29 +432,32 @@ describe('endpoints', () => {
 		return f;
 	};
 
-	it('fetchListPage requests the collection endpoint and returns releases as items', async () => {
+	it('fetchListPage requests the collection endpoint with the token and returns releases as items', async () => {
 		const f = stub({ pagination: { page: 2, pages: 3, per_page: 100, items: 250, urls: {} }, releases: [{ id: 1 }] });
 		const r = await fetchListPage('collection', 'Some User', 2, 100, 't');
-		expect(f.mock.calls[0][0]).toBe('https://api.discogs.com/users/Some%20User/collection/folders/0/releases?page=2&per_page=100&sort=added&sort_order=desc&token=t');
+		expect(f.mock.calls[0][0]).toBe('https://api.discogs.com/users/Some%20User/collection/folders/0/releases?page=2&per_page=100&sort=added&sort_order=desc');
+		expect(authOf(f.mock.calls[0][1])).toBe('Discogs token=t');
 		expect(r.items).toEqual([{ id: 1 }]);
 		expect(r.pagination.pages).toBe(3);
 	});
-	it('fetchListPage requests the wants endpoint and returns wants as items; no token, no token parameter', async () => {
+	it('fetchListPage requests the wants endpoint and returns wants as items; no token, no Authorization header', async () => {
 		const f = stub({ pagination: { page: 1, pages: 1, per_page: 1, items: 1, urls: {} }, wants: [{ id: 9 }] });
 		const r = await fetchListPage('wantlist', 'u', 1, 1, undefined);
 		expect(f.mock.calls[0][0]).toBe('https://api.discogs.com/users/u/wants?page=1&per_page=1&sort=added&sort_order=desc');
+		expect(authOf(f.mock.calls[0][1])).toBeNull();
 		expect(r.items).toEqual([{ id: 9 }]);
 	});
-	it('fetchProfile, fetchIdentity and fetchPriceSuggestions ask the right addresses', async () => {
+	it('fetchProfile, fetchIdentity and fetchPriceSuggestions ask the right addresses with the token', async () => {
 		const f = stub({ username: 'u' });
 		await fetchProfile('Some User', 't');
 		expect(await fetchIdentity('t')).toEqual({ username: 'u' });
 		await fetchPriceSuggestions(42, 't');
 		expect(f.mock.calls.map((c) => c[0])).toEqual([
-			'https://api.discogs.com/users/Some%20User?token=t',
-			'https://api.discogs.com/oauth/identity?token=t',
-			'https://api.discogs.com/marketplace/price_suggestions/42?token=t'
+			'https://api.discogs.com/users/Some%20User',
+			'https://api.discogs.com/oauth/identity',
+			'https://api.discogs.com/marketplace/price_suggestions/42'
 		]);
+		expect(f.mock.calls.map((c) => authOf(c[1]))).toEqual(['Discogs token=t', 'Discogs token=t', 'Discogs token=t']);
 	});
 	it('fetchIdentity rejects an answer with no username', async () => {
 		stub({ id: 1 });
@@ -433,10 +474,14 @@ describe('checkToken (the Settings page test)', () => {
 	});
 
 	it('asks Discogs directly who the token belongs to', async () => {
-		const f = vi.fn(async (_url: string) => res(200, { username: 'someone' }));
+		const f = vi.fn(async (_url: string, _init?: RequestInit) => res(200, { username: 'someone' }));
 		vi.stubGlobal('fetch', f);
 		expect(await checkToken('tok')).toEqual({ success: true, message: 'Connected as: someone' });
-		expect(f.mock.calls.map((c) => c[0])).toEqual(['https://api.discogs.com/oauth/identity?token=tok']);
+		expect(f.mock.calls.map((c) => [c[0], authOf(c[1])])).toEqual([['https://api.discogs.com/oauth/identity', 'Discogs token=tok']]);
+	});
+	it('says a token that cannot be sent is invalid, rather than blaming Discogs', async () => {
+		vi.stubGlobal('fetch', vi.fn(async () => res(200, { username: 'someone' })));
+		expect(await checkToken('bad\ntoken')).toEqual({ success: false, message: 'Invalid token' });
 	});
 	it('says a rejected token is invalid', async () => {
 		vi.stubGlobal('fetch', vi.fn(async () => res(401)));

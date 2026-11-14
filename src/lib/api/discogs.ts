@@ -15,8 +15,11 @@ import { PACE_MS, type SyncKind } from '$lib/sync/types';
 // - a 200, 401, 403 or 404 answer can be read; a 429 cannot (it carries no CORS
 //   header), so it looks exactly like a lost connection;
 // - the rate-limit and Retry-After headers cannot be read;
-// - a token sent as a header costs a preflight for every address, and the
-//   preflight counts against the rate limit. A token in the query string does not.
+// - the token goes in the Authorization header, so it is never part of an
+//   address. That costs a preflight for every new address, and Discogs counts
+//   the preflight against the rate limit (re-checked 2026-11-14), so a call
+//   with a token takes two slots in the queue below. A token in the query
+//   string would cost no preflight, but puts the token in the address.
 
 const DISCOGS_API_BASE = 'https://api.discogs.com';
 
@@ -45,15 +48,16 @@ export interface PriceSuggestions {
 	[condition: string]: { currency: string; value: number };
 }
 
-// One queue for every Discogs call this page makes, whatever it is for: each
-// call takes the next free slot, and slots are PACE_MS apart.
+// One queue for every Discogs call this page makes, whatever it is for. Slots
+// are PACE_MS apart, and a call takes one slot for each request Discogs counts.
 let paceMs = PACE_MS;
 let nextSlotAt = 0;
 
-function takeSlot(): Promise<void> {
+/** Waits for this call's turn, and keeps the next call `count` slots behind it. */
+function takeSlots(count: number): Promise<void> {
 	const now = Date.now();
 	const at = Math.max(now, nextSlotAt);
-	nextSlotAt = at + paceMs;
+	nextSlotAt = at + paceMs * count;
 	return at > now ? new Promise((resolve) => setTimeout(resolve, at - now)) : Promise.resolve();
 }
 
@@ -68,12 +72,22 @@ export function setPaceForTests(ms: number | null): void {
  * decides what a busy answer means.
  */
 export async function discogsGet<T>(endpoint: string, token?: string): Promise<T> {
-	await takeSlot();
-	const auth = token ? `${endpoint.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}` : '';
+	const init: RequestInit = { credentials: 'omit' };
+	if (token) {
+		try {
+			init.headers = new Headers({ Authorization: `Discogs token=${token}` });
+		} catch {
+			// Not something a browser can send as a header, so not a token Discogs issued.
+			// Left to fetch, this would look like a lost connection and be retried for ever.
+			throw new DiscogsAPIError('Invalid or expired Discogs token', 401, 'BAD_TOKEN');
+		}
+	}
+	// With a token the browser asks Discogs for permission first (a preflight), and that counts too.
+	await takeSlots(token ? 2 : 1);
 
 	let response: Response;
 	try {
-		response = await fetch(`${DISCOGS_API_BASE}${endpoint}${auth}`, { credentials: 'omit' });
+		response = await fetch(`${DISCOGS_API_BASE}${endpoint}`, init);
 	} catch {
 		throw new DiscogsAPIError('Could not reach Discogs', 0, 'UNREACHABLE');
 	}

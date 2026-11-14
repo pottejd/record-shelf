@@ -10,7 +10,7 @@ export const SNAPSHOT_OPEN_MS = 60 * 60 * 1000;
 export const SNAPSHOT_TTL_SECONDS = 30 * 24 * 60 * 60;
 export const PRICE_TTL_MS = 6 * 60 * 60 * 1000;
 export const PAGE_SIZE = 100;
-/** The gap between any two Discogs calls one browser makes. */
+/** The gap between any two requests Discogs counts from one browser (a call with a token is two: its preflight counts). */
 export const PACE_MS = 1100;
 /** The first wait when Discogs is busy. A browser cannot read Retry-After. */
 export const DEFAULT_RETRY_AFTER_MS = 30_000;

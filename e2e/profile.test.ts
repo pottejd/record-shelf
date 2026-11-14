@@ -47,12 +47,11 @@ test('renders a profile from the stored copy without calling Discogs', async ({ 
 
 test('a list nobody has stored is fetched from Discogs by the browser and handed to the site page by page', async ({ page: pw }) => {
 	await withToken(pw);
-	const discogs: URL[] = [];
+	const discogs: Array<{ url: URL; auth: string }> = [];
 	const handed: Array<{ page: number; items: number; profile?: string }> = [];
 	const sent: string[] = [];
 	await pw.route('https://api.discogs.com/**', (route) => {
-		discogs.push(new URL(route.request().url()));
-		expect(route.request().headers()).not.toHaveProperty('authorization');
+		discogs.push({ url: new URL(route.request().url()), auth: route.request().headers()['authorization'] ?? 'no-token' });
 		return fromDiscogs(route);
 	});
 	await pw.route('**/api/collection/someuser**', async (route) => {
@@ -72,9 +71,10 @@ test('a list nobody has stored is fetched from Discogs by the browser and handed
 	await expect(pw.locator('#overview')).toContainText('150', { timeout: 15_000 });
 	await expect.poll(() => sent.some((body) => body.includes('"complete"')), { timeout: 15_000 }).toBe(true);
 
-	// One call with no token to check the list is public, then the token in the query string.
-	expect(discogs.map((u) => `${u.pathname.split('/').pop()} ${u.searchParams.get('page') ?? ''} ${u.searchParams.get('token') ?? 'no-token'}`))
-		.toEqual(['releases 1 no-token', 'releases 1 e2e', 'someuser  e2e', 'releases 2 e2e']);
+	// One call with no token to check the list is public, then the token in a header, never in the address.
+	expect(discogs.map(({ url, auth }) => `${url.pathname.split('/').pop()} ${url.searchParams.get('page') ?? ''} ${auth}`))
+		.toEqual(['releases 1 no-token', 'releases 1 Discogs token=e2e', 'someuser  Discogs token=e2e', 'releases 2 Discogs token=e2e']);
+	expect(discogs.some(({ url }) => url.search.includes('token'))).toBe(false);
 	expect(handed).toEqual([{ page: 1, items: 100, profile: 'someuser' }, { page: 2, items: 50 }]);
 	// The token never goes to the site in a request body.
 	expect(sent.join('\n')).not.toContain('e2e');

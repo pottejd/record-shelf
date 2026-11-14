@@ -20,10 +20,13 @@ const releaseIdOf = (url: string) => Number(new URL(url).pathname.split('/').pop
  */
 function stubNetwork(price: (releaseId: number, n: number) => Response = () => json({ 'Near Mint (NM or M-)': { value: 10, currency: 'USD' } })) {
 	const discogs: string[] = [];
+	/** The Authorization header of each Discogs call. */
+	const auth: Array<string | null> = [];
 	const site: string[] = [];
-	vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+	vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
 		if (url.startsWith('https://api.discogs.com/marketplace/price_suggestions/')) {
 			discogs.push(url);
+			auth.push(new Headers(init?.headers).get('authorization'));
 			return price(releaseIdOf(url), discogs.length);
 		}
 		if (url.startsWith('/api/value-history/')) {
@@ -32,7 +35,7 @@ function stubNetwork(price: (releaseId: number, n: number) => Response = () => j
 		}
 		throw new Error(`unexpected fetch ${url}`);
 	}));
-	return { discogs, site };
+	return { discogs, auth, site };
 }
 
 describe('ValueEstimate component', () => {
@@ -60,7 +63,8 @@ describe('ValueEstimate component', () => {
 		expect(screen.getByText(/extrapolated from 20-item sample/)).toBeInTheDocument();
 
 		expect(net.discogs).toHaveLength(20);
-		expect(net.discogs.every((url) => new URL(url).searchParams.get('token') === 'visitor token')).toBe(true);
+		expect(net.auth).toEqual(Array(20).fill('Discogs token=visitor token'));
+		expect(net.discogs.some((url) => url.includes('token'))).toBe(false);
 		// The finished estimate is recorded in value history.
 		expect(net.site).toEqual(['/api/value-history/tester']);
 	});

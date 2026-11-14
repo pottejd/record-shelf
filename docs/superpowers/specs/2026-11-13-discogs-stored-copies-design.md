@@ -701,3 +701,43 @@ has a Discogs client, a User-Agent, or a rate-limit reading in `/api/status`.
   for a week still opens at once.
 - The token cookie is the one source of the token in the browser, as it is on
   the server.
+
+## Amendment (2026-11-14): the token travels in a header
+
+**Why.** An automated security review of the push flagged the token in the
+request address (`?token=`). The owner was shown the two alternatives, a
+header or a route through the site's server (which Cloudflare rules out), and
+answered with one word: "header". That is read here as "send the token in a
+header". Built on a branch; not merged or deployed until the owner confirms.
+
+This replaces, under "The browser" above, "It sends the token as `?token=`,
+and gives every call a slot from one shared queue, one slot per 1.1 s":
+
+- The client sends `Authorization: Discogs token=…`. The token is never part
+  of an address.
+- The browser therefore sends a preflight before each call to a new address,
+  and Discogs counts it (re-checked 2026-11-14: the counter went 1 → 2 on the
+  OPTIONS, → 3 on the next GET). A call with a token takes two slots of the
+  queue, 2.2 s; a call with no token (the public check) has no preflight and
+  still takes one.
+- A token a browser cannot send as a header (a line break, a character
+  outside Latin-1) is reported as a bad token without calling Discogs. Left
+  to `fetch`, the refused send would look like "Discogs is busy" and be
+  retried for ever.
+
+**Cost.** Loading from Discogs takes about twice as long: 679 records in about
+17 s instead of 9, a 20-release value estimate in about 44 s instead of 22.
+Stored copies open as fast as before.
+
+The public check carries no token, so Discogs holds it to the anonymous limit
+of 25 a minute, on the same per-address counter as everything else (measured
+2026-11-14: after 26 counted preflights an anonymous GET got 429). With
+preflights counted, that is reached after about 12 calls with a token in the
+previous minute instead of about 24. So a writer who opens a second list not
+yet stored soon after a load or a value estimate sees "Discogs is busy" and a
+30 s wait more often than before. The loader retries on its own.
+
+**Checked** in Chromium against Discogs with a made-up token: the preflight
+is allowed (`access-control-allow-headers` lists `authorization`, max-age
+600), the 401 is readable after it, Settings shows "Invalid token", and no
+address carries the token. **Not checked:** a real token on this path.
