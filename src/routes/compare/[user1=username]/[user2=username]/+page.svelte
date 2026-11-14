@@ -1,15 +1,116 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import type { Engine, EngineState } from '$lib/sync/engine';
 	import CoverGrid from '$lib/components/CoverGrid.svelte';
 	import BrandNav from '$lib/components/BrandNav.svelte';
 	import SiteFooter from '$lib/components/SiteFooter.svelte';
+	import LoadingBanner from '$lib/components/profile/LoadingBanner.svelte';
+	import { goto } from '$app/navigation';
+	import { createLoader } from '$lib/sync/loader.svelte';
+	import { compareCollections } from '$lib/utils/compare';
 	import { SIMILARITY_THRESHOLDS, SHARED_RECORDS_PREVIEW } from '$lib/constants';
+
+	type Loader = Engine<DiscogsCollectionItem>;
 
 	let { data }: { data: PageData } = $props();
 
-	let user1 = $derived(data.user1);
-	let user2 = $derived(data.user2);
-	let comparison = $derived(data.comparison);
+	// One loader per user, each starting from its stored copy. They never refresh
+	// on their own: the sequence below decides when each one talks to Discogs.
+	const loader1 = $derived(
+		createLoader<DiscogsCollectionItem>({
+			kind: 'collection',
+			username: data.user1.username,
+			initial: data.user1.stored,
+			keyOf: (i) => i.instance_id,
+			autoRefresh: false
+		})
+	);
+	const loader2 = $derived(
+		createLoader<DiscogsCollectionItem>({
+			kind: 'collection',
+			username: data.user2.username,
+			initial: data.user2.stored,
+			keyOf: (i) => i.instance_id,
+			autoRefresh: false
+		})
+	);
+	let s1 = $derived(loader1.state);
+	let s2 = $derived(loader2.state);
+
+	// Loads user 1 then user 2, then refreshes each if stale, never both against
+	// Discogs at once. Sequences queue behind each other; one for a retired pair of
+	// loaders (the route changed) does nothing further.
+	let queue: Promise<void> = Promise.resolve();
+	const retired = new WeakSet<Loader>();
+
+	function enqueueSequence(a: Loader, b: Loader) {
+		const live = () => !retired.has(a) && !retired.has(b);
+		queue = queue
+			.then(async () => {
+				for (const l of [a, b]) {
+					if (!live()) return;
+					if (l.state.phase !== 'done') await l.run();
+					if (!live() || l.state.phase !== 'done') return;
+				}
+				await a.refreshIfStale();
+				if (live()) await b.refreshIfStale();
+			})
+			.catch((e) => console.error('[record-shelf] compare: unexpected error', e));
+	}
+
+	$effect(() => {
+		const a = loader1;
+		const b = loader2;
+		enqueueSequence(a, b);
+		return () => {
+			retired.add(a);
+			retired.add(b);
+			a.stop();
+			b.stop();
+		};
+	});
+
+	// The last fully loaded list of each loader. A loader's items are complete only
+	// when it is done: a background re-sync or a Retry must not swap in a partial
+	// list, so the comparison stays on the last full one until a fresh one lands.
+	let done1 = $state.raw<{ loader: Loader; items: DiscogsCollectionItem[] } | null>(null);
+	let done2 = $state.raw<{ loader: Loader; items: DiscogsCollectionItem[] } | null>(null);
+	$effect(() => {
+		if (s1.phase === 'done') done1 = { loader: loader1, items: s1.items };
+	});
+	$effect(() => {
+		if (s2.phase === 'done') done2 = { loader: loader2, items: s2.items };
+	});
+	let full1 = $derived(done1?.loader === loader1 ? done1.items : null);
+	let full2 = $derived(done2?.loader === loader2 ? done2.items : null);
+
+	let comparison = $derived(full1 && full2 ? compareCollections(full1, full2) : null);
+
+	function userView(username: string, s: EngineState<DiscogsCollectionItem>) {
+		return { profile: s.profile ?? { username, avatar_url: '' }, totalItems: s.totalItems };
+	}
+	let user1 = $derived(userView(data.user1.username, s1));
+	let user2 = $derived(userView(data.user2.username, s2));
+
+	// A user that does not exist or keeps the collection private: no comparison.
+	let blocked = $derived(
+		[
+			{ username: data.user1.username, code: s1.error?.code },
+			{ username: data.user2.username, code: s2.error?.code }
+		].filter((u) => u.code === 'NOT_FOUND' || u.code === 'PRIVATE')
+	);
+
+	// The token cookie is missing or rejected: send the visitor to settings.
+	$effect(() => {
+		const codes = [s1.error?.code, s2.error?.code];
+		if (codes.includes('TOKEN_REQUIRED') || codes.includes('BAD_TOKEN')) {
+			goto(
+				`/settings?redirect=/compare/${encodeURIComponent(data.user1.username)}/${encodeURIComponent(data.user2.username)}`,
+				{ replaceState: true }
+			);
+		}
+	});
 
 	function getSimilarityLabel(score: number): string {
 		if (score >= SIMILARITY_THRESHOLDS.TASTE_TWINS) return 'Taste twins!';
@@ -27,8 +128,38 @@
 	<meta property="og:type" content="website" />
 </svelte:head>
 
+{#snippet banners()}
+	<LoadingBanner
+		state={s1}
+		label="{data.user1.username}'s collection"
+		onRetry={() => enqueueSequence(loader1, loader2)}
+	/>
+	<LoadingBanner
+		state={s2}
+		label="{data.user2.username}'s collection"
+		onRetry={() => enqueueSequence(loader1, loader2)}
+	/>
+{/snippet}
+
+{#if blocked.length > 0}
 <main id="main-content" class="compare-results">
 	<BrandNav />
+	{#each blocked as u}
+		<div class="card" role="alert">
+			{#if u.code === 'NOT_FOUND'}
+				No Discogs user named "{u.username}".
+			{:else}
+				{u.username}'s collection is private.
+			{/if}
+		</div>
+	{/each}
+	<SiteFooter />
+</main>
+{:else if comparison}
+<main id="main-content" class="compare-results">
+	<BrandNav />
+
+	{@render banners()}
 
 	<header class="matchup">
 		<div class="user-card">
@@ -168,6 +299,12 @@
 
 	<SiteFooter />
 </main>
+{:else}
+<main id="main-content" class="compare-results">
+	<BrandNav />
+	{@render banners()}
+</main>
+{/if}
 
 <style>
 	.compare-results {
