@@ -2,7 +2,6 @@
 	import '../app.css';
 	import '@fontsource-variable/bricolage-grotesque/wght.css';
 	import { theme, applyTheme } from '$lib/stores/theme';
-	import { LIGHT, DARK } from '$lib/theme/tokens';
 	import { navigating } from '$app/stores';
 	import { browser } from '$app/environment';
 	import { initFrame } from '$lib/frame/frame.svelte';
@@ -24,15 +23,6 @@
 		applyTheme($theme);
 	}
 </script>
-
-<svelte:head>
-	{#if $theme === 'system'}
-		<meta name="theme-color" content={LIGHT.ground} media="(prefers-color-scheme: light)" />
-		<meta name="theme-color" content={DARK.ground} media="(prefers-color-scheme: dark)" />
-	{:else}
-		<meta name="theme-color" content={$theme === 'dark' ? DARK.ground : LIGHT.ground} />
-	{/if}
-</svelte:head>
 
 <a href="#main-content" class="skip-link">Skip to content</a>
 

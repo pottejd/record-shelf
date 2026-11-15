@@ -7,8 +7,15 @@ describe('theme store', () => {
 	let mockStorage: Record<string, string>;
 	let mockDocEl: { setAttribute: ReturnType<typeof vi.fn>; removeAttribute: ReturnType<typeof vi.fn> };
 
+	let metas: Record<string, { content: string; setAttribute: (k: string, v: string) => void }>;
+
 	beforeEach(async () => {
 		vi.resetModules();
+		const meta = () => {
+			const m = { content: '', setAttribute: (_k: string, v: string) => void (m.content = v) };
+			return m;
+		};
+		metas = { 'theme-color-light': meta(), 'theme-color-dark': meta() };
 		mockStorage = {};
 		mockDocEl = { setAttribute: vi.fn(), removeAttribute: vi.fn() };
 		vi.stubGlobal('localStorage', {
@@ -19,6 +26,7 @@ describe('theme store', () => {
 		});
 		vi.stubGlobal('document', {
 			documentElement: mockDocEl,
+			getElementById: (id: string) => metas[id] ?? null,
 			cookie: ''
 		});
 	});
@@ -27,6 +35,16 @@ describe('theme store', () => {
 		const mod = await import('./theme');
 		return { theme: mod.theme, applyTheme: mod.applyTheme, type: mod };
 	}
+
+	it('sets both theme-color metas to the chosen theme, and one per scheme for system', async () => {
+		const { applyTheme } = await importStore();
+		applyTheme('dark');
+		expect([metas['theme-color-light'].content, metas['theme-color-dark'].content]).toEqual(['#131815', '#131815']);
+		applyTheme('light');
+		expect([metas['theme-color-light'].content, metas['theme-color-dark'].content]).toEqual(['#ECEEE8', '#ECEEE8']);
+		applyTheme('system');
+		expect([metas['theme-color-light'].content, metas['theme-color-dark'].content]).toEqual(['#ECEEE8', '#131815']);
+	});
 
 	it('loads system as default theme', async () => {
 		const { theme } = await importStore();

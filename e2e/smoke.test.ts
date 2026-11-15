@@ -68,6 +68,76 @@ test.describe('Theme toggle', () => {
 	});
 });
 
+// What a browser does: the first theme-color meta, in tree order, whose media matches.
+const effectiveThemeColour = (page: import('@playwright/test').Page) =>
+	page.evaluate(() => {
+		const metas = [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')];
+		const hit = metas.find((m) => !m.media || matchMedia(m.media).matches);
+		return hit?.content ?? null;
+	});
+
+test.describe('Theme colour of the browser bar', () => {
+	const LIGHT = '#ECEEE8';
+	const DARK = '#131815';
+	const cases = [
+		{ scheme: 'light', stored: null, want: LIGHT },
+		{ scheme: 'dark', stored: null, want: DARK },
+		{ scheme: 'dark', stored: 'light', want: LIGHT },
+		{ scheme: 'light', stored: 'dark', want: DARK },
+		{ scheme: 'dark', stored: 'dark', want: DARK },
+		{ scheme: 'light', stored: 'light', want: LIGHT }
+	] as const;
+
+	for (const { scheme, stored, want } of cases) {
+		test(`system ${scheme}, ${stored ?? 'nothing'} chosen: ${want}, before and after hydration`, async ({
+			browser
+		}) => {
+			const context = await browser.newContext({ colorScheme: scheme });
+			const page = await context.newPage();
+			if (stored) {
+				await page.addInitScript((v) => localStorage.setItem('record-shelf-theme', v), stored);
+			}
+			await page.goto('/settings');
+			await expect(page.locator('.theme-toggle')).toBeVisible();
+			expect(await effectiveThemeColour(page)).toBe(want);
+			await page.reload();
+			expect(await effectiveThemeColour(page)).toBe(want);
+			await context.close();
+		});
+	}
+
+	test('theme-init.js sets it before the app starts (no JavaScript beyond it)', async ({
+		browser
+	}) => {
+		const context = await browser.newContext({ colorScheme: 'dark', javaScriptEnabled: true });
+		const page = await context.newPage();
+		await page.addInitScript(() => localStorage.setItem('record-shelf-theme', 'light'));
+		await page.route('**/_app/immutable/**/*.js', (route) => route.abort());
+		await page.goto('/settings');
+		expect(await effectiveThemeColour(page)).toBe(LIGHT);
+		await context.close();
+	});
+
+	test('switching the theme updates it without a reload', async ({ browser }) => {
+		const context = await browser.newContext({ colorScheme: 'dark' });
+		const page = await context.newPage();
+		await page.goto('/settings');
+		const toggle = page.locator('.theme-toggle');
+		await expect(toggle).toHaveText('Theme: system');
+		expect(await effectiveThemeColour(page)).toBe(DARK);
+		await toggle.click();
+		await expect(toggle).toHaveText('Theme: light');
+		expect(await effectiveThemeColour(page)).toBe(LIGHT);
+		await toggle.click();
+		await expect(toggle).toHaveText('Theme: dark');
+		expect(await effectiveThemeColour(page)).toBe(DARK);
+		await toggle.click();
+		await expect(toggle).toHaveText('Theme: system');
+		expect(await effectiveThemeColour(page)).toBe(DARK);
+		await context.close();
+	});
+});
+
 test.describe('Compare page', () => {
 	test('renders compare form', async ({ page }) => {
 		await page.goto('/compare');
