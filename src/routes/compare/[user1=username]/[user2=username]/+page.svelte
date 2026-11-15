@@ -7,6 +7,7 @@
 	import { goto } from '$app/navigation';
 	import { createLoader } from '$lib/sync/loader.svelte';
 	import { compareCollections } from '$lib/utils/compare';
+	import { chartColour } from '$lib/utils/chart';
 	import { SIMILARITY_THRESHOLDS, SHARED_RECORDS_PREVIEW } from '$lib/constants';
 
 	type Loader = Engine<DiscogsCollectionItem>;
@@ -116,6 +117,24 @@
 		if (score >= SIMILARITY_THRESHOLDS.SOME_OVERLAP) return 'Some overlap';
 		return 'Different tastes';
 	}
+
+	// The first person is always chart colour 1 and the second chart colour 2.
+	const COLOUR_1 = chartColour(0);
+	const COLOUR_2 = chartColour(1);
+
+	type PairRow = { label: string; v1: number; v2: number };
+
+	let genreRows = $derived<PairRow[]>(
+		(comparison?.genreOverlap ?? []).map((g) => ({ label: g.genre, v1: g.count1, v2: g.count2 }))
+	);
+	let decadeRows = $derived.by<PairRow[]>(() => {
+		if (!comparison?.decades1 || !comparison?.decades2) return [];
+		const d1 = comparison.decades1;
+		const d2 = comparison.decades2;
+		return [...new Set([...Object.keys(d1), ...Object.keys(d2)])]
+			.sort()
+			.map((decade) => ({ label: decade, v1: d1[decade] || 0, v2: d2[decade] || 0 }));
+	});
 </script>
 
 <svelte:head>
@@ -139,295 +158,216 @@
 	/>
 {/snippet}
 
+{#snippet title()}
+	<h1>{user1.profile.username} <span class="vs">vs</span> {user2.profile.username}</h1>
+{/snippet}
+
+<!-- Two people side by side: a heading row names each half beside its swatch, and
+     every number sits in its person's half (and is named for screen readers), so
+     no number depends on colour to say whose it is. -->
+{#snippet pairChart(caption: string, rows: PairRow[])}
+	{@const max = Math.max(1, ...rows.flatMap((r) => [r.v1, r.v2]))}
+	<div class="pair-chart">
+		<p class="visually-hidden">{caption}</p>
+		<div class="pair-head legend">
+			<span class="who who-1"><span class="swatch" aria-hidden="true" style:background={COLOUR_1}></span>{user1.profile.username}</span>
+			<span></span>
+			<span class="who who-2">{user2.profile.username}<span class="swatch" aria-hidden="true" style:background={COLOUR_2}></span></span>
+		</div>
+		{#each rows as r (r.label)}
+			<div class="pair-row">
+				<div class="side side-1">
+					<span class="num"><span class="visually-hidden">{`${user1.profile.username}: `}</span>{r.v1.toLocaleString()}</span>
+					<div class="track"><div class="bar" style:--v={r.v1 / max} style:background={COLOUR_1}></div></div>
+				</div>
+				<span class="pair-label">{r.label}</span>
+				<div class="side side-2">
+					<div class="track"><div class="bar" style:--v={r.v2 / max} style:background={COLOUR_2}></div></div>
+					<span class="num"><span class="visually-hidden">{`${user2.profile.username}: `}</span>{r.v2.toLocaleString()}</span>
+				</div>
+			</div>
+		{/each}
+	</div>
+{/snippet}
+
 {#if blocked.length > 0}
 <main id="main-content" class="compare-results">
-	{#each blocked as u}
-		<div class="error-note blocked" role="alert">
-			{#if u.code === 'NOT_FOUND'}
-				No Discogs user named "{u.username}".
-			{:else}
-				{u.username}'s collection is private.
-			{/if}
-		</div>
-	{/each}
+	<div class="section notice" role="alert">
+		{#each blocked as u}
+			<p>
+				{#if u.code === 'NOT_FOUND'}
+					No Discogs user named "{u.username}".
+				{:else}
+					{u.username}'s collection is private.
+				{/if}
+			</p>
+		{/each}
+	</div>
 </main>
 {:else if comparison}
 <main id="main-content" class="compare-results">
-	{@render banners()}
+	{@render title()}
+	<p class="lead">{getSimilarityLabel(comparison.similarityScore)}</p>
 
-	<header class="matchup">
-		<div class="user-card user-1">
-			{#if user1.profile.avatar_url}
-				<img src={user1.profile.avatar_url} alt="" class="avatar cover" />
+	<div class="body">
+		{@render banners()}
+
+		<div class="cols">
+			<section class="section col-narrow">
+				<h2>Head-to-head</h2>
+				<dl class="facts">
+					<div class="row">
+						<dt>Similarity</dt>
+						<dd class="figure">{comparison.similarityScore}%</dd>
+					</div>
+					<div class="row">
+						<dt class="who"><span class="swatch" aria-hidden="true" style:background={COLOUR_1}></span><a href="/u/{user1.profile.username}">{user1.profile.username}</a></dt>
+						<dd>{user1.totalItems.toLocaleString()} records</dd>
+					</div>
+					<div class="row">
+						<dt class="who"><span class="swatch" aria-hidden="true" style:background={COLOUR_2}></span><a href="/u/{user2.profile.username}">{user2.profile.username}</a></dt>
+						<dd>{user2.totalItems.toLocaleString()} records</dd>
+					</div>
+					<div class="row">
+						<dt>Records in common</dt>
+						<dd>{comparison.overlapCount.toLocaleString()}</dd>
+					</div>
+					<div class="row">
+						<dt>Shared artists</dt>
+						<dd>{comparison.sharedArtistsCount.toLocaleString()}</dd>
+					</div>
+					<div class="row">
+						<dt>Shared genres</dt>
+						<dd>{comparison.sharedGenres.length}</dd>
+					</div>
+				</dl>
+			</section>
+
+			{#if genreRows.length > 0}
+				<section class="section col-wide">
+					<h2>Genre comparison</h2>
+					{@render pairChart('Records per genre for each collector', genreRows)}
+				</section>
 			{/if}
-			<a href="/u/{user1.profile.username}" class="username"><span class="swatch swatch-1" aria-hidden="true"></span>{user1.profile.username}</a>
-			<span class="item-count">{user1.totalItems} records</span>
 		</div>
 
-		<div class="vs-badge">
-			<span class="similarity-score">{comparison.similarityScore}%</span>
-			<span class="similarity-label">{getSimilarityLabel(comparison.similarityScore)}</span>
-		</div>
+		{#if decadeRows.length > 0 || comparison.sharedArtists.length > 0}
+			<div class="cols">
+				{#if decadeRows.length > 0}
+					<section class="section col-wide">
+						<h2>Decade comparison</h2>
+						{@render pairChart('Records per decade for each collector', decadeRows)}
+					</section>
+				{/if}
 
-		<div class="user-card user-2">
-			{#if user2.profile.avatar_url}
-				<img src={user2.profile.avatar_url} alt="" class="avatar cover" />
-			{/if}
-			<a href="/u/{user2.profile.username}" class="username"><span class="swatch swatch-2" aria-hidden="true"></span>{user2.profile.username}</a>
-			<span class="item-count">{user2.totalItems} records</span>
-		</div>
-	</header>
-
-	<section class="stats-row">
-		<div class="stat-card">
-			<span class="stat-value">{comparison.overlapCount}</span>
-			<span class="stat-label">Records in common</span>
-		</div>
-		<div class="stat-card">
-			<span class="stat-value">{comparison.sharedArtistsCount}</span>
-			<span class="stat-label">Shared artists</span>
-		</div>
-		<div class="stat-card">
-			<span class="stat-value">{comparison.sharedGenres.length}</span>
-			<span class="stat-label">Shared genres</span>
-		</div>
-	</section>
-
-	{#snippet legend()}
-		<div class="legend">
-			<span class="legend-item"><span class="swatch swatch-1" aria-hidden="true"></span>{user1.profile.username}</span>
-			<span class="legend-item"><span class="swatch swatch-2" aria-hidden="true"></span>{user2.profile.username}</span>
-		</div>
-	{/snippet}
-
-	{#if comparison.sharedArtists.length > 0}
-		<section class="section">
-			<h2>Shared artists</h2>
-			<div class="artist-tags">
-				{#each comparison.sharedArtists as artist}
-					<span class="artist-tag">{artist}</span>
-				{/each}
-				{#if comparison.sharedArtistsCount > 10}
-					<span class="more-tag">+{comparison.sharedArtistsCount - 10} more</span>
+				{#if comparison.sharedArtists.length > 0}
+					<section class="section col-narrow">
+						<h2>Shared artists</h2>
+						<ul class="artists rows">
+							{#each comparison.sharedArtists as artist}
+								<li>{artist}</li>
+							{/each}
+							{#if comparison.sharedArtistsCount > comparison.sharedArtists.length}
+								<li class="more">+{comparison.sharedArtistsCount - comparison.sharedArtists.length} more</li>
+							{/if}
+						</ul>
+					</section>
 				{/if}
 			</div>
-		</section>
-	{/if}
+		{/if}
 
-	{#if comparison.genreOverlap?.length > 0}
-		{@const max = Math.max(1, ...comparison.genreOverlap.flatMap((g) => [g.count1, g.count2]))}
-		<section class="section">
-			<h2>Genre comparison</h2>
-			{@render legend()}
-			<div class="genre-bars">
-				{#each comparison.genreOverlap as g}
-					<div class="genre-row">
-						<div class="genre-bar-left">
-							<div class="bar bar-1" style="--v: {g.count1 / max}"></div>
-							{#if g.count1 > 0}<span class="bar-label">{g.count1}</span>{/if}
-						</div>
-						<span class="genre-name">{g.genre}</span>
-						<div class="genre-bar-right">
-							<div class="bar bar-2" style="--v: {g.count2 / max}"></div>
-							{#if g.count2 > 0}<span class="bar-label">{g.count2}</span>{/if}
-						</div>
-					</div>
-				{/each}
-			</div>
-		</section>
-	{/if}
+		{#if comparison.overlap.length > 0}
+			<section class="section">
+				<h2>Records both own</h2>
+				<CoverGrid items={comparison.overlap.slice(0, SHARED_RECORDS_PREVIEW)} columns={6} />
+			</section>
+		{/if}
 
-	{#if comparison.decades1 && comparison.decades2}
-		{@const allDecades = [...new Set([...Object.keys(comparison.decades1), ...Object.keys(comparison.decades2)])].sort()}
-		{@const max = Math.max(1, ...Object.values(comparison.decades1), ...Object.values(comparison.decades2))}
-		<section class="section">
-			<h2>Decade comparison</h2>
-			{@render legend()}
-			<div class="decade-chart">
-				{#each allDecades as decade}
-					{@const v1 = comparison.decades1[decade] || 0}
-					{@const v2 = comparison.decades2[decade] || 0}
-					<div class="decade-col">
-						<div class="decade-bars">
-							<div class="decade-bar bar-1" style="height: {(v1 / max) * 100}%"
-								title="{user1.profile.username}: {v1}">
-							</div>
-							<div class="decade-bar bar-2" style="height: {(v2 / max) * 100}%"
-								title="{user2.profile.username}: {v2}">
-							</div>
-						</div>
-						<span class="decade-label">{decade}</span>
-						<span class="decade-values">
-							<span><span class="visually-hidden">{user1.profile.username}: </span>{v1}</span>
-							<span><span class="visually-hidden">{user2.profile.username}: </span>{v2}</span>
-						</span>
-					</div>
-				{/each}
-			</div>
-		</section>
-	{/if}
+		<div class="cols">
+			<section class="section col-half">
+				<h2 class="only"><span class="swatch" aria-hidden="true" style:background={COLOUR_1}></span><span>Only {user1.profile.username} has</span></h2>
+				{#if comparison.uniqueTo1.length > 0}
+					<CoverGrid items={comparison.uniqueTo1} columns={5} />
+				{:else}
+					<p class="muted no-data">No unique records found</p>
+				{/if}
+			</section>
 
-	{#if comparison.overlap.length > 0}
-		<section class="section">
-			<h2>Records both own</h2>
-			<CoverGrid items={comparison.overlap.slice(0, SHARED_RECORDS_PREVIEW)} />
-		</section>
-	{/if}
+			<section class="section col-half">
+				<h2 class="only"><span class="swatch" aria-hidden="true" style:background={COLOUR_2}></span><span>Only {user2.profile.username} has</span></h2>
+				{#if comparison.uniqueTo2.length > 0}
+					<CoverGrid items={comparison.uniqueTo2} columns={5} />
+				{:else}
+					<p class="muted no-data">No unique records found</p>
+				{/if}
+			</section>
+		</div>
 
-	<div class="grid-2col">
-		<section class="section">
-			<h2>Only {user1.profile.username} has</h2>
-			{#if comparison.uniqueTo1.length > 0}
-				<CoverGrid items={comparison.uniqueTo1} />
-			{:else}
-				<p class="no-data">No unique records found</p>
-			{/if}
-		</section>
-
-		<section class="section">
-			<h2>Only {user2.profile.username} has</h2>
-			{#if comparison.uniqueTo2.length > 0}
-				<CoverGrid items={comparison.uniqueTo2} />
-			{:else}
-				<p class="no-data">No unique records found</p>
-			{/if}
-		</section>
-	</div>
-
-	<div class="actions">
-		<a href="/compare" class="btn btn-secondary">Compare Different Users</a>
+		<div class="actions">
+			<a href="/compare" class="btn btn-secondary">Compare different users</a>
+		</div>
 	</div>
 </main>
 {:else}
 <main id="main-content" class="compare-results">
-	{@render banners()}
+	{@render title()}
+	<div class="body">
+		{@render banners()}
+	</div>
 </main>
 {/if}
 
 <style>
 	.compare-results {
 		padding-top: 56px;
+		padding-bottom: var(--section-gap);
 	}
 
-	.blocked + .blocked {
-		margin-top: 16px;
-	}
-
-	.matchup {
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
-		gap: 24px 40px;
-		margin-bottom: 40px;
-	}
-
-	.user-card {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 8px;
-		min-width: 0;
-	}
-
-	.user-2 {
-		align-items: flex-end;
-		text-align: right;
-	}
-
-	.avatar {
-		width: 64px;
-		height: 64px;
-	}
-
-	.username {
-		display: inline-flex;
-		align-items: center;
-		gap: 10px;
-		max-width: 100%;
-		font-size: 32px;
-		font-weight: 800;
-		letter-spacing: -0.02em;
-		line-height: 1.1;
+	h1 {
+		margin: 0;
 		overflow-wrap: anywhere;
 	}
 
-	.item-count {
-		font-size: 17px;
+	h1 .vs {
 		color: var(--muted);
+		font-weight: 500;
 	}
 
-	.vs-badge {
+	.lead {
+		margin-top: 16px;
+	}
+
+	.notice p {
+		margin: 0;
+	}
+
+	.notice p + p {
+		margin-top: 8px;
+	}
+
+	/* Sections and column rows sit one section gap apart, as on the profile. */
+	.body {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 4px;
-		text-align: center;
+		gap: var(--section-gap);
+		margin-top: 48px;
 	}
 
-	.similarity-score {
-		font-size: 64px;
-		font-weight: 800;
-		letter-spacing: -0.03em;
-		line-height: 1;
+	.body :global(.section) {
+		margin-bottom: 0;
 	}
 
-	.similarity-label {
-		font-size: 17px;
-		color: var(--muted);
+	.body :global(.loading-banner) {
+		margin-bottom: 0;
 	}
 
-	.stats-row {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		margin-bottom: var(--section-gap);
-		border-top: 1px solid var(--hairline);
-		border-bottom: 1px solid var(--hairline);
+	.col-half {
+		flex: 1 1 400px;
+		min-width: 0;
 	}
 
-	.stat-card {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		padding: 16px 0;
-	}
-
-	.stat-card + .stat-card {
-		padding-left: 24px;
-		border-left: 1px solid var(--hairline);
-	}
-
-	.stat-value {
-		font-size: 34px;
-		font-weight: 800;
-		letter-spacing: -0.02em;
-		line-height: 1.1;
-	}
-
-	.stat-label {
-		font-size: 15px;
-		color: var(--muted);
-	}
-
-	.grid-2col {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-		gap: 0 64px;
-	}
-
-	.artist-tags {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 4px 28px;
-	}
-
-	.artist-tag {
-		font-size: 18px;
-		font-weight: 600;
-	}
-
-	.more-tag {
-		font-size: 18px;
-		color: var(--muted);
+	.section h2 {
+		overflow-wrap: anywhere;
 	}
 
 	.swatch {
@@ -437,140 +377,152 @@
 		flex-shrink: 0;
 	}
 
-	.swatch-1,
-	.bar-1 {
-		background: var(--chart-1);
+	/* Fact rows: label left, value right, under a hairline (as At a glance). */
+	.facts {
+		margin: 0;
 	}
 
-	.swatch-2,
-	.bar-2 {
-		background: var(--chart-2);
-	}
-
-	.legend {
+	.row {
 		display: flex;
 		justify-content: space-between;
-		flex-wrap: wrap;
-		gap: 4px 24px;
-		margin-bottom: 16px;
-		font-size: 15px;
+		align-items: center;
+		gap: 16px;
+		min-height: 60px;
+		border-bottom: 1px solid var(--hairline);
 	}
 
-	.legend-item {
-		display: inline-flex;
+	dt {
+		min-width: 0;
+		font-size: 18px;
+		overflow-wrap: anywhere;
+	}
+
+	dt.who {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		font-weight: 600;
+	}
+
+	dd {
+		margin: 0;
+		flex-shrink: 0;
+		text-align: right;
+	}
+
+	dd:not(.figure) {
+		font-size: 18px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* The two-person chart: the first person's half on the left, growing out from
+	   the middle; the second's on the right. Numbers at the outer ends. */
+	.pair-head,
+	.pair-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 140px minmax(0, 1fr);
+		gap: 12px;
+		align-items: center;
+	}
+
+	.pair-head {
+		align-items: end;
+		padding-bottom: 8px;
+		font-size: 15px;
+		font-weight: 600;
+	}
+
+	.who {
+		display: flex;
 		align-items: center;
 		gap: 8px;
 		min-width: 0;
 		overflow-wrap: anywhere;
 	}
 
-	.genre-bars {
-		display: flex;
-		flex-direction: column;
+	.who-2 {
+		justify-content: flex-end;
+		text-align: right;
 	}
 
-	.genre-row {
-		display: grid;
-		grid-template-columns: 1fr 140px 1fr;
-		gap: 12px;
-		align-items: center;
-		min-height: 36px;
+	.pair-row {
+		min-height: 40px;
 		border-top: 1px solid var(--hairline);
 	}
 
-	.genre-row:first-child {
-		border-top: 0;
-	}
-
-	.genre-bar-left,
-	.genre-bar-right {
+	.side {
 		display: flex;
 		align-items: center;
 		gap: 8px;
 		min-width: 0;
 	}
 
-	.genre-bar-left {
-		flex-direction: row-reverse;
+	.track {
+		display: flex;
+		flex: 1;
+		min-width: 0;
+		height: 16px;
+		background: var(--track);
 	}
 
-	/* --v is this count over the largest count in the chart; 56px is kept for the number. */
+	.side-1 .track {
+		justify-content: flex-end;
+	}
+
 	.bar {
-		flex: 0 0 auto;
-		width: calc((100% - 56px) * var(--v));
-		height: 20px;
+		width: calc(100% * var(--v));
+		height: 100%;
 	}
 
-	.bar-label {
+	.num {
+		min-width: 4ch;
 		font-size: 15px;
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
 	}
 
-	.genre-name {
+	.side-1 .num {
+		text-align: right;
+	}
+
+	.pair-label {
 		font-size: 15px;
-		font-weight: 500;
 		text-align: center;
 		overflow-wrap: anywhere;
 		line-height: 1.2;
 	}
 
-	.decade-chart {
-		display: flex;
-		gap: 8px;
-		align-items: flex-end;
-		padding-top: 8px;
-		overflow-x: auto;
+	.artists {
+		margin: 0;
+		padding: 0;
+		list-style: none;
 	}
 
-	/* Positioned so the visually hidden names stay inside the scrolling chart. */
-	.decade-col {
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 6px;
-		flex: 1;
-		min-width: 44px;
-		max-width: 120px;
-	}
-
-	.decade-bars {
-		display: flex;
-		gap: 2px;
-		align-items: flex-end;
-		height: 150px;
-		width: 100%;
-		border-bottom: 1px solid var(--ink);
-	}
-
-	.decade-bar {
-		flex: 1;
-	}
-
-	.decade-label {
-		font-size: 15px;
+	.artists li {
+		padding: 10px 0;
+		font-size: 18px;
 		font-weight: 600;
-		white-space: nowrap;
+		overflow-wrap: anywhere;
 	}
 
-	.decade-values {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		font-size: 13px;
-		line-height: 1.3;
+	.artists .more {
+		font-weight: 400;
 		color: var(--muted);
-		font-variant-numeric: tabular-nums;
+	}
+
+	.only {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.only span:last-child {
+		min-width: 0;
 	}
 
 	.no-data {
-		color: var(--muted);
 		margin: 0;
-	}
-
-	.actions {
-		margin-top: 8px;
 	}
 
 	@media (max-width: 699px) {
@@ -578,61 +530,22 @@
 			padding-top: 32px;
 		}
 
-		.matchup {
-			grid-template-columns: 1fr;
+		.body {
+			margin-top: 32px;
 		}
 
-		.vs-badge {
-			order: -1;
-			align-items: flex-start;
-			text-align: left;
-		}
-
-		.user-2 {
-			align-items: flex-start;
-			text-align: left;
-		}
-
-		.username {
-			font-size: 28px;
-		}
-
-		.stats-row {
-			grid-template-columns: 1fr;
-		}
-
-		.stat-card + .stat-card {
-			padding-left: 0;
-			border-left: 0;
-			border-top: 1px solid var(--hairline);
-		}
-
-		.genre-row {
-			grid-template-columns: 1fr 76px 1fr;
+		.pair-head,
+		.pair-row {
+			grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr);
 			gap: 6px;
 		}
 
-		.genre-name {
+		.pair-label {
 			font-size: 13px;
 		}
 
-		.bar {
-			width: calc((100% - 40px) * var(--v));
-		}
-
-		.bar-label {
-			font-size: 13px;
-		}
-
-		.decade-chart {
-			gap: 4px;
-		}
-
-		.decade-col {
-			min-width: 36px;
-		}
-
-		.decade-label {
+		.num {
+			min-width: 3ch;
 			font-size: 13px;
 		}
 

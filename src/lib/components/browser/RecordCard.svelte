@@ -1,11 +1,14 @@
 <script lang="ts">
-	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import type { DiscogsBasicInformation } from '$lib/types/discogs';
 	import { formatArtists } from '$lib/utils/discogs';
 	import LazyImage from '../LazyImage.svelte';
 
-	let { item }: { item: DiscogsCollectionItem } = $props();
+	/** A record in the collection or on the wantlist: only its release details are drawn. */
+	type Release = { basic_information: DiscogsBasicInformation };
 
-	function getArtistName(item: DiscogsCollectionItem): string {
+	let { item }: { item: Release } = $props();
+
+	function getArtistName(item: Release): string {
 		return formatArtists(item.basic_information.artists);
 	}
 </script>

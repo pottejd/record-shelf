@@ -157,7 +157,7 @@
 
 	<section class="section instructions">
 		<h2>How to Get a Token</h2>
-		<ol>
+		<ol class="rows steps">
 			<li>
 				<strong>Go to Discogs</strong>
 				<p>Visit <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener noreferrer">discogs.com/settings/developers</a></p>
@@ -313,33 +313,41 @@
 		flex-shrink: 0;
 	}
 
-	.instructions ol {
+	/* The steps as rows under hairlines, each with its number in front. */
+	.steps {
 		margin: 0;
-		padding: 0 0 0 1.25rem;
+		padding: 0;
+		list-style: none;
+		counter-reset: step;
 	}
 
-	.instructions li {
-		margin-bottom: 16px;
+	.steps li {
+		display: grid;
+		grid-template-columns: 32px 1fr;
+		padding: 14px 0;
+		counter-increment: step;
 	}
 
-	.instructions li:last-child {
-		margin-bottom: 0;
+	.steps li::before {
+		content: counter(step);
+		grid-row: span 2;
+		font-size: 18px;
+		font-weight: 700;
 	}
 
-	.instructions li strong {
-		display: block;
-		margin-bottom: 2px;
+	.steps li strong {
+		font-size: 18px;
 	}
 
-	.instructions li p {
-		margin: 0;
+	.steps li p {
+		margin: 2px 0 0;
 		color: var(--muted);
+		overflow-wrap: anywhere;
 	}
 
 	.note {
 		display: flex;
 		gap: 12px;
-		margin-top: 32px;
 		padding-top: 16px;
 		border-top: 1px solid var(--hairline);
 	}

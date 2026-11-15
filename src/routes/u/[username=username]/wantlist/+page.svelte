@@ -4,7 +4,7 @@
 	import { formatArtists } from '$lib/utils/discogs';
 	import { goto } from '$app/navigation';
 	import { createLoader } from '$lib/sync/loader.svelte';
-	import LazyImage from '$lib/components/LazyImage.svelte';
+	import RecordCard from '$lib/components/browser/RecordCard.svelte';
 	import SearchBar from '$lib/components/browser/SearchBar.svelte';
 	import LoadingBanner from '$lib/components/profile/LoadingBanner.svelte';
 	import SkeletonWantlist from '$lib/components/SkeletonWantlist.svelte';
@@ -72,9 +72,9 @@
 
 <svelte:head>
 	{#if profile}
-		<title>{profile.username}'s Wantlist - Record Shelf</title>
+		<title>{profile.username}'s wantlist - Record Shelf</title>
 		<meta name="description" content="Browse {profile.username}'s wantlist on Record Shelf" />
-		<meta property="og:title" content="{profile.username}'s Wantlist - Record Shelf" />
+		<meta property="og:title" content="{profile.username}'s wantlist - Record Shelf" />
 		<meta property="og:description" content="See what records {profile.username} is looking for" />
 		<meta property="og:type" content="website" />
 	{:else}
@@ -84,7 +84,7 @@
 
 {#if s.error?.code === 'NOT_FOUND' || s.error?.code === 'PRIVATE'}
 <main id="main-content" class="wantlist-page">
-	<div class="error-note" role="alert">
+	<div class="section notice" role="alert">
 		{#if s.error.code === 'NOT_FOUND'}
 			No Discogs user named "{data.username}".
 		{:else}
@@ -94,94 +94,60 @@
 </main>
 {:else if profile}
 <main id="main-content" class="wantlist-page">
-	<header class="page-header">
-		<div class="user-info">
-			{#if profile.avatar_url}
-				<img src={profile.avatar_url} alt={profile.username} class="avatar cover" />
-			{/if}
-			<div>
-				<h1>{profile.username}'s Wantlist</h1>
-				<p class="count lead">{s.totalItems} items</p>
+	<h1>{profile.username}'s wantlist</h1>
+	<p class="lead">{s.totalItems.toLocaleString()} items</p>
+
+	<div class="body">
+		<LoadingBanner state={s} label="wantlist" onRetry={() => loader.run()} />
+
+		<!-- Laid out as the Records tab: search and sort over the six-column grid. -->
+		<section class="section" aria-label="Wantlist">
+			<div class="search-bar">
+				<SearchBar bind:value={searchQuery} placeholder="Search wantlist..." />
+				{#if searchQuery}
+					<span class="result-count" aria-live="polite" role="status">{filteredItems.length} results</span>
+				{/if}
 			</div>
-		</div>
-	</header>
+			<div class="sort-bar">
+				<span class="sort-label">Sort by</span>
+				{#each [
+					{ value: 'added', label: 'Date added' },
+					{ value: 'artist', label: 'Artist' },
+					{ value: 'title', label: 'Title' },
+					{ value: 'year', label: 'Year' }
+				] as option}
+					<button
+						class="sort-btn"
+						class:active={sortBy === option.value}
+						aria-pressed={sortBy === option.value}
+						onclick={() => sortBy = option.value as typeof sortBy}
+					>{option.label}</button>
+				{/each}
+			</div>
 
-	<LoadingBanner state={s} label="wantlist" onRetry={() => loader.run()} />
-
-	<div class="controls">
-		<div class="search-bar">
-			<SearchBar bind:value={searchQuery} placeholder="Search wantlist..." />
-			{#if searchQuery}
-				<span class="result-count" aria-live="polite" role="status">{filteredItems.length} results</span>
-			{/if}
-		</div>
-		<div class="sort-bar">
-			<span class="sort-label">Sort:</span>
-			{#each [
-				{ value: 'added', label: 'Date Added' },
-				{ value: 'artist', label: 'Artist' },
-				{ value: 'title', label: 'Title' },
-				{ value: 'year', label: 'Year' }
-			] as option}
-				<button
-					class="sort-btn"
-					class:active={sortBy === option.value}
-					aria-pressed={sortBy === option.value}
-					onclick={() => sortBy = option.value as typeof sortBy}
-				>{option.label}</button>
-			{/each}
-		</div>
-	</div>
-
-	<div class="wantlist-grid">
-		{#each filteredItems as item (item.id)}
-			<a
-				href="https://www.discogs.com/release/{item.basic_information.id}"
-				target="_blank"
-				rel="noopener noreferrer"
-				class="want-card"
-			>
-				<div class="want-cover">
-					<LazyImage
-						src={item.basic_information.cover_image || item.basic_information.thumb || '/placeholder.svg'}
-						alt=""
-					/>
+			{#if filteredItems.length > 0}
+				<div class="wantlist-grid">
+					{#each filteredItems as item (item.id)}
+						<RecordCard {item} />
+					{/each}
 				</div>
-				<div class="want-info">
-					<p class="want-title">{item.basic_information.title}</p>
-					<p class="want-artist">{getArtistName(item.basic_information.artists)}</p>
-					<div class="want-meta">
-						{#if item.basic_information.year}
-							<span class="want-year">{item.basic_information.year}</span>
-						{/if}
-						{#if item.basic_information.formats?.[0]}
-							<span class="want-format">{item.basic_information.formats[0].name}</span>
-						{/if}
-					</div>
-				</div>
-			</a>
-		{/each}
-	</div>
-
-	{#if filteredItems.length === 0 && (searchQuery || (s.phase === 'done' && s.totalItems === 0))}
-		<div class="empty-state">
-			{#if searchQuery}
-				<p class="empty-title">No results</p>
-				<p class="empty-desc">No items match "{searchQuery}"</p>
-				<button class="btn btn-secondary clear-btn" onclick={() => searchQuery = ''}>Clear search</button>
-			{:else}
-				<svg aria-hidden="true" class="empty-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
-					<circle cx="32" cy="32" r="24" opacity="0.3" />
-					<circle cx="32" cy="32" r="16" opacity="0.2" />
-					<circle cx="32" cy="32" r="4" fill="currentColor" opacity="0.4" />
-					<path d="M32 8v4M32 52v4M8 32h4M52 32h4" opacity="0.3" />
-				</svg>
-				<p class="empty-title">Wantlist is empty</p>
-				<p class="empty-desc">{profile.username} hasn't added any items to their wantlist yet.</p>
-				<a href="/u/{profile.username}" class="btn btn-secondary back-btn">View Collection</a>
 			{/if}
-		</div>
-	{/if}
+
+			{#if filteredItems.length === 0 && (searchQuery || (s.phase === 'done' && s.totalItems === 0))}
+				<div class="empty-state">
+					{#if searchQuery}
+						<p class="empty-title">No results</p>
+						<p class="empty-desc">No items match "{searchQuery}"</p>
+						<button class="btn btn-secondary" onclick={() => searchQuery = ''}>Clear search</button>
+					{:else}
+						<p class="empty-title">Wantlist is empty</p>
+						<p class="empty-desc">{profile.username} hasn't added any items to their wantlist yet.</p>
+						<a href="/u/{profile.username}" class="btn btn-secondary">View collection</a>
+					{/if}
+				</div>
+			{/if}
+		</section>
+	</div>
 </main>
 {:else}
 <main id="main-content" class="wantlist-page">
@@ -193,22 +159,7 @@
 <style>
 	.wantlist-page {
 		padding-top: 56px;
-	}
-
-	.page-header {
-		margin-bottom: 40px;
-	}
-
-	.user-info {
-		display: flex;
-		align-items: center;
-		gap: 20px;
-	}
-
-	.avatar {
-		width: 64px;
-		height: 64px;
-		flex-shrink: 0;
+		padding-bottom: var(--section-gap);
 	}
 
 	h1 {
@@ -216,15 +167,12 @@
 		overflow-wrap: anywhere;
 	}
 
-	.count {
-		margin: 12px 0 0;
+	.lead {
+		margin-top: 16px;
 	}
 
-	.controls {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		margin-bottom: 32px;
+	.body {
+		margin-top: 48px;
 	}
 
 	.search-bar {
@@ -238,6 +186,7 @@
 		align-items: center;
 		gap: 0 28px;
 		flex-wrap: wrap;
+		margin-top: 8px;
 	}
 
 	.sort-label {
@@ -245,10 +194,12 @@
 		color: var(--muted);
 	}
 
+	/* Plain words; the chosen one is ink and bold (as the Records tab). */
 	.sort-btn {
 		min-height: 48px;
 		padding: 0;
 		border: 0;
+		border-radius: 0;
 		background: transparent;
 		color: var(--muted);
 		font: inherit;
@@ -272,82 +223,12 @@
 		white-space: nowrap;
 	}
 
+	/* The Records grid: six columns, two on a phone. */
 	.wantlist-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+		grid-template-columns: repeat(6, minmax(0, 1fr));
 		gap: 32px 24px;
-	}
-
-	.want-card {
-		display: flex;
-		flex-direction: column;
-		min-width: 0;
-		text-decoration: none;
-		color: inherit;
-	}
-
-	.want-card:hover .want-title {
-		text-decoration: underline;
-		text-underline-offset: 4px;
-	}
-
-	/* Square cover on the track colour, with the 1px inner edge so pale sleeves keep their outline. */
-	.want-cover {
-		position: relative;
-		width: 100%;
-		aspect-ratio: 1;
-		background: var(--track);
-	}
-
-	.want-cover::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		box-shadow: inset 0 0 0 1px var(--cover-edge);
-		pointer-events: none;
-	}
-
-	.want-info {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		padding-top: 12px;
-	}
-
-	.want-title {
-		margin: 0;
-		font-size: 17px;
-		font-weight: 600;
-		line-height: 1.25;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-	}
-
-	.want-artist {
-		margin: 0;
-		font-size: 15px;
-		color: var(--muted);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.want-meta {
-		display: flex;
-		gap: 8px;
-		margin-top: 2px;
-		font-size: 15px;
-	}
-
-	.want-year {
-		font-weight: 600;
-	}
-
-	.want-format {
-		color: var(--muted);
+		margin-top: 32px;
 	}
 
 	.empty-state {
@@ -355,14 +236,7 @@
 		flex-direction: column;
 		align-items: flex-start;
 		gap: 8px;
-		padding: 40px 0;
-	}
-
-	.empty-icon {
-		width: 64px;
-		height: 64px;
-		color: var(--muted);
-		margin-bottom: 8px;
+		margin-top: 32px;
 	}
 
 	.empty-title {
@@ -372,13 +246,9 @@
 	}
 
 	.empty-desc {
-		margin: 0;
+		margin: 0 0 16px;
 		color: var(--muted);
-	}
-
-	.clear-btn,
-	.back-btn {
-		margin-top: 16px;
+		overflow-wrap: anywhere;
 	}
 
 	@media (max-width: 699px) {
@@ -386,13 +256,12 @@
 			padding-top: 32px;
 		}
 
-		.avatar {
-			width: 48px;
-			height: 48px;
+		.body {
+			margin-top: 32px;
 		}
 
 		.sort-bar {
-			gap: 0 18px;
+			gap: 0 12px;
 		}
 
 		.wantlist-grid {

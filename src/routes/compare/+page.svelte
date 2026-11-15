@@ -51,7 +51,7 @@
 				/>
 			</div>
 
-			<div class="vs">VS</div>
+			<div class="vs" aria-hidden="true">vs</div>
 
 			<div class="input-group">
 				<label for="user2">Second collector</label>
@@ -74,7 +74,7 @@
 				<span class="spinner"></span>
 				Comparing...
 			{:else}
-				Compare Collections
+				Compare collections
 			{/if}
 		</button>
 	</div>
