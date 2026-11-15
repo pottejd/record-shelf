@@ -20,16 +20,16 @@
 
 	<div class="sort-options">
 		<span class="sort-label">Sort:</span>
-		<button class="sort-btn" class:active={sortBy === 'added'} onclick={() => onToggleSort('added')}>
+		<button class="sort-btn" class:active={sortBy === 'added'} aria-pressed={sortBy === 'added'} onclick={() => onToggleSort('added')}>
 			Date Added {#if sortBy === 'added'}{sortOrder === 'desc' ? '↓' : '↑'}{/if}
 		</button>
-		<button class="sort-btn" class:active={sortBy === 'artist'} onclick={() => onToggleSort('artist')}>
+		<button class="sort-btn" class:active={sortBy === 'artist'} aria-pressed={sortBy === 'artist'} onclick={() => onToggleSort('artist')}>
 			Artist {#if sortBy === 'artist'}{sortOrder === 'desc' ? '↓' : '↑'}{/if}
 		</button>
-		<button class="sort-btn" class:active={sortBy === 'title'} onclick={() => onToggleSort('title')}>
+		<button class="sort-btn" class:active={sortBy === 'title'} aria-pressed={sortBy === 'title'} onclick={() => onToggleSort('title')}>
 			Title {#if sortBy === 'title'}{sortOrder === 'desc' ? '↓' : '↑'}{/if}
 		</button>
-		<button class="sort-btn" class:active={sortBy === 'year'} onclick={() => onToggleSort('year')}>
+		<button class="sort-btn" class:active={sortBy === 'year'} aria-pressed={sortBy === 'year'} onclick={() => onToggleSort('year')}>
 			Year {#if sortBy === 'year'}{sortOrder === 'desc' ? '↓' : '↑'}{/if}
 		</button>
 	</div>
@@ -41,60 +41,56 @@
 		justify-content: space-between;
 		align-items: center;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: 0 24px;
 	}
 
 	.result-count {
-		font-size: 0.875rem;
-		color: var(--color-text-secondary);
-	}
-
-	.filtered-note {
-		color: var(--color-text-tertiary);
+		font-size: 17px;
+		color: var(--muted);
 	}
 
 	.sort-options {
 		display: flex;
 		align-items: center;
-		gap: 0.25rem;
+		flex-wrap: wrap;
+		gap: 0 28px;
 	}
 
 	.sort-label {
-		font-size: 0.8125rem;
-		color: var(--color-text-tertiary);
-		margin-right: 0.25rem;
+		font-size: 17px;
+		color: var(--muted);
 	}
 
+	/* Plain words; the chosen one is ink and bold and carries its arrow. */
 	.sort-btn {
-		padding: 0.375rem 0.625rem;
-		font-size: 0.75rem;
+		min-height: 48px;
+		padding: 0;
+		background: transparent;
+		border: 0;
+		color: var(--muted);
+		font: inherit;
+		font-size: 17px;
 		font-weight: 500;
-		background: none;
-		border: none;
-		color: var(--color-text-secondary);
 		cursor: pointer;
-		border-radius: 4px;
-		transition: background-color 0.15s, color 0.15s;
 	}
 
 	.sort-btn:hover {
-		background: var(--color-bg-secondary);
+		color: var(--ink);
 	}
 
 	.sort-btn.active {
-		background: var(--color-primary);
-		color: white;
+		color: var(--ink);
+		font-weight: 700;
 	}
 
-	@media (max-width: 600px) {
+	@media (max-width: 699px) {
 		.browser-toolbar {
 			flex-direction: column;
-			align-items: stretch;
+			align-items: flex-start;
 		}
 
 		.sort-options {
-			justify-content: center;
-			flex-wrap: wrap;
+			gap: 0 18px;
 		}
 	}
 </style>

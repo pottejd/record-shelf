@@ -12,12 +12,12 @@
 	} = $props();
 </script>
 
-<ul class="dup-list">
+<ul class="dup-list rows">
 	{#each groups as group (group.key)}
 		{@const info = group.items[0].basic_information}
 		<li>
 			<button class="dup-row" onclick={() => onSelect(info.title, group.items)}>
-				<img src={info.thumb || '/placeholder.svg'} alt="" class="dup-cover" loading="lazy" />
+				<img src={info.thumb || '/placeholder.svg'} alt="" class="dup-cover cover" loading="lazy" />
 				<span class="dup-info">
 					<span class="dup-title">{info.title}</span>
 					<span class="dup-artist">{formatArtists(info.artists)}</span>
@@ -29,38 +29,37 @@
 </ul>
 
 <style>
+	/* Rows on the ground divided by hairlines; the whole row opens the side list. */
 	.dup-list {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
 	}
 
 	.dup-row {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 16px;
 		width: 100%;
-		padding: 0.5rem;
-		background: var(--color-bg-secondary);
-		border: 1px solid var(--color-border);
-		border-radius: 10px;
+		padding: 12px 0;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		font: inherit;
 		cursor: pointer;
 		text-align: left;
-		color: var(--color-text);
+		color: var(--ink);
 	}
 
-	.dup-row:hover {
-		border-color: var(--color-primary);
+	.dup-row:hover .dup-title {
+		text-decoration: underline;
+		text-underline-offset: 4px;
 	}
 
 	.dup-cover {
-		width: 44px;
-		height: 44px;
-		border-radius: 6px;
-		object-fit: cover;
+		width: 56px;
+		height: 56px;
+		background: var(--track);
 		flex-shrink: 0;
 	}
 
@@ -73,15 +72,16 @@
 
 	.dup-title {
 		font-weight: 600;
-		font-size: 0.875rem;
+		font-size: 17px;
+		line-height: 1.25;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
 	.dup-artist {
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
+		font-size: 15px;
+		color: var(--muted);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -89,11 +89,7 @@
 
 	.dup-count {
 		flex-shrink: 0;
-		font-size: 0.75rem;
+		font-size: 17px;
 		font-weight: 600;
-		color: var(--color-primary);
-		padding: 0.25rem 0.625rem;
-		background: var(--color-bg-card);
-		border-radius: 999px;
 	}
 </style>

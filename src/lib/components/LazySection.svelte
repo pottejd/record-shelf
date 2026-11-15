@@ -32,12 +32,11 @@
 </div>
 
 <style>
+	/* A flat placeholder in the track colour until the section scrolls near. */
 	.placeholder {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--color-bg-secondary);
-		border-radius: 8px;
-		opacity: 0.3;
+		background: var(--track);
 	}
 </style>

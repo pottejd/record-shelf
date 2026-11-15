@@ -9,6 +9,7 @@
 	</svg>
 	<input
 		type="search"
+		class="field"
 		bind:value
 		{placeholder}
 		aria-label={placeholder || 'Search'}
@@ -23,6 +24,8 @@
 </div>
 
 <style>
+	/* An underlined field (the global .field) with the search icon at its start
+	   and the clear button at its end. */
 	.search-box {
 		flex: 1;
 		min-width: 200px;
@@ -33,50 +36,47 @@
 
 	.search-icon {
 		position: absolute;
-		left: 0.875rem;
-		width: 18px;
-		height: 18px;
-		color: var(--color-text-tertiary);
+		left: 0;
+		width: 20px;
+		height: 20px;
+		color: var(--ink);
 		pointer-events: none;
 	}
 
 	.search-box input {
-		width: 100%;
-		padding: 0.75rem 2.5rem 0.75rem 2.75rem;
-		font-size: 0.9375rem;
-		border: 2px solid var(--color-border);
-		border-radius: 10px;
-		background: var(--color-bg-card);
-		color: var(--color-text);
+		padding: 0 48px 0 32px;
+		-webkit-appearance: none;
+		appearance: none;
 	}
 
-	.search-box input:focus {
-		outline: 2px solid var(--color-primary);
-		outline-offset: -2px;
-		border-color: var(--color-primary);
+	/* The clear button below does this job; hide the browser's own. */
+	.search-box input::-webkit-search-cancel-button {
+		-webkit-appearance: none;
+		appearance: none;
 	}
 
 	.clear-search {
 		position: absolute;
-		right: 0.5rem;
-		width: 28px;
-		height: 28px;
+		right: 0;
+		width: 44px;
+		height: 44px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--color-bg-secondary);
-		border: none;
-		border-radius: 6px;
-		color: var(--color-text-tertiary);
+		padding: 0;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		color: var(--muted);
 		cursor: pointer;
 	}
 
 	.clear-search:hover {
-		color: var(--color-text);
+		color: var(--ink);
 	}
 
 	.clear-search svg {
-		width: 14px;
-		height: 14px;
+		width: 18px;
+		height: 18px;
 	}
 </style>

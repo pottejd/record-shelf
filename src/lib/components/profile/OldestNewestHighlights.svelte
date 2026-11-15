@@ -10,71 +10,53 @@
 </script>
 
 {#if stats.oldestRelease}
-	<section class="card highlight-card">
-		<span class="highlight-label">Oldest Release</span>
+	<section class="section highlight-card">
+		<span class="highlight-label small">Oldest release</span>
 		<div class="highlight-content">
-			<img src={stats.oldestRelease.thumb || '/placeholder.svg'} alt="" class="highlight-thumb" />
+			<img src={stats.oldestRelease.thumb || '/placeholder.svg'} alt="" class="highlight-thumb cover" />
 			<div>
 				<p class="highlight-title">{stats.oldestRelease.title}</p>
-				<p class="highlight-year">{stats.oldestRelease.year}</p>
+				<p class="highlight-year figure">{stats.oldestRelease.year}</p>
 			</div>
 		</div>
 	</section>
 {/if}
 {#if stats.newestRelease}
-	<section class="card highlight-card">
-		<span class="highlight-label">Newest Release</span>
+	<section class="section highlight-card">
+		<span class="highlight-label small">Newest release</span>
 		<div class="highlight-content">
-			<img src={stats.newestRelease.thumb || '/placeholder.svg'} alt="" class="highlight-thumb" />
+			<img src={stats.newestRelease.thumb || '/placeholder.svg'} alt="" class="highlight-thumb cover" />
 			<div>
 				<p class="highlight-title">{stats.newestRelease.title}</p>
-				<p class="highlight-year">{stats.newestRelease.year}</p>
+				<p class="highlight-year figure">{stats.newestRelease.year}</p>
 			</div>
 		</div>
 	</section>
 {/if}
 
 <style>
-	.highlight-card {
-		background: linear-gradient(135deg, var(--color-bg-secondary, #f5f5f5), var(--color-bg-card, #fff));
-	}
-
-	.highlight-label {
-		font-size: 0.6875rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--color-text-tertiary, #999);
-	}
-
 	.highlight-content {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
-		margin-top: 0.75rem;
+		gap: 20px;
+		margin-top: 12px;
 	}
 
 	.highlight-thumb {
 		width: 64px;
 		height: 64px;
-		border-radius: 8px;
-		object-fit: cover;
-		background: var(--color-bg-secondary, #f5f5f5);
+		flex-shrink: 0;
+		background: var(--track);
 	}
 
 	.highlight-title {
 		margin: 0;
 		font-weight: 600;
-		font-size: 1rem;
+		font-size: 18px;
+		line-height: 1.25;
 	}
 
 	.highlight-year {
-		margin: 0.25rem 0 0;
-		font-size: 1.5rem;
-		font-weight: 700;
-		background: linear-gradient(135deg, #6366f1, #ec4899);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
+		margin: 4px 0 0;
 	}
 </style>

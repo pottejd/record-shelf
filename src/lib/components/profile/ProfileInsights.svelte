@@ -13,7 +13,7 @@
 </script>
 
 {#if duplicates.length > 0}
-	<section class="card" use:reveal>
+	<section class="section" use:reveal>
 		<h2>Duplicates &amp; Variants</h2>
 		<p class="section-subtitle">Albums you own more than one copy or pressing of</p>
 		<DuplicateDetector groups={duplicates} onSelect={onSelect} />
@@ -21,7 +21,7 @@
 {/if}
 
 {#if formatUpgrades.length > 0}
-	<section class="card" use:reveal>
+	<section class="section" use:reveal>
 		<h2>Vinyl Upgrade Picks</h2>
 		<p class="section-subtitle">Owned on CD or cassette but not vinyl</p>
 		<FormatUpgrades groups={formatUpgrades} onSelect={onSelect} />

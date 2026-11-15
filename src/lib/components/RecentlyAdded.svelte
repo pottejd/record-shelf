@@ -36,6 +36,7 @@
 				src={item.basic_information.cover_image || item.basic_information.thumb || '/placeholder.svg'}
 				alt="{getArtistNames(item)} - {item.basic_information.title}"
 				loading="lazy"
+				class="cover"
 			/>
 			<span class="time-badge">{getTimeAgo(item.date_added)}</span>
 		</a>
@@ -46,40 +47,34 @@
 	.recently-added {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-		gap: 0.75rem;
+		gap: 12px;
 	}
 
+	/* A square cover on the track colour with how long ago it was added in an
+	   ink label at its foot. */
 	.item {
 		position: relative;
+		display: block;
 		aspect-ratio: 1;
 		overflow: hidden;
-		border-radius: 6px;
-		background: var(--color-bg-secondary, #f5f5f5);
-		transition: transform 0.2s, box-shadow 0.2s;
-	}
-
-	.item:hover {
-		transform: scale(1.05);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-		z-index: 1;
+		background: var(--track);
+		text-decoration: none;
 	}
 
 	.item img {
 		width: 100%;
 		height: 100%;
-		object-fit: cover;
 	}
 
 	.time-badge {
 		position: absolute;
-		bottom: 0.375rem;
-		left: 0.375rem;
-		padding: 0.125rem 0.375rem;
-		background: rgba(0, 0, 0, 0.75);
-		color: white;
-		font-size: 0.625rem;
+		bottom: 0;
+		left: 0;
+		padding: 2px 6px;
+		background: var(--ink);
+		color: var(--on-ink);
+		font-size: 13px;
 		font-weight: 600;
-		border-radius: 4px;
-		backdrop-filter: blur(4px);
+		line-height: 1.3;
 	}
 </style>

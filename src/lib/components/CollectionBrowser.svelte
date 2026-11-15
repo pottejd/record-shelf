@@ -212,13 +212,13 @@
 	{#if filteredItems.length === 0}
 		<div class="no-results">
 			<p>No records found matching the search.</p>
-			<button onclick={clearFilters}>Clear Filters</button>
+			<button class="btn btn-secondary" onclick={clearFilters}>Clear Filters</button>
 		</div>
 	{/if}
 
 	{#if hasMore}
 		<div class="load-more">
-			<button onclick={() => page = page + 1}>
+			<button class="btn btn-secondary" onclick={() => page = page + 1}>
 				Show more ({filteredItems.length - visibleCount} remaining)
 			</button>
 		</div>
@@ -229,94 +229,85 @@
 	.collection-browser {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 16px;
 	}
 
 	.browser-header {
 		display: flex;
-		gap: 0.75rem;
+		align-items: center;
+		gap: 16px 24px;
 		flex-wrap: wrap;
 	}
 
 	.active-filters {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: 8px;
 		align-items: center;
 	}
 
+	/* A chosen filter: ink text with a hairline edge, square. */
 	.chip {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.375rem;
-		padding: 0.3rem 0.7rem;
-		font-size: 0.8125rem;
-		border: 1px solid var(--color-border);
-		border-radius: 999px;
-		background: var(--color-bg-card);
-		color: var(--color-text);
+		gap: 8px;
+		min-height: var(--touch);
+		padding: 0 14px;
+		border: 1px solid var(--hairline);
+		border-radius: 0;
+		background: transparent;
+		color: var(--ink);
+		font: inherit;
+		font-size: 15px;
+		font-weight: 500;
 		cursor: pointer;
 	}
 
 	.chip:hover {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
+		border-color: var(--ink);
 	}
 
 	.chip.clear-all {
-		color: var(--color-text-secondary);
+		border-color: transparent;
+		color: var(--muted);
+		text-decoration: underline;
+		text-underline-offset: 4px;
+	}
+
+	.chip.clear-all:hover {
+		color: var(--ink);
 	}
 
 	.items-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-		gap: 1rem;
+		grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+		gap: 32px 24px;
+		margin-top: 16px;
 	}
 
 	.no-results {
 		text-align: center;
-		padding: 3rem 1rem;
-		color: var(--color-text-tertiary);
+		padding: 48px 0;
+		color: var(--muted);
+	}
+
+	.no-results p {
+		margin: 0;
 	}
 
 	.no-results button {
-		margin-top: 1rem;
-		padding: 0.5rem 1rem;
-		font-size: 0.875rem;
-		background: var(--color-bg-secondary);
-		border: none;
-		border-radius: 6px;
-		color: var(--color-text);
-		cursor: pointer;
+		margin-top: 16px;
 	}
 
 	.load-more {
 		text-align: center;
-		padding: 1rem;
+		padding-top: 24px;
 	}
 
-	.load-more button {
-		padding: 0.625rem 1.5rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		background: var(--color-bg-secondary);
-		border: 1px solid var(--color-border);
-		border-radius: 8px;
-		color: var(--color-text-secondary);
-		cursor: pointer;
-		transition: all 0.15s;
-	}
-
-	.load-more button:hover {
-		background: var(--color-primary);
-		border-color: var(--color-primary);
-		color: white;
-	}
-
-	@media (max-width: 600px) {
+	@media (max-width: 699px) {
 		.items-grid {
-			grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-			gap: 0.75rem;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 24px 16px;
 		}
 	}
 </style>

@@ -72,41 +72,21 @@
 	}
 
 	img {
+		display: block;
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
 		opacity: 0;
-		transition: opacity 0.3s ease;
 	}
 
 	img.visible {
 		opacity: 1;
 	}
 
+	/* A flat placeholder in the track colour until the cover arrives. */
 	.placeholder {
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(135deg,
-			var(--color-bg-secondary, #f0f0f0) 0%,
-			var(--color-bg-tertiary, #e0e0e0) 50%,
-			var(--color-bg-secondary, #f0f0f0) 100%
-		);
-		background-size: 200% 200%;
-		animation: shimmer 1.5s ease-in-out infinite;
-	}
-
-	@keyframes shimmer {
-		0% { background-position: 100% 100%; }
-		50% { background-position: 0% 0%; }
-		100% { background-position: 100% 100%; }
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		img {
-			transition: none;
-		}
-		.placeholder {
-			animation: none;
-		}
+		background: var(--track);
 	}
 </style>

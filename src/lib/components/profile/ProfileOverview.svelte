@@ -21,43 +21,43 @@
 	<StatCard label="Records" value={stats.totalItems} />
 	<StatCard label="Artists" value={stats.totalArtists} />
 	<StatCard label="Labels" value={stats.totalLabels} />
-	<StatCard label="Avg. Year" value={stats.averageYear ? String(stats.averageYear) : '—'} />
-	<StatCard label="Year Span" value={stats.collectionSpan ? `${stats.collectionSpan} yrs` : '—'} />
-	<StatCard label="Top Genre" value={stats.dominantGenre || '—'} />
+	<StatCard label="Avg. year" value={stats.averageYear ? String(stats.averageYear) : '—'} />
+	<StatCard label="Year span" value={stats.collectionSpan ? `${stats.collectionSpan} yrs` : '—'} />
+	<StatCard label="Top genre" value={stats.dominantGenre || '—'} />
 </section>
 
 <div class="grid-2col" use:reveal>
-	<section class="card">
+	<section class="section">
 		<h2>Recently Added</h2>
 		<RecentlyAdded items={stats.recentlyAdded} />
 	</section>
 
-	<section class="card">
+	<section class="section">
 		<h2>What Should I Listen To?</h2>
 		<RandomPicker items={items} />
 	</section>
 </div>
 
 <div id="top-lists" class="grid-2col" use:reveal>
-	<section class="card">
+	<section class="section">
 		<h2>Top Artists</h2>
 		<TopList items={stats.topArtists} clickable onItemClick={onArtistClick} />
 	</section>
 
-	<section class="card">
+	<section class="section">
 		<h2>Top Labels</h2>
 		<TopList items={stats.topLabels} clickable onItemClick={onLabelClick} />
 	</section>
 </div>
 
 <div class="grid-2col" use:reveal>
-	<section class="card">
+	<section class="section">
 		<h2>Collection Highlights</h2>
 		<p class="section-subtitle">A random selection from the collection</p>
 		<CoverGrid items={randomHighlights} />
 	</section>
 
-	<section class="card">
+	<section class="section">
 		<h2>Collection DNA</h2>
 		<CollectionDNA {stats} />
 	</section>

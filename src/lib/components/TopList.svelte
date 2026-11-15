@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { colorAt, RANK_PALETTE } from '$lib/utils/chart';
-
 	interface Props {
 		items: Array<{ name: string; count: number }>;
 		limit?: number;
@@ -14,7 +12,7 @@
 	let maxCount = $derived(displayItems.length > 0 ? Math.max(...displayItems.map((i) => i.count)) : 1);
 </script>
 
-<ol class="top-list" class:clickable>
+<ol class="top-list rows" class:clickable>
 	{#each displayItems as item, i}
 		<li>
 			<button
@@ -23,7 +21,7 @@
 				disabled={!clickable}
 				onclick={() => onItemClick?.(item.name)}
 			>
-				<span class="rank" style:background={colorAt(i, RANK_PALETTE, 'clamp')}>{i + 1}</span>
+				<span class="rank">{i + 1}</span>
 				<div class="bar-wrapper">
 					<div class="name-row">
 						<span class="name">{item.name}</span>
@@ -33,7 +31,6 @@
 						<div
 							class="bar-fill"
 							style:width="{(item.count / maxCount) * 100}%"
-							style:background={colorAt(i, RANK_PALETTE, 'clamp')}
 						></div>
 					</div>
 				</div>
@@ -43,13 +40,12 @@
 </ol>
 
 <style>
+	/* Ranked rows divided by hairlines: the rank in ink, the name and its count,
+	   and a solid ink bar on the track. */
 	.top-list {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.625rem;
 	}
 
 	li {
@@ -58,14 +54,13 @@
 
 	.list-item {
 		display: flex;
-		align-items: flex-start;
-		gap: 0.75rem;
+		align-items: center;
+		gap: 16px;
 		width: 100%;
 		background: none;
-		border: none;
-		padding: 0.375rem;
-		margin: -0.375rem;
-		border-radius: 8px;
+		border: 0;
+		border-radius: 0;
+		padding: 12px 0;
 		font: inherit;
 		color: inherit;
 		text-align: left;
@@ -73,27 +68,24 @@
 
 	.clickable .list-item {
 		cursor: pointer;
-		transition: background-color 0.15s;
 	}
 
-	.clickable .list-item:hover {
-		background: var(--color-bg-secondary, rgba(0, 0, 0, 0.05));
+	.clickable .list-item:hover .name {
+		text-decoration: underline;
+		text-underline-offset: 4px;
 	}
 
 	.list-item:disabled {
 		cursor: default;
+		color: inherit;
 	}
 
 	.rank {
-		width: 1.5rem;
-		height: 1.5rem;
-		font-size: 0.6875rem;
-		font-weight: 700;
-		color: white;
-		text-align: center;
-		line-height: 1.5rem;
-		border-radius: 6px;
+		width: 24px;
 		flex-shrink: 0;
+		font-size: 18px;
+		font-weight: 700;
+		color: var(--ink);
 	}
 
 	.bar-wrapper {
@@ -105,12 +97,12 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: baseline;
-		gap: 0.5rem;
-		margin-bottom: 0.25rem;
+		gap: 8px;
+		margin-bottom: 6px;
 	}
 
 	.name {
-		font-size: 0.875rem;
+		font-size: 17px;
 		font-weight: 500;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -118,22 +110,21 @@
 	}
 
 	.count {
-		font-size: 0.75rem;
+		font-size: 15px;
 		font-weight: 600;
-		color: var(--color-text-secondary, #666);
+		color: var(--muted);
 		flex-shrink: 0;
 	}
 
 	.bar {
-		height: 4px;
-		background: var(--color-bg-secondary, #f0f0f0);
-		border-radius: 2px;
+		height: 6px;
+		background: var(--track);
 		overflow: hidden;
 	}
 
 	.bar-fill {
 		height: 100%;
-		border-radius: 2px;
+		background: var(--ink);
 		transition: width 0.3s ease;
 	}
 </style>

@@ -88,7 +88,7 @@
 			<header class="drawer-header">
 				<div>
 					<h2 id="drawer-title">{title}</h2>
-					<p class="item-count">{items.length} {items.length === 1 ? 'record' : 'records'}</p>
+					<p class="item-count small">{items.length} {items.length === 1 ? 'record' : 'records'}</p>
 				</div>
 				<button class="close-btn" onclick={onClose} aria-label="Close">
 					<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -101,13 +101,13 @@
 				{#if items.length === 0}
 					<p class="empty">No records found</p>
 				{:else}
-					<ul class="record-list">
+					<ul class="record-list rows">
 						{#each visibleItems as item}
 							<li class="record-item">
 								<img
 									src={item.basic_information.thumb || '/placeholder.svg'}
 									alt=""
-									class="record-thumb"
+									class="record-thumb cover"
 									loading="lazy"
 								/>
 								<div class="record-info">
@@ -146,7 +146,7 @@
 						{/each}
 					</ul>
 					{#if hasMore}
-						<button class="show-more-btn" onclick={() => visibleCount += PAGE_SIZE}>
+						<button class="show-more-btn btn btn-secondary" onclick={() => visibleCount += PAGE_SIZE}>
 							Show more ({items.length - visibleCount} remaining)
 						</button>
 					{/if}
@@ -157,10 +157,12 @@
 {/if}
 
 <style>
+	/* The page recedes under a veil of the ground colour; the list sits in a
+	   panel on the right edge, marked off by a thick ink rule. */
 	.drawer-backdrop {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.5);
+		background: color-mix(in srgb, var(--ground) 80%, transparent);
 		z-index: 1000;
 		display: flex;
 		justify-content: flex-end;
@@ -170,50 +172,47 @@
 		width: 100%;
 		max-width: 480px;
 		height: 100%;
-		background: var(--color-bg, #fff);
+		background: var(--ground);
+		border-left: var(--rule) solid var(--ink);
 		display: flex;
 		flex-direction: column;
-		box-shadow: -4px 0 24px rgba(0, 0, 0, 0.2);
 	}
 
 	.drawer-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: flex-start;
-		padding: 1.5rem;
-		border-bottom: 1px solid var(--color-border, #e0e0e0);
-		background: var(--color-bg-card, #fff);
+		gap: 16px;
+		padding: 24px 24px 16px;
+		border-bottom: 1px solid var(--hairline);
 	}
 
 	.drawer-header h2 {
 		margin: 0;
-		font-size: 1.25rem;
+		font-size: 28px;
 		font-weight: 700;
+		letter-spacing: -0.01em;
+		overflow-wrap: anywhere;
 	}
 
 	.item-count {
-		margin: 0.25rem 0 0;
-		font-size: 0.875rem;
-		color: var(--color-text-secondary, #666);
+		margin: 4px 0 0;
 	}
 
 	.close-btn {
-		width: 36px;
-		height: 36px;
-		padding: 8px;
-		background: var(--color-bg-secondary, #f5f5f5);
-		border: none;
-		border-radius: 8px;
+		width: var(--touch);
+		height: var(--touch);
+		flex-shrink: 0;
+		padding: 10px;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
 		cursor: pointer;
-		color: var(--color-text, #333);
-		transition: background-color 0.2s;
-	}
-
-	.close-btn:hover {
-		background: var(--color-bg-tertiary, #e5e5e5);
+		color: var(--ink);
 	}
 
 	.close-btn svg {
+		display: block;
 		width: 100%;
 		height: 100%;
 	}
@@ -221,46 +220,32 @@
 	.drawer-content {
 		flex: 1;
 		overflow-y: auto;
-		padding: 1rem;
+		padding: 0 24px 24px;
 	}
 
 	.empty {
-		text-align: center;
-		color: var(--color-text-tertiary, #999);
-		padding: 3rem 1rem;
+		color: var(--muted);
+		padding: 48px 0;
+		margin: 0;
 	}
 
 	.record-list {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
 	}
 
 	.record-item {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		padding: 0.75rem;
-		background: var(--color-bg-card, #fff);
-		border: 1px solid var(--color-border, #e0e0e0);
-		border-radius: 12px;
-		transition: transform 0.15s, box-shadow 0.15s;
-	}
-
-	.record-item:hover {
-		transform: translateX(-2px);
-		box-shadow: var(--shadow-md);
+		gap: 16px;
+		padding: 16px 0;
 	}
 
 	.record-thumb {
 		width: 56px;
 		height: 56px;
-		border-radius: 6px;
-		object-fit: cover;
-		background: var(--color-bg-secondary, #f5f5f5);
+		background: var(--track);
 		flex-shrink: 0;
 	}
 
@@ -272,16 +257,17 @@
 	.record-title {
 		margin: 0;
 		font-weight: 600;
-		font-size: 0.9375rem;
+		font-size: 17px;
+		line-height: 1.25;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
 	.record-artist {
-		margin: 0.125rem 0 0;
-		font-size: 0.8125rem;
-		color: var(--color-text-secondary, #666);
+		margin: 2px 0 0;
+		font-size: 15px;
+		color: var(--muted);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -289,64 +275,53 @@
 
 	.record-meta {
 		display: flex;
-		gap: 0.5rem;
-		margin-top: 0.25rem;
-		font-size: 0.75rem;
-		color: var(--color-text-tertiary, #999);
+		flex-wrap: wrap;
+		gap: 0 8px;
+		margin-top: 2px;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.year {
 		font-weight: 600;
-		color: var(--color-primary, #6366f1);
-	}
-
-	.format-detail {
-		opacity: 0.7;
+		color: var(--ink);
 	}
 
 	.discogs-btn {
-		width: 32px;
-		height: 32px;
-		padding: 6px;
-		color: var(--color-text-tertiary, #999);
-		border-radius: 6px;
-		transition: color 0.2s, background-color 0.2s;
+		width: var(--touch);
+		height: var(--touch);
+		padding: 12px;
+		color: var(--muted);
 		flex-shrink: 0;
 	}
 
 	.discogs-btn:hover {
-		color: var(--color-primary, #6366f1);
-		background: var(--color-bg-secondary, #f5f5f5);
+		color: var(--ink);
 	}
 
 	.discogs-btn svg {
+		display: block;
 		width: 100%;
 		height: 100%;
 	}
 
 	.show-more-btn {
-		display: block;
 		width: 100%;
-		margin-top: 1rem;
-		padding: 0.75rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: var(--color-primary, #6366f1);
-		background: var(--color-bg-secondary, #f5f5f5);
-		border: 1px solid var(--color-border, #e0e0e0);
-		border-radius: 10px;
-		cursor: pointer;
-		transition: background-color 0.15s, border-color 0.15s;
-	}
-
-	.show-more-btn:hover {
-		background: var(--color-bg-tertiary, #e5e5e5);
-		border-color: var(--color-primary, #6366f1);
+		margin-top: 16px;
 	}
 
 	@media (max-width: 500px) {
 		.drawer {
 			max-width: 100%;
+			border-left: 0;
+		}
+
+		.drawer-header {
+			padding: 20px 20px 16px;
+		}
+
+		.drawer-content {
+			padding: 0 20px 20px;
 		}
 	}
 </style>

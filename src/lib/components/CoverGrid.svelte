@@ -16,12 +16,13 @@
 			href="https://www.discogs.com/release/{item.basic_information.id}"
 			target="_blank"
 			rel="noopener noreferrer"
-			class="cover"
+			class="tile"
 			title="{getArtistNames(item)} - {item.basic_information.title}"
 		>
 			<LazyImage
 				src={item.basic_information.cover_image || item.basic_information.thumb || '/placeholder.svg'}
 				alt="{getArtistNames(item)} - {item.basic_information.title}"
+				class="cover"
 			/>
 		</a>
 	{/each}
@@ -30,7 +31,7 @@
 <style>
 	.cover-grid {
 		display: grid;
-		gap: 0.5rem;
+		gap: 12px;
 	}
 
 	.size-small {
@@ -45,18 +46,10 @@
 		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 	}
 
-	.cover {
+	/* A square cover on the track colour; the image inside carries the .cover edge. */
+	.tile {
+		display: block;
 		aspect-ratio: 1;
-		overflow: hidden;
-		border-radius: 4px;
-		background: var(--color-bg-secondary, #f5f5f5);
-		transition: transform 0.2s, box-shadow 0.2s;
+		background: var(--track);
 	}
-
-	.cover:hover {
-		transform: scale(1.05);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-		z-index: 1;
-	}
-
 </style>

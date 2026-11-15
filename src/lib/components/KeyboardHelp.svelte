@@ -41,9 +41,13 @@
 		<div class="kh-modal">
 			<div class="kh-head">
 				<h2>Keyboard shortcuts</h2>
-				<button class="kh-close" onclick={onClose} aria-label="Close">✕</button>
+				<button class="kh-close" onclick={onClose} aria-label="Close">
+					<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M18 6L6 18M6 6l12 12" />
+					</svg>
+				</button>
 			</div>
-			<dl>
+			<dl class="rows">
 				{#each shortcuts as s}
 					<div class="kh-row">
 						<dt><kbd>{s.keys}</kbd></dt>
@@ -56,76 +60,89 @@
 {/if}
 
 <style>
+	/* The page recedes under a veil of the ground colour; the help is an open
+	   panel under a thick ink rule, edged in ink so it stands off the page. */
 	.kh-backdrop {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.5);
+		background: color-mix(in srgb, var(--ground) 80%, transparent);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding: 1rem;
+		padding: 20px;
 		z-index: 100;
 	}
 
 	.kh-modal {
-		background: var(--color-bg-card);
-		border: 1px solid var(--color-border);
-		border-radius: 16px;
-		padding: 1.25rem 1.5rem;
+		background: var(--ground);
+		border: 2px solid var(--ink);
+		border-top: var(--rule) solid var(--ink);
+		padding: 16px 24px 16px;
 		width: 100%;
-		max-width: 360px;
+		max-width: 440px;
 	}
 
 	.kh-head {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 0.75rem;
+		gap: 16px;
+		margin-bottom: 8px;
 	}
 
 	.kh-head h2 {
 		margin: 0;
-		font-size: 1.125rem;
+		font-size: 28px;
+		font-weight: 700;
+		letter-spacing: -0.01em;
 	}
 
 	.kh-close {
-		background: none;
-		border: none;
-		font-size: 1rem;
-		color: var(--color-text-secondary);
+		width: var(--touch);
+		height: var(--touch);
+		flex-shrink: 0;
+		padding: 10px;
+		margin-right: -10px;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		color: var(--ink);
 		cursor: pointer;
-		padding: 0.25rem;
+	}
+
+	.kh-close svg {
+		display: block;
+		width: 100%;
+		height: 100%;
 	}
 
 	dl {
 		margin: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
 	}
 
 	.kh-row {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: 16px;
+		padding: 12px 0;
 	}
 
 	dt {
-		flex: 0 0 90px;
+		flex: 0 0 96px;
 	}
 
 	dd {
 		margin: 0;
-		font-size: 0.875rem;
-		color: var(--color-text-secondary);
+		font-size: 17px;
 	}
 
 	kbd {
+		display: inline-block;
 		font-family: ui-monospace, monospace;
-		font-size: 0.75rem;
-		background: var(--color-bg-secondary);
-		border: 1px solid var(--color-border);
-		border-radius: 6px;
-		padding: 0.2rem 0.5rem;
+		font-size: 15px;
+		color: var(--ink);
+		border: 1px solid var(--hairline);
+		border-radius: 0;
+		padding: 2px 8px;
 	}
 </style>

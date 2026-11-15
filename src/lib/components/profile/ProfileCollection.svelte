@@ -14,39 +14,39 @@
 	} = $props();
 </script>
 
-<section id="collection" class="card" use:reveal>
+<section id="collection" class="section" use:reveal>
 	<h2>Full Collection</h2>
 	<p class="section-subtitle">Browse, search, and filter the entire collection</p>
 	<CollectionBrowser items={items} />
 </section>
 
 <div class="grid-2col" use:reveal>
-	<section class="card">
+	<section class="section">
 		<h2>Collection Quiz</h2>
 		<CollectionQuiz items={items} />
 	</section>
 
-	<section class="card">
+	<section class="section">
 		<h2>Milestones</h2>
 		<Milestones items={items} />
 	</section>
 </div>
 
 {#if stats.ratedCount > 0}
-	<section class="card" use:reveal>
+	<section class="section" use:reveal>
 		<h2>Ratings</h2>
 		<RatingsOverview {stats} />
 	</section>
 {/if}
 
 {#if stats.addedByMonth.length > 1}
-	<section class="card" use:reveal>
+	<section class="section" use:reveal>
 		<h2>Collection Growth</h2>
 		<TimelineChart data={stats.addedByMonth} />
 	</section>
 {/if}
 
-<section class="card" use:reveal>
+<section class="section" use:reveal>
 	<h2>Collection Timeline</h2>
 	<p class="section-subtitle">Additions month by month</p>
 	<CollectionTimeline items={items} />

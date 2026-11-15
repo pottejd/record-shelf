@@ -6,53 +6,32 @@
 </script>
 
 <div class="stat-card">
-	<span class="value" class:text-value={!isNumber}>{displayValue}</span>
-	<span class="label">{label}</span>
+	<span class="value" class:figure={isNumber} class:text-value={!isNumber}>{displayValue}</span>
+	<span class="label small">{label}</span>
 </div>
 
 <style>
+	/* No box: a big ink figure over a muted label, under a hairline. */
 	.stat-card {
-		background: var(--color-bg-card, #fff);
-		border: 1px solid var(--color-border, #e0e0e0);
-		border-radius: 12px;
-		padding: 1.25rem 1rem;
-		text-align: center;
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
-		position: relative;
-		overflow: hidden;
-	}
-
-	.stat-card::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		height: 3px;
-		background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
+		gap: 4px;
+		min-width: 0;
+		padding-top: 12px;
+		border-top: 1px solid var(--hairline);
 	}
 
 	.value {
-		font-size: 1.75rem;
-		font-weight: 700;
-		line-height: 1.1;
-		background: linear-gradient(135deg, #6366f1, #ec4899);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
+		color: var(--ink);
+		overflow-wrap: anywhere;
 	}
 
 	.value.text-value {
-		font-size: 1rem;
-		font-weight: 600;
-	}
-
-	.label {
-		font-size: 0.6875rem;
-		color: var(--color-text-secondary, #666);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		font-size: 21px;
+		font-weight: 700;
+		line-height: 1.2;
+		min-height: 37px;
+		display: flex;
+		align-items: flex-end;
 	}
 </style>

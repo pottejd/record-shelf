@@ -3,14 +3,10 @@
 </script>
 
 <div class="skeleton-wantlist">
-	<div class="skeleton-nav">
-		<div class="skeleton-line w-140 h-16"></div>
-	</div>
-
 	<header class="skeleton-header">
 		<div class="skeleton-avatar"></div>
 		<div class="skeleton-header-text">
-			<div class="skeleton-line w-200 h-24"></div>
+			<div class="skeleton-line w-200 h-48"></div>
 			<div class="skeleton-line w-80 h-14"></div>
 		</div>
 	</header>
@@ -41,122 +37,128 @@
 </div>
 
 <style>
+	/* Flat, square blocks in the track colour standing in for the wantlist. The
+	   frame's .page owns the side gutters. A plain opacity pulse; the global
+	   reduced-motion rule stops it. */
 	.skeleton-wantlist {
-		max-width: 1200px;
-		margin: 0 auto;
-		padding: 2rem;
+		padding-top: 56px;
 	}
 
-	.skeleton-nav {
-		margin-bottom: 1.5rem;
+	/* Inside the wantlist page's <main>, which already gives the top space. */
+	:global(main) > .skeleton-wantlist {
+		padding-top: 0;
 	}
 
 	.skeleton-header {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
-		margin-bottom: 1.5rem;
+		gap: 20px;
+		margin-bottom: 40px;
+	}
+
+	.skeleton-avatar,
+	.skeleton-line,
+	.skeleton-pill,
+	.skeleton-cover {
+		background: var(--track);
+		animation: pulse 1.5s ease-in-out infinite;
 	}
 
 	.skeleton-avatar {
-		width: 56px;
-		height: 56px;
-		border-radius: 50%;
-		background: var(--color-bg-secondary, #f0f0f0);
-		animation: pulse 1.5s ease-in-out infinite;
+		width: 64px;
+		height: 64px;
 		flex-shrink: 0;
 	}
 
 	.skeleton-header-text {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.skeleton-line {
-		border-radius: 6px;
-		background: var(--color-bg-secondary, #f0f0f0);
-		animation: pulse 1.5s ease-in-out infinite;
+		gap: 12px;
+		min-width: 0;
 	}
 
 	.w-40 { width: 40px; }
 	.w-80 { width: 80px; }
-	.w-140 { width: 140px; }
-	.w-200 { width: 200px; }
+	.w-200 { width: 200px; max-width: 100%; }
 	.w-full { width: 100%; }
 	.h-12 { height: 12px; }
 	.h-14 { height: 14px; }
-	.h-16 { height: 16px; }
-	.h-24 { height: 24px; }
+	.h-48 { height: 48px; }
 
 	.skeleton-controls {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
-		margin-bottom: 1.5rem;
+		gap: 8px;
+		margin-bottom: 32px;
 	}
 
+	/* The search field to come: an underline in the track colour. */
 	.skeleton-search {
-		height: 46px;
-		border-radius: 10px;
-		background: var(--color-bg-secondary, #f0f0f0);
-		animation: pulse 1.5s ease-in-out infinite;
+		height: 52px;
+		border-bottom: 2px solid var(--track);
 	}
 
 	.skeleton-sort-bar {
 		display: flex;
 		align-items: center;
-		gap: 0.375rem;
+		flex-wrap: wrap;
+		gap: 0 28px;
+		min-height: 48px;
 	}
 
 	.skeleton-pill {
-		width: 72px;
-		height: 30px;
-		border-radius: 6px;
-		background: var(--color-bg-secondary, #f0f0f0);
-		animation: pulse 1.5s ease-in-out infinite;
+		width: 56px;
+		height: 14px;
 	}
 
 	.skeleton-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-		gap: 1rem;
+		grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+		gap: 32px 24px;
 	}
 
 	.skeleton-card {
-		border-radius: 10px;
-		overflow: hidden;
-		background: var(--color-bg-card, #fff);
-		border: 1px solid var(--color-border, #e0e0e0);
+		min-width: 0;
 	}
 
 	.skeleton-cover {
 		width: 100%;
 		aspect-ratio: 1;
-		background: var(--color-bg-secondary, #f0f0f0);
-		animation: pulse 1.5s ease-in-out infinite;
 	}
 
 	.skeleton-info {
-		padding: 0.75rem;
+		padding-top: 12px;
 		display: flex;
 		flex-direction: column;
-		gap: 0.375rem;
+		gap: 8px;
 	}
 
 	@keyframes pulse {
 		0%, 100% { opacity: 1; }
-		50% { opacity: 0.4; }
+		50% { opacity: 0.5; }
 	}
 
-	@media (max-width: 600px) {
+	@media (max-width: 699px) {
 		.skeleton-wantlist {
-			padding: 1rem;
+			padding-top: 32px;
+		}
+
+		:global(main) > .skeleton-wantlist {
+			padding-top: 0;
+		}
+
+		.skeleton-avatar {
+			width: 48px;
+			height: 48px;
+		}
+
+		.skeleton-sort-bar {
+			gap: 0 18px;
 		}
 
 		.skeleton-grid {
-			grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-			gap: 0.75rem;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 24px 16px;
 		}
 	}
 </style>

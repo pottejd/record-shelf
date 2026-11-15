@@ -6,7 +6,7 @@
 	<div class="skeleton-header">
 		<div class="skeleton-avatar"></div>
 		<div class="skeleton-header-text">
-			<div class="skeleton-line w-200 h-24"></div>
+			<div class="skeleton-line w-200 h-48"></div>
 			<div class="skeleton-line w-120 h-16"></div>
 			<div class="skeleton-badges">
 				<div class="skeleton-badge"></div>
@@ -19,8 +19,8 @@
 	<div class="skeleton-stats">
 		{#each Array(6) as _}
 			<div class="skeleton-stat-card">
-				<div class="skeleton-line w-60 h-12"></div>
 				<div class="skeleton-line w-80 h-20"></div>
+				<div class="skeleton-line w-60 h-12"></div>
 			</div>
 		{/each}
 	</div>
@@ -63,37 +63,44 @@
 </div>
 
 <style>
+	/* Flat, square blocks in the track colour standing in for the profile. The
+	   frame's .page owns the side gutters. A plain opacity pulse; the global
+	   reduced-motion rule stops it. */
 	.skeleton-profile {
-		max-width: 1200px;
-		margin: 0 auto;
-		padding: 2rem;
+		padding-top: 56px;
+	}
+
+	/* Inside the profile page's <main>, which already gives the top space. */
+	:global(main) > .skeleton-profile {
+		padding-top: 0;
 	}
 
 	.skeleton-header {
 		display: flex;
 		align-items: flex-start;
-		gap: 1rem;
-		margin-bottom: 2rem;
+		gap: 20px;
+		margin-bottom: 40px;
+	}
+
+	.skeleton-avatar,
+	.skeleton-line,
+	.skeleton-badge,
+	.skeleton-cover {
+		background: var(--track);
+		animation: pulse 1.5s ease-in-out infinite;
 	}
 
 	.skeleton-avatar {
-		width: 72px;
-		height: 72px;
-		border-radius: 50%;
-		background: var(--color-bg-secondary, #f0f0f0);
-		animation: pulse 1.5s ease-in-out infinite;
+		width: 64px;
+		height: 64px;
+		flex-shrink: 0;
 	}
 
 	.skeleton-header-text {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.skeleton-line {
-		border-radius: 6px;
-		background: var(--color-bg-secondary, #f0f0f0);
-		animation: pulse 1.5s ease-in-out infinite;
+		gap: 12px;
+		min-width: 0;
 	}
 
 	.w-40 { width: 40px; }
@@ -101,95 +108,95 @@
 	.w-80 { width: 80px; }
 	.w-120 { width: 120px; }
 	.w-140 { width: 140px; }
-	.w-200 { width: 200px; }
+	.w-200 { width: 200px; max-width: 100%; }
 	.w-full { width: 100%; }
 	.h-12 { height: 12px; }
 	.h-14 { height: 14px; }
 	.h-16 { height: 16px; }
 	.h-20 { height: 20px; }
-	.h-24 { height: 24px; }
+	.h-48 { height: 48px; }
 	.h-120 { height: 120px; }
 
 	.skeleton-badges {
 		display: flex;
-		gap: 0.5rem;
+		flex-wrap: wrap;
+		gap: 8px;
 	}
 
 	.skeleton-badge {
 		width: 80px;
-		height: 24px;
-		border-radius: 12px;
-		background: var(--color-bg-secondary, #f0f0f0);
-		animation: pulse 1.5s ease-in-out infinite;
+		height: 28px;
 	}
 
 	.skeleton-stats {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-		gap: 1rem;
-		margin-bottom: 2rem;
+		gap: 24px;
+		margin-bottom: 56px;
 	}
 
 	.skeleton-stat-card {
-		background: var(--color-bg-card, #fff);
-		border: 1px solid var(--color-border, #e0e0e0);
-		border-radius: 16px;
-		padding: 1.25rem;
+		border-top: 1px solid var(--hairline);
+		padding-top: 12px;
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
-		align-items: center;
+		gap: 8px;
 	}
 
 	.skeleton-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-		gap: 1.5rem;
-		margin-bottom: 1.5rem;
+		gap: 0 64px;
 	}
 
+	/* A section to come: the thick rule in the track colour, then its blocks. */
 	.skeleton-card {
-		background: var(--color-bg-card, #fff);
-		border: 1px solid var(--color-border, #e0e0e0);
-		border-radius: 16px;
-		padding: 1.5rem;
+		border-top: var(--rule) solid var(--track);
+		padding-top: 16px;
+		margin-bottom: var(--section-gap);
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 16px;
+		min-width: 0;
 	}
 
 	.skeleton-cover-grid {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		gap: 0.5rem;
+		gap: 12px;
 	}
 
 	.skeleton-cover {
 		aspect-ratio: 1;
-		border-radius: 8px;
-		background: var(--color-bg-secondary, #f0f0f0);
-		animation: pulse 1.5s ease-in-out infinite;
 	}
 
 	.skeleton-list-item {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 0.5rem 0;
+		padding: 8px 0;
 	}
 
 	@keyframes pulse {
 		0%, 100% { opacity: 1; }
-		50% { opacity: 0.4; }
+		50% { opacity: 0.5; }
 	}
 
-	@media (max-width: 600px) {
+	@media (max-width: 699px) {
 		.skeleton-profile {
-			padding: 1rem;
+			padding-top: 32px;
+		}
+
+		:global(main) > .skeleton-profile {
+			padding-top: 0;
 		}
 
 		.skeleton-stats {
 			grid-template-columns: repeat(2, 1fr);
+		}
+
+		.skeleton-grid {
+			grid-template-columns: minmax(0, 1fr);
 		}
 	}
 </style>

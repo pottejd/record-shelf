@@ -55,11 +55,11 @@
 		<div class="loading-text banner-only">Discogs is busy or unreachable — retrying in {seconds}s.</div>
 	</div>
 {:else if retryable}
-	<div class="loading-banner load-error" role="alert">
+	<div class="loading-banner load-error error-note" role="alert">
 		<div class="loading-text">
 			Couldn't reach Discogs — showing {s.items.length} of {s.totalItems} records.
 		</div>
-		<button class="retry-btn" onclick={onRetry}>Retry</button>
+		<button class="retry-btn btn btn-secondary" onclick={onRetry}>Retry</button>
 	</div>
 {/if}
 
@@ -70,26 +70,30 @@
 {/if}
 
 <style>
+	/* Open on the ground: a muted line and, while loading, a thin ink bar on the track. */
 	.loading-banner {
-		margin-bottom: 1.5rem;
-		padding: 0.75rem 1rem;
-		background: var(--color-bg-card);
-		border: 1px solid var(--color-border);
-		border-radius: 12px;
+		margin-bottom: 32px;
 	}
 
 	.loading-text {
-		font-size: 0.8125rem;
-		color: var(--color-text-secondary);
-		margin-bottom: 0.5rem;
+		font-size: 15px;
+		color: var(--muted);
+		margin-bottom: 8px;
 	}
 
+	/* The error takes the global .error-note: ink text beside an accent rule. */
 	.load-error {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
-		border-color: var(--color-danger, #ef4444);
+		flex-wrap: wrap;
+		gap: 12px 24px;
+		margin-bottom: 32px;
+	}
+
+	.load-error .loading-text {
+		font-size: 17px;
+		color: var(--ink);
 	}
 
 	.load-error .loading-text,
@@ -99,32 +103,17 @@
 
 	.retry-btn {
 		flex-shrink: 0;
-		padding: 0.375rem 0.875rem;
-		font-size: 0.8125rem;
-		font-weight: 600;
-		border: 1px solid var(--color-border);
-		border-radius: 8px;
-		background: var(--color-bg-secondary);
-		color: var(--color-text);
-		cursor: pointer;
-	}
-
-	.retry-btn:hover {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
 	}
 
 	.progress-track {
 		height: 4px;
-		background: var(--color-bg-secondary);
-		border-radius: 2px;
+		background: var(--track);
 		overflow: hidden;
 	}
 
 	.progress-fill {
 		height: 100%;
-		background: var(--gradient-brand);
-		border-radius: 2px;
+		background: var(--ink);
 		transition: width 0.3s ease;
 	}
 </style>
