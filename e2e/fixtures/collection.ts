@@ -128,8 +128,19 @@ export async function withToken(pw: Page): Promise<void> {
 const PAGE = 100;
 const profileOf = (username: string) => ({ id: 1, username, avatar_url: `${COVER_HOST}/avatar/${username}.jpg`, location: 'Somewhere, Nowhere' });
 
-/** Nothing leaves the machine: covers get a flat colour, every other outside request is aborted. */
-async function keepLocal(pw: Page): Promise<void> {
+/** Per page: how many calls to Discogs were made (and aborted). */
+const discogsCounts = new WeakMap<Page, { n: number }>();
+
+/**
+ * Nothing leaves the machine: covers get a flat colour, every other outside request is aborted.
+ * Installed once per page (Playwright runs the newest matching route first, so the Discogs
+ * counter must sit above the blanket abort and no later mock may re-register either).
+ */
+async function keepLocal(pw: Page): Promise<{ n: number }> {
+	const existing = discogsCounts.get(pw);
+	if (existing) return existing;
+	const counter = { n: 0 };
+	discogsCounts.set(pw, counter);
 	await pw.route((url) => url.hostname !== 'localhost' && url.hostname !== '127.0.0.1', (route) => route.abort());
 	await pw.route((url) => url.hostname === 'covers.invalid', (route) => {
 		let h = 0;
@@ -139,6 +150,8 @@ async function keepLocal(pw: Page): Promise<void> {
 			body: `<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150"><rect width="150" height="150" fill="hsl(${h} 30% 45%)"/></svg>`
 		});
 	});
+	await pw.route('https://api.discogs.com/**', (route) => { counter.n++; return route.abort(); });
+	return counter;
 }
 
 /** Answers the sync API for a complete stored copy, 100 per page. */
@@ -165,11 +178,9 @@ async function answerStored(pw: Page, kind: 'collection' | 'wantlist', username:
 
 /** A complete stored collection for `username`; Discogs is never reached (calls are aborted and counted). */
 export async function mockStored(pw: Page, username: string, items: DiscogsCollectionItem[]): Promise<{ collectionCalls: () => number; discogsCalls: () => number }> {
-	let discogs = 0;
-	await keepLocal(pw);
-	await pw.route('https://api.discogs.com/**', (route) => { discogs++; return route.abort(); });
+	const discogs = await keepLocal(pw);
 	const collectionCalls = await answerStored(pw, 'collection', username, items);
-	return { collectionCalls, discogsCalls: () => discogs };
+	return { collectionCalls, discogsCalls: () => discogs.n };
 }
 
 /** A complete stored wantlist of `n` made-up records for `username`. */
