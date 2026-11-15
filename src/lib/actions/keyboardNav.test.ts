@@ -20,11 +20,13 @@ function mount(params: Partial<KeyboardNavParams> = {}) {
 	return full;
 }
 
-function press(key: string, from: EventTarget = document.body) {
-	const e = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+function press(key: string, from: EventTarget = document.body, init: KeyboardEventInit = {}) {
+	const e = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
 	from.dispatchEvent(e);
 	return e;
 }
+
+const SHORTCUTS = ['j', 'k', '/', 's', '?'];
 
 describe('keyboardNav action', () => {
 	beforeEach(() => {
@@ -104,6 +106,77 @@ describe('keyboardNav action', () => {
 		press('s', select);
 		expect(params.onTab).not.toHaveBeenCalled();
 		expect(params.onSearch).not.toHaveBeenCalled();
+	});
+
+	for (const modifier of ['ctrlKey', 'metaKey', 'altKey'] as const) {
+		it(`leaves every shortcut to the browser while ${modifier} is held`, () => {
+			const params = mount();
+			for (const key of SHORTCUTS) {
+				const e = press(key, document.body, { [modifier]: true });
+				expect(e.defaultPrevented).toBe(false);
+			}
+			expect(params.onShowHelp).not.toHaveBeenCalled();
+			expect(params.onSearch).not.toHaveBeenCalled();
+			expect(params.onTab).not.toHaveBeenCalled();
+		});
+	}
+
+	it('still takes "?" typed with Shift', () => {
+		const params = mount();
+		press('?', document.body, { shiftKey: true });
+		expect(params.onShowHelp).toHaveBeenCalledTimes(1);
+	});
+
+	it('does nothing on j, k, / and s while the drawer is open, but still shows the help', () => {
+		const params = mount({ isDrawerOpen: () => true });
+		for (const key of ['j', 'k', '/', 's']) expect(press(key).defaultPrevented).toBe(false);
+		expect(params.onTab).not.toHaveBeenCalled();
+		expect(params.onSearch).not.toHaveBeenCalled();
+		press('?');
+		expect(params.onShowHelp).toHaveBeenCalledTimes(1);
+	});
+
+	it('does nothing on j, k, /, s or ? while the help is open', () => {
+		const params = mount({ isHelpOpen: () => true, onCloseHelp: vi.fn() });
+		for (const key of SHORTCUTS) press(key);
+		expect(params.onTab).not.toHaveBeenCalled();
+		expect(params.onSearch).not.toHaveBeenCalled();
+		expect(params.onShowHelp).not.toHaveBeenCalled();
+	});
+
+	it('closes the help on Escape when it is open', () => {
+		const params = mount({ isHelpOpen: () => true, onCloseHelp: vi.fn() });
+		press('Escape');
+		expect(params.onCloseHelp).toHaveBeenCalledTimes(1);
+	});
+
+	it('closes only the help when both are open, and keeps the key from the drawer', () => {
+		const params = mount({ isDrawerOpen: () => true, isHelpOpen: () => true, onCloseHelp: vi.fn() });
+		// The drawer listens on window: it must not hear this Escape.
+		const drawerHeard = vi.fn();
+		window.addEventListener('keydown', drawerHeard);
+		press('Escape');
+		window.removeEventListener('keydown', drawerHeard);
+		expect(params.onCloseHelp).toHaveBeenCalledTimes(1);
+		expect(params.onCloseDrawer).not.toHaveBeenCalled();
+		expect(drawerHeard).not.toHaveBeenCalled();
+	});
+
+	it('closes the drawer on Escape typed in a field inside it', () => {
+		const params = mount({ isDrawerOpen: () => true });
+		const input = document.createElement('input');
+		document.body.appendChild(input);
+		press('Escape', input);
+		expect(params.onCloseDrawer).toHaveBeenCalledTimes(1);
+	});
+
+	it('lets Escape go on when nothing is open', () => {
+		mount();
+		const heard = vi.fn();
+		window.addEventListener('keydown', heard);
+		press('Escape');
+		window.removeEventListener('keydown', heard);
+		expect(heard).toHaveBeenCalledTimes(1);
 	});
 
 	it('removes the listener on destroy', () => {

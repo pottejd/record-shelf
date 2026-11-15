@@ -10,8 +10,22 @@
 		{ keys: 'Esc', desc: 'Close drawer / dialog' }
 	];
 
-	function onKeydown(e: KeyboardEvent) {
-		if (open && e.key === 'Escape') onClose();
+	/** Tab and Shift+Tab go round the help's own controls and never leave it. Escape
+	 *  is the page's: its shortcuts close the help before the side list under it. */
+	function holdFocus(e: KeyboardEvent) {
+		if (e.key !== 'Tab' || !backdrop) return;
+		const focusable = [...backdrop.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), [tabindex]:not([tabindex="-1"])')];
+		if (focusable.length === 0) return;
+		const first = focusable[0];
+		const last = focusable[focusable.length - 1];
+		const at = document.activeElement;
+		if (e.shiftKey && (at === first || !focusable.includes(at as HTMLElement))) {
+			e.preventDefault();
+			last.focus();
+		} else if (!e.shiftKey && (at === last || !focusable.includes(at as HTMLElement))) {
+			e.preventDefault();
+			first.focus();
+		}
 	}
 
 	function onBackdropClick(e: MouseEvent) {
@@ -25,14 +39,12 @@
 	});
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-
 {#if open}
 	<div
 		class="kh-backdrop"
 		bind:this={backdrop}
 		onclick={onBackdropClick}
-		onkeydown={onKeydown}
+		onkeydown={holdFocus}
 		role="dialog"
 		aria-modal="true"
 		aria-label="Keyboard shortcuts"
@@ -70,7 +82,8 @@
 		align-items: center;
 		justify-content: center;
 		padding: 20px;
-		z-index: 100;
+		/* Over the side list (1000): `?` may open the help while the list is open. */
+		z-index: 1100;
 	}
 
 	.kh-modal {

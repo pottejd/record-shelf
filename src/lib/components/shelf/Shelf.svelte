@@ -89,8 +89,12 @@
 	async function showAll(kind: Kind, cap: number) {
 		expanded[kind] = true;
 		await tick();
-		// The button is gone; carry focus to the first shelf it brought in.
-		rootEl.querySelectorAll<HTMLElement>(`.shelf-${kind} .board`)[cap]?.focus();
+		// The button is gone; carry focus to the first shelf it brought in that can
+		// take it. While records are still arriving every new shelf may be empty, and
+		// so disabled: then the shelf as a whole takes focus.
+		const wrap = rootEl.querySelector<HTMLElement>(`.shelf-${kind}`);
+		const boards = [...(wrap?.querySelectorAll<HTMLButtonElement>('.board') ?? [])];
+		(boards.slice(cap).find((b) => !b.disabled) ?? wrap)?.focus();
 	}
 </script>
 
@@ -98,7 +102,7 @@
 	{#each layouts as { kind, rows, starts, cap } (kind)}
 		{@const shown = expanded[kind] ? rows : rows.slice(0, cap)}
 		{@const capped = shown.length < rows.length}
-		<div class="shelf-{kind}">
+		<div class="shelf-{kind}" tabindex="-1">
 			{#if empty}
 				<div class="board"></div>
 			{:else}

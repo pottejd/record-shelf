@@ -4,7 +4,8 @@
 	let { active, url }: { active: TabId; url: URL } = $props();
 
 	/** The open tab's link stays a real link, but a plain click on it does nothing:
-	 *  the address, the Records filters and the history stay as they are. */
+	 *  the address, the Records filters and the history stay as they are. Opening a
+	 *  tab keeps focus on its link (keepfocus), so the keyboard carries on from there. */
 	function stayPut(e: MouseEvent) {
 		if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 		e.preventDefault();
@@ -20,6 +21,7 @@
 			aria-current={id === active ? 'page' : undefined}
 			onclick={id === active ? stayPut : undefined}
 			data-sveltekit-noscroll
+			data-sveltekit-keepfocus
 		>
 			{TAB_LABELS[id]}
 		</a>

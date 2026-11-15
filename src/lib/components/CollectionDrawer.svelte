@@ -158,7 +158,7 @@
 
 <style>
 	/* The page recedes under a veil of the ground colour; the list sits in a
-	   panel on the right edge, marked off by a thick ink rule. */
+	   ground-coloured panel on the right edge, marked off by a 2px ink edge. */
 	.drawer-backdrop {
 		position: fixed;
 		inset: 0;
@@ -173,7 +173,7 @@
 		max-width: 480px;
 		height: 100%;
 		background: var(--ground);
-		border-left: var(--rule) solid var(--ink);
+		border-left: 2px solid var(--ink);
 		display: flex;
 		flex-direction: column;
 	}

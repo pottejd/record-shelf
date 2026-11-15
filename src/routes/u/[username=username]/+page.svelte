@@ -89,6 +89,25 @@
 	let drawerTitle = $state('');
 	let drawerItems: DiscogsCollectionItem[] = $state([]);
 	let showHelp = $state(false);
+	// Where focus goes when the help closes: what opened it, or the page's main area.
+	let helpReturn: HTMLElement | null = null;
+	let mainEl = $state<HTMLElement | undefined>();
+
+	/** Opens the help from the footer button, or from `?` (`byKey`). Focus returns to
+	 *  the button; after `?` it returns to the main area, or into the side list if
+	 *  that is open underneath. */
+	function openHelp(byKey: boolean) {
+		const active = document.activeElement;
+		const opener = active instanceof HTMLElement && active !== document.body ? active : null;
+		helpReturn = byKey && !drawerOpen ? (mainEl ?? null) : (opener ?? mainEl ?? null);
+		showHelp = true;
+	}
+
+	function closeHelp() {
+		showHelp = false;
+		if (helpReturn?.isConnected) helpReturn.focus();
+		helpReturn = null;
+	}
 
 	// The refresh button and "Keyboard shortcuts" live in the shared top bar and
 	// footer; hand them this page's actions while it is on screen.
@@ -97,7 +116,7 @@
 		const l = loader;
 		const ready = profile != null && !s.error;
 		frame.refresh.run = ready ? () => l.refresh() : null;
-		frame.help = ready ? () => (showHelp = true) : null;
+		frame.help = ready ? () => openHelp(false) : null;
 		return () => {
 			frame.refresh.run = null;
 			frame.help = null;
@@ -230,20 +249,24 @@
 <main
 	id="main-content"
 	class="profile"
+	tabindex="-1"
+	bind:this={mainEl}
 	use:keyboardNav={{
 		tab: () => tab,
 		onTab: openTab,
 		onSearch: openSearch,
 		isDrawerOpen: () => drawerOpen,
 		onCloseDrawer: closeDrawer,
-		onShowHelp: () => (showHelp = true)
+		onShowHelp: () => openHelp(true),
+		isHelpOpen: () => showHelp,
+		onCloseHelp: closeHelp
 	}}
 >
 	<h1>{profile.username}'s shelf</h1>
 
 	<ProfileTabs active={tab} url={page.url} />
 
-	<LoadingBanner state={s} onRetry={() => loader.run()} />
+	<LoadingBanner state={s} reserve onRetry={() => loader.run()} />
 
 	<div id={tab} class="tab-body">
 		{#if tab === 'records'}
@@ -290,17 +313,25 @@
 	onClose={closeDrawer}
 />
 
-<KeyboardHelp open={showHelp} onClose={() => (showHelp = false)} />
+<KeyboardHelp open={showHelp} onClose={closeHelp} />
 {:else}
 <main id="main-content" class="profile">
-	<LoadingBanner state={s} onRetry={() => loader.run()} />
-	<SkeletonProfile />
+	<SkeletonProfile title="{data.username}'s shelf">
+		{#snippet status()}
+			<LoadingBanner state={s} reserve onRetry={() => loader.run()} />
+		{/snippet}
+	</SkeletonProfile>
 </main>
 {/if}
 
 <style>
 	.profile {
 		padding-bottom: var(--section-gap);
+	}
+
+	/* Focus comes here when the keyboard help closes; the whole page needs no ring. */
+	.profile:focus {
+		outline: none;
 	}
 
 	h1 {
@@ -314,12 +345,13 @@
 
 	/* A tab is a column of sections; .cols puts two columns side by side, each a
 	   .stack of sections (or a .col-half section). The section gap does the spacing,
-	   so sections drop their own bottom margin here. */
+	   so sections drop their own bottom margin here. The tab sits 48px under the tab
+	   row: 32px of it is the status line's reserved room, the rest is this margin. */
 	.tab-body {
 		display: flex;
 		flex-direction: column;
 		gap: var(--section-gap);
-		margin-top: 48px;
+		margin-top: 16px;
 	}
 
 	.tab-body :global(.section) {

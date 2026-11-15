@@ -8,10 +8,11 @@ test.beforeEach(async ({ page: pw }) => {
 interface Box { x: number; y: number; width: number; height: number }
 
 /**
- * Waits for the page to settle before anything is measured. The fixture's copy is
- * over a day old, so the first load is followed by a background refresh, and the
- * status line under the tab row comes and goes while they run, moving everything
- * below it by its height.
+ * Waits for the background refresh to end before a test works a control with the
+ * keyboard or the pointer. The fixture's copy is over a day old, so the first load
+ * is followed by a refresh, and when it lands the list is swapped and the charts
+ * drawn again, which can drop a hover or a focus mid-test. (Layout needs no wait:
+ * the status line keeps its room, so nothing moves while they run.)
  */
 async function settled(pw: Page): Promise<void> {
 	await pw.waitForLoadState('networkidle');
@@ -234,7 +235,6 @@ test('Records on a desktop: six columns, duplicates beside upgrade picks', async
 	const columns = await pw.locator('#records .items-grid').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
 	expect(columns).toBe(6);
 	await expect(pw.getByRole('heading', { name: 'Vinyl upgrade picks' })).toBeVisible();
-	await settled(pw);
 	const [dupes, picks] = await boxesOf(pw.locator('#records'), [{ text: 'Duplicates and variants' }, { text: 'Vinyl upgrade picks' }]);
 	expect(picks.y).toBeCloseTo(dupes.y, 0);
 	expect(picks.x).toBeGreaterThan(dupes.x + dupes.width);
@@ -247,7 +247,6 @@ test('Records on a phone: upgrade picks keep their titles readable', async ({ pa
 	await pw.setViewportSize({ width: 390, height: 844 });
 	await pw.goto('/u/tabuser?tab=records');
 	await expect(pw.getByRole('heading', { name: 'Vinyl upgrade picks' })).toBeVisible();
-	await settled(pw);
 	const [dupes, picks] = await boxesOf(pw.locator('#records'), [{ text: 'Duplicates and variants' }, { text: 'Vinyl upgrade picks' }]);
 	expect(picks.y).toBeGreaterThan(dupes.y);
 	const title = pw.locator('.upg-list .upg-title', { hasText: UPGRADE_TITLE });
@@ -435,7 +434,6 @@ test('Charts: two columns as drawn, no donut, the release ends under the year gr
 	await expect(charts.locator('h2')).toHaveText([...CHARTS_LEFT, ...CHARTS_RIGHT]);
 	await expect(charts.locator('svg circle')).toHaveCount(0);
 
-	await settled(pw);
 	const ENDS = ['Oldest release', 'Newest release'];
 	const boxes = await boxesOf(charts, [
 		...[...CHARTS_LEFT, ...CHARTS_RIGHT, ...ENDS].map((text) => ({ text })),
@@ -478,7 +476,6 @@ test('Charts on a phone: one column in reading order, no sideways scroll', async
 	await pw.goto('/u/tabuser?tab=charts');
 	const charts = pw.locator('#charts');
 	await expect(charts.locator('h2')).toHaveText([...CHARTS_LEFT, ...CHARTS_RIGHT]);
-	await settled(pw);
 	const boxes = await boxesOf(charts, [...CHARTS_LEFT, ...CHARTS_RIGHT].map((text) => ({ text })));
 	for (let i = 1; i < boxes.length; i++) {
 		expect(boxes[i].x).toBeCloseTo(boxes[0].x, 0);
@@ -530,7 +527,6 @@ test('Activity: the calendar across the top, two columns as drawn, the timeline 
 	const activity = pw.locator('#activity');
 	await expect(activity.locator('h2')).toHaveText(ACTIVITY);
 
-	await settled(pw);
 	const boxes = await boxesOf(activity, ACTIVITY.map((text) => ({ text })));
 	const calendar = boxes[0];
 	const left = boxes.slice(1, 4);
@@ -822,7 +818,6 @@ test('Extras: six sections in reading order, side by side in pairs as drawn', as
 	await pw.goto('/u/tabuser?tab=extras');
 	const extras = pw.locator('#extras');
 	await expect(extras.locator('h2')).toHaveText(EXTRAS);
-	await settled(pw);
 	const boxes = await boxesOf(extras, EXTRAS.map((text) => ({ text })));
 	for (let row = 0; row < 3; row++) {
 		const [left, right] = boxes.slice(row * 2, row * 2 + 2);
@@ -846,7 +841,6 @@ test('Extras on a phone: one column in reading order, no sideways scroll', async
 	await pw.goto('/u/tabuser?tab=extras');
 	const extras = pw.locator('#extras');
 	await expect(extras.locator('h2')).toHaveText(EXTRAS);
-	await settled(pw);
 	const boxes = await boxesOf(extras, EXTRAS.map((text) => ({ text })));
 	for (let i = 1; i < boxes.length; i++) {
 		expect(boxes[i].x).toBeCloseTo(boxes[0].x, 0);

@@ -3,7 +3,7 @@
 	import { itemSearchFields } from '$lib/utils/discogs';
 	import { replaceState } from '$app/navigation';
 	import { browser } from '$app/environment';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { recordsHref } from '$lib/profile/tabs';
 	import SearchBar from './browser/SearchBar.svelte';
 	import FilterControls from './browser/FilterControls.svelte';
@@ -167,6 +167,18 @@
 		selectedDecade = '';
 	}
 
+	let gridEl: HTMLDivElement | undefined = $state();
+
+	/** Shows the next 24. The last press removes the button, so focus moves on to the
+	 *  first record it brought in rather than falling to the page. */
+	async function showMore() {
+		const first = visibleItems.length;
+		page = page + 1;
+		if (visibleItems.length < filteredItems.length) return;
+		await tick();
+		(gridEl?.children[first] as HTMLElement | undefined)?.focus();
+	}
+
 	function toggleSort(field: typeof sortBy) {
 		if (sortBy === field) {
 			sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
@@ -240,7 +252,7 @@
 		{/if}
 	</div>
 {:else}
-	<div class="items-grid">
+	<div class="items-grid" bind:this={gridEl}>
 		{#each visibleItems as item (item.id)}
 			<RecordCard {item} />
 		{/each}
@@ -250,7 +262,7 @@
 <Pagination
 	shown={visibleItems.length}
 	total={filteredItems.length}
-	onMore={() => (page = page + 1)}
+	onMore={showMore}
 />
 
 <style>

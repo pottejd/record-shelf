@@ -14,6 +14,10 @@ export interface KeyboardNavParams {
 	onCloseDrawer: () => void;
 	/** Show the keyboard-shortcuts help overlay. */
 	onShowHelp?: () => void;
+	/** Whether the keyboard-shortcuts help is open (Escape closes it before the drawer). */
+	isHelpOpen?: () => boolean;
+	/** Close the keyboard-shortcuts help. */
+	onCloseHelp?: () => void;
 }
 
 /**
@@ -21,8 +25,10 @@ export interface KeyboardNavParams {
  * - j / k        → next / previous tab
  * - / or s       → open Records and focus its search
  * - ?            → show the shortcuts
- * - Escape       → close the drawer (when open)
- * Nothing but Escape fires while typing in a field.
+ * - Escape       → close the help if it is open, otherwise the drawer
+ * Nothing but Escape fires while typing in a field, or while Ctrl, Cmd or Alt is
+ * held (those combinations belong to the browser). While the drawer or the help
+ * is open, j, k, / and s do nothing; ? does nothing while the help is open.
  *
  * Implemented as an action so the listener lifecycle is tied to the element's
  * mount (and so it never runs during SSR). Reads live state via the getter
@@ -38,19 +44,30 @@ export const keyboardNav: Action<HTMLElement, KeyboardNavParams> = (node, params
 			target.tagName === 'TEXTAREA' ||
 			target.tagName === 'SELECT' ||
 			target.isContentEditable;
+		const helpOpen = current.isHelpOpen?.() ?? false;
+		const drawerOpen = current.isDrawerOpen();
 
-		if (e.key === 'Escape' && current.isDrawerOpen()) {
-			current.onCloseDrawer();
+		if (e.key === 'Escape') {
+			// One overlay per press, the top one first. The key is spent here, so the
+			// drawer's own Escape listener (on window, later in the event's path) does
+			// not close the drawer under the help as well.
+			if (helpOpen) current.onCloseHelp?.();
+			else if (drawerOpen) current.onCloseDrawer();
+			else return;
+			e.stopPropagation();
 			return;
 		}
 
-		if (isInput) return;
+		if (isInput || e.ctrlKey || e.metaKey || e.altKey) return;
 
 		if (e.key === '?') {
+			if (helpOpen) return;
 			e.preventDefault();
 			current.onShowHelp?.();
 			return;
 		}
+
+		if (helpOpen || drawerOpen) return;
 
 		if (e.key === '/' || e.key === 's') {
 			e.preventDefault();

@@ -77,6 +77,20 @@ describe('Shelf', () => {
 		expect(shelves(variant(container, 'narrow'))).toHaveLength(8);
 	});
 
+	it('"Show the whole shelf" hands focus to the first new shelf, or to the shelf while the new ones are empty', async () => {
+		const full = render(Shelf, { props: { items: makeCollection(5000), total: 5000, onOpen: vi.fn() } });
+		const wide = variant(full.container, 'wide');
+		await fireEvent.click(within(wide).getByRole('button', { name: 'Show the whole shelf' }));
+		await vi.waitFor(() => expect(document.activeElement).toHaveAccessibleName(/^Shelf 7 of 22: /));
+		full.unmount();
+
+		// Nothing has arrived yet: every shelf is empty and disabled.
+		const waiting = render(Shelf, { props: { items: [], total: 5000, onOpen: vi.fn() } });
+		const empty = variant(waiting.container, 'wide');
+		await fireEvent.click(within(empty).getByRole('button', { name: 'Show the whole shelf' }));
+		await vi.waitFor(() => expect(document.activeElement).toBe(empty));
+	});
+
 	it('one board and a line for an empty collection', () => {
 		const { container } = render(Shelf, { props: { items: [], total: 0, onOpen: vi.fn() } });
 		for (const kind of ['wide', 'narrow'] as const) {
