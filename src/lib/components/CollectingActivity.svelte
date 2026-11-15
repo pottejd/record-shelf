@@ -171,7 +171,7 @@
 	}
 
 	/* Yearly ink columns, each with its count above it and its year under it. */
-	.yearly :global(.chart) {
-		height: 180px;
+	.yearly {
+		--bar-chart-height: 180px;
 	}
 </style>

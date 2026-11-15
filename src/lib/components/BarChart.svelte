@@ -51,6 +51,9 @@
 </div>
 
 <style>
+	/* A caller sizes the chart by setting these on an element around it:
+	   --bar-chart-height, the height of the columns (220px), and
+	   --bar-row-height, the least height of a horizontal row (36px). */
 	.chart {
 		display: flex;
 		flex-direction: column;
@@ -61,7 +64,7 @@
 	.chart:not(.horizontal) {
 		flex-direction: row;
 		align-items: stretch;
-		height: 220px;
+		height: var(--bar-chart-height, 220px);
 		gap: 16px;
 	}
 
@@ -98,7 +101,7 @@
 		flex-direction: row;
 		align-items: center;
 		gap: 16px;
-		min-height: 36px;
+		min-height: var(--bar-row-height, 36px);
 	}
 
 	.label {

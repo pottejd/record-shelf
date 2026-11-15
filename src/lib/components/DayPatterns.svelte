@@ -75,10 +75,7 @@
 
 	.days {
 		margin-top: 24px;
-	}
-
-	.days :global(.chart) {
-		height: 200px;
+		--bar-chart-height: 200px;
 	}
 
 	.insight {

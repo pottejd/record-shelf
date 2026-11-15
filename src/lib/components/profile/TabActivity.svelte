@@ -28,20 +28,20 @@
 		{#if stats.addedByMonth.length > 1}
 			<section class="section">
 				<h2>Collection growth</h2>
-				<p class="intro wide">Records added each month.</p>
+				<p class="section-intro wide">Records added each month.</p>
 				<TimelineChart data={stats.addedByMonth} />
 			</section>
 		{/if}
 
 		<section class="section">
 			<h2>New vs vintage</h2>
-			<p class="intro">New releases or digging for classics?</p>
+			<p class="section-intro">New releases or digging for classics?</p>
 			<NewVsVintage {items} />
 		</section>
 
 		<section class="section">
 			<h2>Genre evolution</h2>
-			<p class="intro">The top genres among the records you added each year.</p>
+			<p class="section-intro">The top genres among the records you added each year.</p>
 			<GenreEvolution {items} />
 		</section>
 	</div>
@@ -66,7 +66,7 @@
 
 <section class="section timeline">
 	<h2>Collection timeline</h2>
-	<p class="intro wide">What arrived, month by month.</p>
+	<p class="section-intro wide">What arrived, month by month.</p>
 	<CollectionTimeline {items} />
 </section>
 
@@ -78,13 +78,7 @@
 		margin-bottom: 8px;
 	}
 
-	.intro {
-		margin: 0 0 8px;
-		font-size: 17px;
-		color: var(--muted);
-	}
-
-	.intro.wide {
+	.section-intro.wide {
 		margin-bottom: 16px;
 	}
 </style>

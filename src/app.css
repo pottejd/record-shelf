@@ -266,6 +266,19 @@ img {
 	min-width: 0;
 }
 
+.col-half {
+	flex: 1 1 400px;
+	min-width: 0;
+}
+
+/* The line under a section heading that says what the section shows. Where the
+   drawing wants more room under it (over a chart or a control), the tab adds it. */
+.section-intro {
+	margin: 0 0 8px;
+	font-size: 17px;
+	color: var(--muted);
+}
+
 /* Buttons */
 .btn {
 	display: inline-flex;

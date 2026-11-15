@@ -64,7 +64,7 @@
 
 		<section class="section">
 			<h2>Artist loyalty</h2>
-			<p class="intro">
+			<p class="section-intro">
 				Artists you own five or more records by. Loyal is 5 or more, Devoted is 10, Superfan is 20.
 			</p>
 			<ArtistLoyalty {items} />
@@ -103,7 +103,7 @@
 
 		<section class="section">
 			<h2>Collection DNA</h2>
-			<p class="intro">Four traits worked out from the whole collection.</p>
+			<p class="section-intro">Four traits worked out from the whole collection.</p>
 			<CollectionDNA {stats} />
 		</section>
 	</div>
@@ -121,15 +121,9 @@
 		margin-bottom: 24px;
 	}
 
-	.intro {
-		margin: 0 0 8px;
-		font-size: 17px;
-		color: var(--muted);
-	}
-
 	/* By genre has eight rows, a little taller than the twelve of Top styles. */
-	.genre-rows :global(.bar-container) {
-		min-height: 40px;
+	.genre-rows {
+		--bar-row-height: 40px;
 	}
 
 	/* "Oldest release" and "Newest release" side by side under the year grid. */

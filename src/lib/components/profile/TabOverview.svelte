@@ -64,9 +64,9 @@
 	</div>
 </div>
 
-<section class="section">
+<section class="section highlights">
 	<h2>Highlights</h2>
-	<p class="section-subtitle">A random selection from the collection</p>
+	<p class="section-intro">A random selection from the collection</p>
 	<CoverGrid items={randomHighlights} columns={6} />
 </section>
 
@@ -94,6 +94,16 @@
 
 	.chart-follows h2 {
 		margin-bottom: 24px;
+	}
+
+	/* Highlights: the heading 8px over its line of introduction, which stands 16px
+	   over the covers. */
+	.highlights h2 {
+		margin-bottom: 8px;
+	}
+
+	.highlights .section-intro {
+		margin-bottom: 16px;
 	}
 
 	@media (max-width: 699px) {

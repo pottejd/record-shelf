@@ -361,11 +361,6 @@
 		margin-bottom: 0;
 	}
 
-	.col-half {
-		flex: 1 1 400px;
-		min-width: 0;
-	}
-
 	.section h2 {
 		overflow-wrap: anywhere;
 	}

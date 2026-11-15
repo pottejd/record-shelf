@@ -374,17 +374,6 @@
 		gap: var(--section-gap);
 	}
 
-	.tab-body :global(.col-half) {
-		flex: 1 1 400px;
-		min-width: 0;
-	}
-
-	.tab-body :global(.section-subtitle) {
-		margin: -8px 0 16px;
-		font-size: 15px;
-		color: var(--muted);
-	}
-
 	@media (max-width: 699px) {
 		h1,
 		.notice {

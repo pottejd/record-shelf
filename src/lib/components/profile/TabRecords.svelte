@@ -23,7 +23,7 @@
 		{#if duplicates.length > 0}
 			<section class="section col-half">
 				<h2>Duplicates and variants</h2>
-				<p class="note">Albums on the shelf more than once.</p>
+				<p class="section-intro">Albums on the shelf more than once.</p>
 				<DuplicateDetector groups={duplicates} {onSelect} />
 			</section>
 		{/if}
@@ -31,7 +31,7 @@
 		{#if formatUpgrades.length > 0}
 			<section class="section col-half">
 				<h2>Vinyl upgrade picks</h2>
-				<p class="note">Albums you own on CD or cassette but not on vinyl.</p>
+				<p class="section-intro">Albums you own on CD or cassette but not on vinyl.</p>
 				<FormatUpgrades groups={formatUpgrades} {onSelect} />
 			</section>
 		{/if}
@@ -41,11 +41,5 @@
 <style>
 	.col-half h2 {
 		margin-bottom: 8px;
-	}
-
-	.note {
-		margin: 0 0 8px;
-		font-size: 17px;
-		color: var(--muted);
 	}
 </style>

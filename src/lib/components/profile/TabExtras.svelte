@@ -33,13 +33,13 @@
 <div class="cols extras">
 	<section class="section col-half">
 		<h2>Share</h2>
-		<p class="intro">The headline numbers, as text or as a picture.</p>
+		<p class="section-intro">The headline numbers, as text or as a picture.</p>
 		<ShareableCard {username} {stats} {items} {badges} />
 	</section>
 
 	<section class="section col-half">
 		<h2>Collection value</h2>
-		<p class="intro">A rough estimate from Discogs marketplace prices. It samples up to 20 records and scales up.</p>
+		<p class="section-intro">A rough estimate from Discogs marketplace prices. It samples up to 20 records and scales up.</p>
 		<ValueEstimate {items} {username} />
 	</section>
 </div>
@@ -47,13 +47,13 @@
 <div class="cols extras">
 	<section class="section col-wide">
 		<h2>Explore more</h2>
-		<p class="intro rows-follow">Searches on Discogs built from your top styles, artists and labels.</p>
+		<p class="section-intro rows-follow">Searches on Discogs built from your top styles, artists and labels.</p>
 		<Recommendations {stats} />
 	</section>
 
 	<section class="section col-narrow">
 		<h2>Export</h2>
-		<p class="intro">Download the whole collection.</p>
+		<p class="section-intro">Download the whole collection.</p>
 		<CollectionExport {items} {username} />
 	</section>
 </div>
@@ -70,13 +70,11 @@
 		margin-bottom: 24px;
 	}
 
-	.intro {
-		margin: 0 0 16px;
-		font-size: 17px;
-		color: var(--muted);
+	.extras .section-intro {
+		margin-bottom: 16px;
 	}
 
-	.intro.rows-follow {
+	.extras .section-intro.rows-follow {
 		margin-bottom: 4px;
 	}
 </style>
