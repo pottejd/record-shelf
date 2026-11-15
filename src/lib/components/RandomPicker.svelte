@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NO_COVER, showNoCover } from '$lib/utils/cover';
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import { formatArtists } from '$lib/utils/discogs';
 
@@ -67,9 +68,10 @@
 			aria-hidden="true"
 		>
 			<img
-				src={picked.basic_information.cover_image || picked.basic_information.thumb || '/placeholder.svg'}
+				src={picked.basic_information.cover_image || picked.basic_information.thumb || NO_COVER}
 				alt=""
 				class="picked-cover cover"
+				onerror={showNoCover}
 			/>
 		</a>
 	{:else}

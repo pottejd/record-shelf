@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NO_COVER, showNoCover } from '$lib/utils/cover';
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import { formatArtists } from '$lib/utils/discogs';
 	import { tick } from 'svelte';
@@ -126,10 +127,11 @@
 						{#each visibleItems as item}
 							<li class="record-item" tabindex="-1">
 								<img
-									src={item.basic_information.thumb || '/placeholder.svg'}
+									src={item.basic_information.thumb || NO_COVER}
 									alt=""
 									class="record-thumb cover"
 									loading="lazy"
+									onerror={showNoCover}
 								/>
 								<div class="record-info">
 									<p class="record-title">{item.basic_information.title}</p>

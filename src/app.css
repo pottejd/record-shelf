@@ -1,6 +1,9 @@
 /* The Shelf look. Colours and sizes are tokens; src/lib/theme/tokens.ts holds
    the same colour values and tokens.test.ts keeps the two in step. */
 :root {
+	/* The browser's own parts (scrollbars, form controls) follow the theme. */
+	color-scheme: light;
+
 	--ground: #ECEEE8;
 	--ink: #18201C;
 	--muted: #4A534D;
@@ -60,6 +63,8 @@
 
 /* Explicit dark mode via toggle */
 html[data-theme="dark"] {
+	color-scheme: dark;
+
 	--ground: #131815;
 	--ink: #E8EBE3;
 	--muted: #A6B0A7;
@@ -102,6 +107,8 @@ html[data-theme="dark"] {
 /* System preference fallback (when no explicit theme is set) */
 @media (prefers-color-scheme: dark) {
 	html:not([data-theme="light"]) {
+		color-scheme: dark;
+
 		--ground: #131815;
 		--ink: #E8EBE3;
 		--muted: #A6B0A7;
@@ -346,12 +353,15 @@ a.btn-secondary:hover {
 	line-height: 1.1;
 }
 
-/* A record cover: square, with a 1px inner edge so pale sleeves keep their outline */
+/* A record cover: square, with a 1px inner edge so pale sleeves keep their outline.
+   It stands on the track colour, which is all a record with no cover (or one that
+   fails to load, see $lib/utils/cover) shows: a quiet tile in either theme. */
 .cover {
 	display: block;
 	aspect-ratio: 1;
 	width: 100%;
 	object-fit: cover;
+	background: var(--track);
 	outline: 1px solid var(--cover-edge);
 	outline-offset: -1px;
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { showNoCover } from '$lib/utils/cover';
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import { cleanArtistName } from '$lib/utils/discogs';
 
@@ -77,7 +78,7 @@
 				</span>
 				<span class="strip" aria-hidden="true">
 					{#each artist.covers as cover}
-						<img src={cover} alt="" class="strip-cover cover" loading="lazy" />
+						<img src={cover} alt="" class="strip-cover cover" onerror={showNoCover} loading="lazy" />
 					{/each}
 				</span>
 				<span class="loyalty-word">{getLoyaltyLabel(artist.count)}</span>

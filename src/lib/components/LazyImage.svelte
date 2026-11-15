@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { NO_COVER } from '$lib/utils/cover';
+
 	let { src, alt = '', ...rest }: { src: string; alt?: string; [key: string]: unknown } = $props();
 
 	let loaded = $state(false);
@@ -40,16 +42,17 @@
 		loaded = true;
 	}
 
+	/** A cover that fails gives way to the empty tile (see NO_COVER), keeping its alt
+	 *  text. Should that fail too (offline), the track placeholder stays. */
 	function onError() {
 		error = true;
-		loaded = true;
 	}
 </script>
 
 <div class="lazy-image" class:loaded bind:this={container}>
-	{#if shouldLoad && !error}
+	{#if shouldLoad}
 		<img
-			{src}
+			src={error ? NO_COVER : src}
 			{alt}
 			loading="lazy"
 			onload={onLoad}

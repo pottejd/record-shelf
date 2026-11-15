@@ -138,6 +138,27 @@ test.describe('Theme colour of the browser bar', () => {
 	});
 });
 
+test.describe('Colour scheme of the browser\'s own parts (scrollbars, controls)', () => {
+	const cases = [
+		{ scheme: 'light', stored: null, want: 'light' },
+		{ scheme: 'dark', stored: null, want: 'dark' },
+		{ scheme: 'dark', stored: 'light', want: 'light' },
+		{ scheme: 'light', stored: 'dark', want: 'dark' }
+	] as const;
+
+	for (const { scheme, stored, want } of cases) {
+		test(`system ${scheme}, ${stored ?? 'nothing'} chosen: ${want}`, async ({ browser }) => {
+			const context = await browser.newContext({ colorScheme: scheme });
+			const page = await context.newPage();
+			if (stored) await page.addInitScript((v) => localStorage.setItem('record-shelf-theme', v), stored);
+			await page.goto('/settings');
+			await expect(page.locator('.theme-toggle')).toBeVisible();
+			expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(want);
+			await context.close();
+		});
+	}
+});
+
 test.describe('Compare page', () => {
 	test('renders compare form', async ({ page }) => {
 		await page.goto('/compare');

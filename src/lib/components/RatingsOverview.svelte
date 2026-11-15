@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NO_COVER, showNoCover } from '$lib/utils/cover';
 	import type { CollectionStats, DiscogsCollectionItem } from '$lib/types/discogs';
 	import { formatArtists } from '$lib/utils/discogs';
 
@@ -48,7 +49,7 @@
 					rel="noopener noreferrer"
 					class="top-rated-item"
 				>
-					<img src={item.basic_information.thumb || '/placeholder.svg'} alt="" class="thumb cover" />
+					<img src={item.basic_information.thumb || NO_COVER} alt="" class="thumb cover" onerror={showNoCover} />
 					<span class="info">
 						<span class="title">{item.basic_information.title}</span>
 						<span class="artist">{getArtistName(item)}</span>

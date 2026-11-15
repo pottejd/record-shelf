@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NO_COVER, showNoCover } from '$lib/utils/cover';
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import { formatArtists } from '$lib/utils/discogs';
 
@@ -42,11 +43,12 @@
 			>
 				<img
 					class="cover"
-					src={item.basic_information.cover_image || item.basic_information.thumb || '/placeholder.svg'}
+					src={item.basic_information.cover_image || item.basic_information.thumb || NO_COVER}
 					alt=""
 					loading="lazy"
 					width="64"
 					height="64"
+					onerror={showNoCover}
 				/>
 				<span class="text">
 					<span class="title">{item.basic_information.title}</span>

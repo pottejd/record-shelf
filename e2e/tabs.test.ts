@@ -104,6 +104,48 @@ test('clicking the open tab changes nothing', async ({ page: pw }) => {
 	expect(await pw.evaluate(() => history.length)).toBe(steps);
 });
 
+/** The track colour of each theme: what a record without a cover shows. */
+const TRACK = { light: 'rgb(213, 218, 209)', dark: 'rgb(58, 70, 63)' } as const;
+
+for (const { scheme, chosen } of [{ scheme: 'light', chosen: 'dark' }, { scheme: 'dark', chosen: 'light' }] as const) {
+	test(`a missing or broken cover is a quiet ${chosen} tile when ${chosen} is chosen on a ${scheme} system`, async ({ page: pw }) => {
+		await pw.emulateMedia({ colorScheme: scheme });
+		await pw.addInitScript((v) => localStorage.setItem('record-shelf-theme', v), chosen);
+		const items = makeCollection(30);
+		const newest = new Date(Date.UTC(2026, 10, 14)).toISOString();
+		// The newest record's cover fails to load; it is also the oldest pressing, so it
+		// stands under "Oldest release" on Charts. The next newest has no cover at all.
+		const broken = { ...items[0], date_added: newest, basic_information: { ...items[0].basic_information, year: 1901 } };
+		const bare = { ...items[1], date_added: new Date(Date.UTC(2026, 10, 13)).toISOString(), basic_information: { ...items[1].basic_information, cover_image: '', thumb: '' } };
+		await mockStored(pw, 'tabuser', [broken, bare, ...items.slice(2)]);
+		await pw.route((url) => url.hostname === 'covers.invalid' && url.pathname.endsWith(`/${broken.id}.jpg`), (route) => route.abort());
+
+		/** The cover is still an image with its alt text, square, drawn in full (nothing broken) on the track colour. */
+		const expectQuiet = async (img: import('@playwright/test').Locator) => {
+			await expect(img).toHaveCount(1);
+			await expect(img).toHaveAttribute('alt');
+			await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+			const look = await img.evaluate((el) => {
+				const r = el.getBoundingClientRect();
+				return { background: getComputedStyle(el).backgroundColor, ratio: r.width / r.height };
+			});
+			expect(look.background).toBe(TRACK[chosen]);
+			expect(look.ratio).toBeCloseTo(1, 2);
+		};
+
+		await pw.goto('/u/tabuser?tab=records');
+		const records = pw.locator('#records .item-card');
+		await expect(records.first()).toContainText(broken.basic_information.title);
+		await expectQuiet(records.nth(0).locator('img'));
+		await expectQuiet(records.nth(1).locator('img'));
+
+		await pw.getByRole('link', { name: 'Charts' }).click();
+		const oldest = pw.locator('#charts .release-end', { hasText: 'Oldest release' });
+		await expect(oldest).toContainText(broken.basic_information.title);
+		await expectQuiet(oldest.locator('img'));
+	});
+}
+
 const cards = '#records .item-card';
 /** One of the fixture's 90-character titles. */
 const LONG_TITLE = 'The Complete Unabridged Recordings of the Midnight Orchestra Performing Live at the Old Ha';

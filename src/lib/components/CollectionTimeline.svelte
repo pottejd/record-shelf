@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NO_COVER } from '$lib/utils/cover';
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import { formatArtists } from '$lib/utils/discogs';
 	import LazyImage from '$lib/components/LazyImage.svelte';
@@ -66,7 +67,7 @@
 								title="{formatArtists(info.artists)} – {info.title}"
 							>
 								<LazyImage
-									src={info.cover_image || info.thumb || '/placeholder.svg'}
+									src={info.cover_image || info.thumb || NO_COVER}
 									alt={info.title}
 									class="cover"
 								/>

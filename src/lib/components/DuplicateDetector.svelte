@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NO_COVER, showNoCover } from '$lib/utils/cover';
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import type { AlbumGroup } from '$lib/utils/albums';
 	import { formatArtists } from '$lib/utils/discogs';
@@ -17,7 +18,7 @@
 		{@const info = group.items[0].basic_information}
 		<li>
 			<button class="dup-row" onclick={() => onSelect(info.title, group.items)}>
-				<img src={info.thumb || '/placeholder.svg'} alt="" class="dup-cover cover" loading="lazy" />
+				<img src={info.thumb || NO_COVER} alt="" class="dup-cover cover" onerror={showNoCover} loading="lazy" />
 				<span class="dup-info">
 					<span class="dup-title">{info.title}</span>
 					<span class="dup-artist">{formatArtists(info.artists)}</span>

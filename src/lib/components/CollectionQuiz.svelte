@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NO_COVER, showNoCover } from '$lib/utils/cover';
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import { formatArtists } from '$lib/utils/discogs';
 	import { pickDistinctOptions } from '$lib/utils/quiz';
@@ -146,10 +147,11 @@
 			<div class="question-head">
 				<div class="album-preview">
 					<img
-						src={currentQuestion.item.basic_information.cover_image || currentQuestion.item.basic_information.thumb}
+						src={currentQuestion.item.basic_information.cover_image || currentQuestion.item.basic_information.thumb || NO_COVER}
 						alt="Mystery album"
 						class="album-cover cover"
 						class:blur={currentQuestion.type === 'album' && !showResult}
+						onerror={showNoCover}
 					/>
 				</div>
 				<div class="question-words">

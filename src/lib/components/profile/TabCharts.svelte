@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NO_COVER, showNoCover } from '$lib/utils/cover';
 	import type { DiscogsCollectionItem, CollectionStats } from '$lib/types/discogs';
 	import type { ChartDatum } from '$lib/utils/chart';
 	import BarChart from '$lib/components/BarChart.svelte';
@@ -90,7 +91,7 @@
 				<div class="release-ends">
 					{#each releaseEnds as end (end.label)}
 						<div class="release-end">
-							<img src={end.release?.thumb || '/placeholder.svg'} alt="" class="end-cover cover" />
+							<img src={end.release?.thumb || NO_COVER} alt="" class="end-cover cover" onerror={showNoCover} />
 							<div class="end-text">
 								<span class="small">{end.label}</span>
 								<span class="end-title">{end.release?.title}</span>
