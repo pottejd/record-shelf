@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem, CollectionStats } from '$lib/types/discogs';
 	import type { Badge } from '$lib/utils/badges';
-	import RandomPicker from '$lib/components/RandomPicker.svelte';
 	import CollectionQuiz from '$lib/components/CollectionQuiz.svelte';
 	import ShareableCard from '$lib/components/ShareableCard.svelte';
 	import ValueEstimate from '$lib/components/ValueEstimate.svelte';
@@ -16,19 +15,14 @@
 	} = $props();
 </script>
 
-<!-- As drawn: three rows of two sections side by side. On a phone they stack in
-     reading order: the pick, the quiz, Share, Collection value, Explore more, Export. -->
-<div class="cols extras">
-	<section class="section col-wide">
-		<h2 class="lone">What should I listen to?</h2>
-		<RandomPicker {items} />
-	</section>
-
-	<section class="section col-narrow">
-		<h2 class="lone">Collection quiz</h2>
-		<CollectionQuiz {items} />
-	</section>
-</div>
+<!-- The quiz across the full width, then two rows of two sections side by side, as
+     drawn. ("What should I listen to?" stood beside the quiz until it moved to
+     Overview.) On a phone they stack in reading order: the quiz, Share,
+     Collection value, Explore more, Export. -->
+<section class="section extras">
+	<h2 class="lone">Collection quiz</h2>
+	<CollectionQuiz {items} />
+</section>
 
 <div class="cols extras">
 	<section class="section col-half">

@@ -363,7 +363,7 @@ data, so it is not a sixth tab.
 | Day Patterns | Activity, "Day patterns" | |
 | Milestones | Activity, "Milestones" | |
 | Collection Timeline | Activity, "Collection timeline" | |
-| What Should I Listen To? | Extras, "What should I listen to?" | |
+| What Should I Listen To? | Overview, "What should I listen to?", first in the left column | On Extras until the owner moved it after go-live |
 | Collection Quiz | Extras, "Collection quiz" | |
 | Share Stats | Extras, "Share" | New picture, see below |
 | Collection Value | Extras, "Collection value" | |
@@ -373,9 +373,9 @@ data, so it is not a sixth tab.
 Layout of each tab at desktop width (two columns where noted; one column on a
 phone, in the order listed):
 
-- **Overview:** lead line, shelves, then two columns. Left (wider): Just
-  added, By decade. Right: At a glance, Top artists. Then Highlights across
-  the full width.
+- **Overview:** lead line, shelves, then two columns. Left (wider): What
+  should I listen to?, Just added, By decade. Right: At a glance, Top
+  artists. Then Highlights across the full width.
 - **Records:** All records (search field, three selects, "Sort by" with Date
   added, Artist, Title, Year; a cover grid of six columns, two on a phone;
   "Show more" in steps of 24 with "<shown> of <n> shown"), then Duplicates and
@@ -386,8 +386,8 @@ phone, in the order listed):
   its own box when it does not fit), then two columns. Left: Collection
   growth, New vs vintage, Genre evolution. Right: Collecting activity, Day
   patterns, Milestones. Then Collection timeline across the full width.
-- **Extras:** What should I listen to?, Collection quiz, Share, Collection
-  value, Explore more, Export.
+- **Extras:** Collection quiz across the full width, then Share beside
+  Collection value, then Explore more beside Export.
 
 Everything that opens the side list today still does: a decade, genre, format,
 style, artist, label or year, a duplicate group, an upgrade pick, a format

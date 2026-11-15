@@ -942,24 +942,71 @@ for (const width of [1280, 390]) {
 	});
 }
 
+const OVERVIEW_LEFT = ['What should I listen to?', 'Just added', 'By decade'];
+const OVERVIEW_RIGHT = ['At a glance', 'Top artists'];
 /** The reading order, and the order on a phone. */
-const EXTRAS = ['What should I listen to?', 'Collection quiz', 'Share', 'Collection value', 'Explore more', 'Export'];
+const OVERVIEW = [...OVERVIEW_LEFT, ...OVERVIEW_RIGHT, 'Highlights'];
 
-test('Extras: six sections in reading order, side by side in pairs as drawn', async ({ page: pw }) => {
+test('Overview: the pick heads the left column, above Just added; the shelf above both', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser');
+	const overview = pw.locator('#overview');
+	await expect(overview.locator('h2')).toHaveText(OVERVIEW);
+	await settled(pw);
+	const boxes = await boxesOf(overview, [...OVERVIEW.map((text) => ({ text })), { css: '.shelf' }]);
+	const left = boxes.slice(0, 3);
+	const right = boxes.slice(3, 5);
+	const [highlights, shelf] = boxes.slice(5);
+	for (const column of [left, right]) {
+		for (let i = 1; i < column.length; i++) {
+			expect(column[i].x).toBeCloseTo(column[0].x, 0);
+			expect(column[i].y).toBeGreaterThan(column[i - 1].y);
+		}
+	}
+	expect(right[0].x).toBeGreaterThan(left[0].x + left[0].width);
+	expect(right[0].y).toBeCloseTo(left[0].y, 0);
+	expect(left[0].y).toBeGreaterThan(shelf.y + shelf.height);
+	expect(highlights.y).toBeGreaterThan(Math.max(left[2].y, right[1].y));
+	expect(highlights.x).toBeCloseTo(left[0].x, 0);
+});
+
+test('Overview on a phone: one column in reading order, the pick first, no sideways scroll', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.setViewportSize({ width: 390, height: 844 });
+	await pw.goto('/u/tabuser');
+	const overview = pw.locator('#overview');
+	await expect(overview.locator('h2')).toHaveText(OVERVIEW);
+	await settled(pw);
+	const boxes = await boxesOf(overview, [{ css: '.shelf' }, ...OVERVIEW.map((text) => ({ text }))]);
+	for (let i = 2; i < boxes.length; i++) {
+		expect(boxes[i].x).toBeCloseTo(boxes[1].x, 0);
+		expect(boxes[i].y).toBeGreaterThan(boxes[i - 1].y);
+	}
+	expect(boxes[1].y).toBeGreaterThan(boxes[0].y + boxes[0].height);
+	expect(await pw.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+/** The reading order, and the order on a phone. */
+const EXTRAS = ['Collection quiz', 'Share', 'Collection value', 'Explore more', 'Export'];
+
+test('Extras: five sections in reading order, the quiz across the top, then pairs side by side as drawn', async ({ page: pw }) => {
 	await mockStored(pw, 'tabuser', makeCollection(150));
 	await pw.goto('/u/tabuser?tab=extras');
 	const extras = pw.locator('#extras');
 	await expect(extras.locator('h2')).toHaveText(EXTRAS);
-	const boxes = await boxesOf(extras, EXTRAS.map((text) => ({ text })));
-	for (let row = 0; row < 3; row++) {
-		const [left, right] = boxes.slice(row * 2, row * 2 + 2);
+	await expect(extras.getByRole('heading', { name: 'What should I listen to?' })).toHaveCount(0);
+	const boxes = await boxesOf(extras, [...EXTRAS.map((text) => ({ text })), { css: '.section' }]);
+	const [quiz] = boxes;
+	const quizSection = boxes[5];
+	for (let row = 0; row < 2; row++) {
+		const [left, right] = boxes.slice(1 + row * 2, 3 + row * 2);
 		expect(right.y).toBeCloseTo(left.y, 0);
 		expect(right.x).toBeGreaterThan(left.x + left.width);
-		if (row > 0) {
-			expect(left.y).toBeGreaterThan(boxes[row * 2 - 2].y);
-			expect(left.x).toBeCloseTo(boxes[0].x, 0);
-		}
+		expect(left.x).toBeCloseTo(quiz.x, 0);
+		expect(left.y).toBeGreaterThan(row === 0 ? quiz.y : boxes[1].y);
 	}
+	// The quiz has its row to itself: it spans both columns.
+	expect(quizSection.x + quizSection.width).toBeGreaterThan(boxes[2].x + boxes[2].width - 1);
 	for (const label of ['Export CSV', 'Export JSON', 'Print an insurance list']) {
 		await expect(extras.getByRole('button', { name: label, exact: true })).toBeVisible();
 	}
@@ -981,10 +1028,12 @@ test('Extras on a phone: one column in reading order, no sideways scroll', async
 	expect(await pw.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
-test('Extras: the pick button shows a cover, a title and a link to Discogs', async ({ page: pw }) => {
+test('Overview: the pick button shows a cover, a title and a link to Discogs', async ({ page: pw }) => {
 	await mockStored(pw, 'tabuser', makeCollection(150));
-	await pw.goto('/u/tabuser?tab=extras');
-	const pick = pw.locator('#extras section', { has: pw.getByRole('heading', { name: 'What should I listen to?' }) });
+	await pw.goto('/u/tabuser');
+	const pick = pw.locator('#overview section', { has: pw.getByRole('heading', { name: 'What should I listen to?' }) });
+	await expect(pick).toHaveCount(1);
+	await settled(pw);
 	await expect(pick.getByRole('link', { name: 'View on Discogs' })).toHaveCount(0);
 	await pick.getByRole('button', { name: 'Pick random record' }).click();
 	// The spin settles on a record and the button offers another.

@@ -9,10 +9,11 @@
 	import TopList from '$lib/components/TopList.svelte';
 	import CoverGrid from '$lib/components/CoverGrid.svelte';
 	import Shelf from '$lib/components/shelf/Shelf.svelte';
+	import RandomPicker from '$lib/components/RandomPicker.svelte';
 
 	let { stats, items, url, shelfItems, total, badges, randomHighlights, decadeData, onDecade, onArtistClick, openDrawer }: {
 		stats: CollectionStats;
-		/** Every record so far; "Just added" picks the newest from it. */
+		/** Every record so far; "Just added" picks the newest from it, the pick any of it. */
 		items: DiscogsCollectionItem[];
 		/** The page's address, for the link to the Records tab. */
 		url: URL;
@@ -40,6 +41,11 @@
 
 <div class="cols">
 	<div class="col-wide stack">
+		<section class="section control-follows">
+			<h2>What should I listen to?</h2>
+			<RandomPicker {items} />
+		</section>
+
 		<section class="section rows-follow">
 			<h2>Just added</h2>
 			<JustAdded {items} {total} allHref={tabHref(url, 'records')} />
@@ -80,19 +86,22 @@
 		margin-top: calc(-1 * var(--tab-top-gap));
 	}
 
-	/* The lead line wraps as in the approved picture; the shelf stands 40px under it. */
+	/* The lead line wraps as in the approved picture, never leaving one word alone on
+	   its last line; the shelf stands 40px under it. */
 	.lead {
 		max-width: 44ch;
+		text-wrap: pretty;
 		margin-bottom: 40px;
 	}
 
 	/* As drawn: a heading sits 8px over rows that bring their own padding, and
-	   24px over a chart. */
+	   24px over a chart or the pick (as on Extras, where the pick was drawn). */
 	.rows-follow h2 {
 		margin-bottom: 8px;
 	}
 
-	.chart-follows h2 {
+	.chart-follows h2,
+	.control-follows h2 {
 		margin-bottom: 24px;
 	}
 
