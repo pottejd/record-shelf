@@ -80,6 +80,11 @@
 							></div>
 						{/each}
 					</div>
+					<ul class="visually-hidden" aria-label="{period.period} by genre">
+						{#each period.genres as genre}
+							<li>{genre.name}: {genre.count} ({genre.percentage.toFixed(0)}%)</li>
+						{/each}
+					</ul>
 				</div>
 			{/each}
 		</div>

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import ValueEstimate from './ValueEstimate.svelte';
 import { setPaceForTests } from '$lib/api/discogs';
 
@@ -18,7 +18,10 @@ const releaseIdOf = (url: string) => Number(new URL(url).pathname.split('/').pop
  * Stubs the network: Discogs' price suggestions (answered by `price`, which may
  * throw) and this site's value-history endpoint. Anything else fails the test.
  */
-function stubNetwork(price: (releaseId: number, n: number) => Response = () => json({ 'Near Mint (NM or M-)': { value: 10, currency: 'USD' } })) {
+function stubNetwork(
+	price: (releaseId: number, n: number) => Response = () => json({ 'Near Mint (NM or M-)': { value: 10, currency: 'USD' } }),
+	history: unknown[] = []
+) {
 	const discogs: string[] = [];
 	const site: string[] = [];
 	vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -28,7 +31,7 @@ function stubNetwork(price: (releaseId: number, n: number) => Response = () => j
 		}
 		if (url.startsWith('/api/value-history/')) {
 			site.push(url);
-			return json({ history: [] });
+			return json({ history });
 		}
 		throw new Error(`unexpected fetch ${url}`);
 	}));
@@ -63,6 +66,20 @@ describe('ValueEstimate component', () => {
 		expect(net.discogs.every((url) => new URL(url).searchParams.get('token') === 'visitor token')).toBe(true);
 		// The finished estimate is recorded in value history.
 		expect(net.site).toEqual(['/api/value-history/tester']);
+	});
+
+	it('lists each value-history snapshot and its value as text', async () => {
+		stubNetwork(undefined, [
+			{ date: '2026-09-01', value: 9000, currency: 'USD' },
+			{ date: '2026-11-14', value: 10400, currency: 'USD' }
+		]);
+		render(ValueEstimate, { props: { items: makeItems(5), username: 'tester' } });
+
+		await fireEvent.click(screen.getByText('Estimate Value'));
+
+		const list = await screen.findByRole('list', { name: 'Value snapshots' });
+		expect(within(list).getByText('2026-09-01: $9,000')).toBeInTheDocument();
+		expect(within(list).getByText('2026-11-14: $10,400')).toBeInTheDocument();
 	});
 
 	it('without a token it says so and calls nothing', async () => {

@@ -89,6 +89,22 @@
 		return labels;
 	}
 
+	// The total for each month in the window, in text for screen readers.
+	let monthTotals = $derived.by(() => {
+		const totals = new Map<string, { label: string; count: number }>();
+		for (const day of calendarData) {
+			const date = parseLocalDayKey(day.date);
+			const key = `${date.getFullYear()}-${date.getMonth()}`;
+			const entry = totals.get(key) ?? {
+				label: date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+				count: 0
+			};
+			entry.count += day.count;
+			totals.set(key, entry);
+		}
+		return [...totals.values()];
+	});
+
 	let weeks = $derived(getWeeks(calendarData));
 	let monthLabels = $derived(getMonthLabels(calendarData));
 </script>
@@ -132,6 +148,12 @@
 			</div>
 		</div>
 	</div>
+
+	<ul class="visually-hidden" aria-label="Records added each month">
+		{#each monthTotals as month}
+			<li>{month.label}: {month.count} record{month.count !== 1 ? 's' : ''}</li>
+		{/each}
+	</ul>
 
 	<div class="calendar-legend">
 		<span>Less</span>

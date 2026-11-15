@@ -47,6 +47,11 @@
 			></span>
 		{/if}
 	</div>
+	<ul class="visually-hidden" aria-label="Records added each month">
+		{#each data as d}
+			<li>{d.date}: {d.count} added</li>
+		{/each}
+	</ul>
 	<div class="x-labels">
 		<span>{data[0]?.date}</span>
 		<span>{data[data.length - 1]?.date}</span>

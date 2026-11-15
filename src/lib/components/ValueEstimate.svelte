@@ -148,6 +148,11 @@
 							></span>
 						{/each}
 					</div>
+					<ul class="visually-hidden" aria-label="Value snapshots">
+						{#each history as snap}
+							<li>{snap.date}: {formatCurrency(snap.value, snap.currency)}</li>
+						{/each}
+					</ul>
 					<span class="vh-caption">
 						{history.length} snapshots · {pct >= 0 ? '+' : ''}{pct}% since {first.date}
 					</span>
