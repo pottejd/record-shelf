@@ -1,9 +1,10 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import { itemSearchFields } from '$lib/utils/discogs';
-	import { page as pageStore } from '$app/stores';
-	import { goto } from '$app/navigation';
+	import { replaceState } from '$app/navigation';
 	import { browser } from '$app/environment';
+	import { onMount } from 'svelte';
+	import { recordsHref } from '$lib/profile/tabs';
 	import SearchBar from './browser/SearchBar.svelte';
 	import FilterControls from './browser/FilterControls.svelte';
 	import SortToolbar from './browser/SortToolbar.svelte';
@@ -31,22 +32,32 @@
 	let showFilters = $state(false);
 	let page = $state(parseInt(getInitialParam('page', '1'), 10) || 1);
 	const perPage = 24;
-	// Sync filter state to URL params
+	// SvelteKit's replaceState throws if its router has not started yet, which it
+	// may not have while the page is still hydrating. Hold the first write until a
+	// task after mount.
+	let routerReady = $state(false);
+	onMount(() => {
+		const timer = setTimeout(() => (routerReady = true));
+		return () => clearTimeout(timer);
+	});
+
+	// Keep the filters in the address, next to `tab=records`, replacing the current
+	// history step rather than adding one. Read from and written to the browser's own
+	// address: a shallow replaceState does not change SvelteKit's page.url.
 	$effect(() => {
 		if (!browser) return;
-		const params = new URLSearchParams();
-		if (debouncedQuery) params.set('search', debouncedQuery);
-		if (selectedGenre) params.set('genre', selectedGenre);
-		if (selectedFormat) params.set('format', selectedFormat);
-		if (selectedDecade) params.set('decade', selectedDecade);
-		if (sortBy !== 'added') params.set('sort', sortBy);
-		if (sortOrder !== 'desc') params.set('order', sortOrder);
-		if (page > 1) params.set('page', String(page));
-
-		const search = params.toString();
-		const newUrl = search ? `${window.location.pathname}?${search}` : window.location.pathname;
-		if (newUrl !== `${window.location.pathname}${window.location.search}`) {
-			window.history.replaceState({}, '', newUrl);
+		const href = recordsHref(new URL(location.href), {
+			search: debouncedQuery,
+			genre: selectedGenre,
+			format: selectedFormat,
+			decade: selectedDecade,
+			sort: sortBy,
+			order: sortOrder,
+			page
+		});
+		if (!routerReady) return;
+		if (href !== `${location.pathname}${location.search}`) {
+			replaceState(href, {});
 		}
 	});
 

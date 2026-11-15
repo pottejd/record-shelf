@@ -4,8 +4,8 @@
 	let backdrop = $state<HTMLDivElement | undefined>();
 
 	const shortcuts = [
-		{ keys: 'j / k', desc: 'Next / previous section' },
-		{ keys: '/', desc: 'Focus collection search' },
+		{ keys: 'j / k', desc: 'Next / previous tab' },
+		{ keys: '/ or s', desc: 'Search your records' },
 		{ keys: '?', desc: 'Show this help' },
 		{ keys: 'Esc', desc: 'Close drawer / dialog' }
 	];

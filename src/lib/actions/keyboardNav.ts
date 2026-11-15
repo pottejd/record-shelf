@@ -1,9 +1,13 @@
 import type { Action } from 'svelte/action';
-import { scrollBehavior } from '$lib/utils/motion';
+import { stepTab, type TabId } from '$lib/profile/tabs';
 
 export interface KeyboardNavParams {
-	/** Section element ids, in document order, for j/k navigation. */
-	sectionIds: string[];
+	/** The open tab. */
+	tab: () => TabId;
+	/** Open a tab (j / k). */
+	onTab: (tab: TabId) => void;
+	/** Open Records and focus its search (/ or s). */
+	onSearch: () => void;
 	/** Whether the collection drawer is currently open (Escape closes it). */
 	isDrawerOpen: () => boolean;
 	/** Close the collection drawer. */
@@ -14,9 +18,11 @@ export interface KeyboardNavParams {
 
 /**
  * Page-level keyboard shortcuts for the profile route:
- * - j / k        → scroll to the next / previous section
- * - / or s       → focus the collection search box
+ * - j / k        → next / previous tab
+ * - / or s       → open Records and focus its search
+ * - ?            → show the shortcuts
  * - Escape       → close the drawer (when open)
+ * Nothing but Escape fires while typing in a field.
  *
  * Implemented as an action so the listener lifecycle is tied to the element's
  * mount (and so it never runs during SSR). Reads live state via the getter
@@ -28,7 +34,10 @@ export const keyboardNav: Action<HTMLElement, KeyboardNavParams> = (node, params
 	function handleKeydown(e: KeyboardEvent) {
 		const target = e.target as HTMLElement;
 		const isInput =
-			target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+			target.tagName === 'INPUT' ||
+			target.tagName === 'TEXTAREA' ||
+			target.tagName === 'SELECT' ||
+			target.isContentEditable;
 
 		if (e.key === 'Escape' && current.isDrawerOpen()) {
 			current.onCloseDrawer();
@@ -45,29 +54,12 @@ export const keyboardNav: Action<HTMLElement, KeyboardNavParams> = (node, params
 
 		if (e.key === '/' || e.key === 's') {
 			e.preventDefault();
-			const searchInput = document.querySelector<HTMLInputElement>(
-				'#collection input[type="search"], #collection input[type="text"]'
-			);
-			if (searchInput) {
-				searchInput.focus();
-				searchInput.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
-			}
+			current.onSearch();
 			return;
 		}
 
 		if (e.key === 'j' || e.key === 'k') {
-			const sectionIds = current.sectionIds;
-			const found = sectionIds.findIndex((id) => {
-				const el = document.getElementById(id);
-				if (!el) return false;
-				const rect = el.getBoundingClientRect();
-				return rect.top <= 100 && rect.bottom > 100;
-			});
-			const idx = found === -1 ? 0 : found;
-			const next =
-				e.key === 'j' ? Math.min(idx + 1, sectionIds.length - 1) : Math.max(idx - 1, 0);
-			const el = document.getElementById(sectionIds[next]);
-			if (el) el.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
+			current.onTab(stepTab(current.tab(), e.key === 'j' ? 1 : -1));
 		}
 	}
 

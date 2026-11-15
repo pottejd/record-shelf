@@ -2,40 +2,35 @@
 	import type { PageData } from './$types';
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import CollectionDrawer from '$lib/components/CollectionDrawer.svelte';
-	import SectionNav from '$lib/components/SectionNav.svelte';
 	import KeyboardHelp from '$lib/components/KeyboardHelp.svelte';
-	import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
 	import LoadingBanner from '$lib/components/profile/LoadingBanner.svelte';
-	import ProfileOverview from '$lib/components/profile/ProfileOverview.svelte';
-	import ProfileCollection from '$lib/components/profile/ProfileCollection.svelte';
-	import ProfileCharts from '$lib/components/profile/ProfileCharts.svelte';
-	import ProfileActivity from '$lib/components/profile/ProfileActivity.svelte';
-	import ProfileInsights from '$lib/components/profile/ProfileInsights.svelte';
-	import ProfileShare from '$lib/components/profile/ProfileShare.svelte';
-	import OldestNewestHighlights from '$lib/components/profile/OldestNewestHighlights.svelte';
+	import ProfileTabs from '$lib/components/profile/ProfileTabs.svelte';
+	import TabOverview from '$lib/components/profile/TabOverview.svelte';
+	import TabRecords from '$lib/components/profile/TabRecords.svelte';
+	import TabCharts from '$lib/components/profile/TabCharts.svelte';
+	import TabActivity from '$lib/components/profile/TabActivity.svelte';
+	import TabExtras from '$lib/components/profile/TabExtras.svelte';
 	import SkeletonProfile from '$lib/components/SkeletonProfile.svelte';
 	import { findDuplicates, groupAlbums } from '$lib/utils/albums';
 	import { computeCollectionStats } from '$lib/api/discogs';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { tick } from 'svelte';
 	import { createLoader } from '$lib/sync/loader.svelte';
 	import { useFrame } from '$lib/frame/frame.svelte';
 	import { keyboardNav } from '$lib/actions/keyboardNav';
+	import { tabFromUrl, tabHref, type TabId } from '$lib/profile/tabs';
+	import { scrollBehavior } from '$lib/utils/motion';
 	import { sampleN } from '$lib/utils/array';
 	import { toChartData } from '$lib/utils/chart';
 	import { calculateBadges } from '$lib/utils/badges';
 	import { CHART_LIMITS, GRID_PREVIEW_LIMIT } from '$lib/constants';
 
-	const navSections = [
-		{ id: 'overview', label: 'Overview' },
-		{ id: 'top-lists', label: 'Top Lists' },
-		{ id: 'collection', label: 'Collection' },
-		{ id: 'charts', label: 'Charts' },
-		{ id: 'activity', label: 'Activity' },
-		{ id: 'share', label: 'Share' }
-	];
-	const navSectionIds = navSections.map((s) => s.id);
-
 	let { data }: { data: PageData } = $props();
+
+	// The open tab comes from the address. Nothing the loader uses depends on it,
+	// so switching tabs never restarts the load.
+	let tab = $derived(tabFromUrl(page.url));
 
 	// Random highlights: sampled once per collection, the first time records are on
 	// screen, rather than on every batch the loader appends (which reshuffled the
@@ -104,6 +99,22 @@
 			frame.refresh.busy = false;
 		};
 	});
+
+	/** Opens a tab (a new history step, so Back returns to the tab before). */
+	function openTab(next: TabId) {
+		if (next !== tab) goto(tabHref(page.url, next), { noScroll: true });
+	}
+
+	/** Opens Records and focuses its search once the tab is on screen. */
+	async function openSearch() {
+		if (tab !== 'records') await goto(tabHref(page.url, 'records'), { noScroll: true, keepFocus: true });
+		await tick();
+		const input = document.querySelector<HTMLInputElement>('#records input[type="search"]');
+		if (input) {
+			input.focus();
+			input.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
+		}
+	}
 
 	function openDrawer(title: string, items: DiscogsCollectionItem[]) {
 		drawerTitle = title;
@@ -180,12 +191,12 @@
 
 <svelte:head>
 	{#if profile}
-		<title>{profile.username}'s Collection - Record Shelf</title>
+		<title>{profile.username}'s shelf - Record Shelf</title>
 		<meta
 			name="description"
 			content="{profile.username}'s record collection: {totalDiscogsItems} records on Record Shelf"
 		/>
-		<meta property="og:title" content="{profile.username}'s Collection - Record Shelf" />
+		<meta property="og:title" content="{profile.username}'s shelf - Record Shelf" />
 		<meta property="og:description" content="{profile.username}'s record collection: {totalDiscogsItems} records on Record Shelf" />
 		<meta property="og:type" content="profile" />
 		{#if profile.avatar_url}
@@ -201,7 +212,7 @@
 
 {#if s.error?.code === 'NOT_FOUND' || s.error?.code === 'PRIVATE'}
 <main id="main-content" class="profile">
-	<div class="card" role="alert">
+	<div class="section notice" role="alert">
 		{#if s.error.code === 'NOT_FOUND'}
 			No Discogs user named "{data.username}".
 		{:else}
@@ -214,54 +225,54 @@
 	id="main-content"
 	class="profile"
 	use:keyboardNav={{
-		sectionIds: navSectionIds,
+		tab: () => tab,
+		onTab: openTab,
+		onSearch: openSearch,
 		isDrawerOpen: () => drawerOpen,
 		onCloseDrawer: closeDrawer,
 		onShowHelp: () => (showHelp = true)
 	}}
 >
-	<ProfileHeader {profile} {badges} />
+	<h1>{profile.username}'s shelf</h1>
 
-	<SectionNav sections={navSections} />
+	<ProfileTabs active={tab} url={page.url} />
 
 	<LoadingBanner state={s} onRetry={() => loader.run()} />
 
-	<ProfileOverview
-		{stats}
-		{items}
-		{randomHighlights}
-		onArtistClick={filterByArtist}
-		onLabelClick={filterByLabel}
-	/>
-
-	<ProfileCollection {items} {stats} />
-
-	<ProfileCharts
-		{items}
-		{stats}
-		{decadeData}
-		{genreData}
-		{formatData}
-		{styleData}
-		onDecade={filterByDecade}
-		onGenre={filterByGenre}
-		onFormat={filterByFormat}
-		onStyle={filterByStyle}
-		onYear={filterByYear}
-		{openDrawer}
-	/>
-
-	<ProfileActivity {items} />
-
-	<ProfileInsights {duplicates} {formatUpgrades} onSelect={openDrawer} />
-
-	<ProfileShare {stats} {items} {badges} username={profile.username} />
-
-	{#if stats.oldestRelease || stats.newestRelease}
-		<div class="grid-2col">
-			<OldestNewestHighlights {stats} />
-		</div>
-	{/if}
+	<div id={tab} class="tab-body">
+		{#if tab === 'records'}
+			<TabRecords {items} {duplicates} {formatUpgrades} onSelect={openDrawer} />
+		{:else if tab === 'charts'}
+			<TabCharts
+				{items}
+				{stats}
+				{genreData}
+				{formatData}
+				{styleData}
+				onGenre={filterByGenre}
+				onFormat={filterByFormat}
+				onStyle={filterByStyle}
+				onYear={filterByYear}
+				onLabelClick={filterByLabel}
+				{openDrawer}
+			/>
+		{:else if tab === 'activity'}
+			<TabActivity {items} {stats} />
+		{:else if tab === 'extras'}
+			<TabExtras {items} {stats} {badges} username={profile.username} />
+		{:else}
+			<TabOverview
+				{stats}
+				{items}
+				{badges}
+				{randomHighlights}
+				{decadeData}
+				onDecade={filterByDecade}
+				onArtistClick={filterByArtist}
+				{openDrawer}
+			/>
+		{/if}
+	</div>
 </main>
 
 <CollectionDrawer
@@ -281,48 +292,53 @@
 
 <style>
 	.profile {
-		padding-top: 56px;
+		padding-bottom: var(--section-gap);
 	}
 
-	/* These layout/typography rules are :global(.profile ...) so they apply to
-	   `.card`/grid/subtitle/heading elements that now live in extracted
-	   components/profile/* children (Svelte would otherwise only scope them to
-	   markup in this file). Scoped to .profile so other pages are unaffected. */
-	:global(.profile .stats-overview) {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-		gap: 1rem;
-		margin-bottom: 2rem;
+	h1 {
+		margin: 56px 0 0;
+		overflow-wrap: anywhere;
 	}
 
-	:global(.profile .grid-2col) {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-		gap: 0 64px;
+	.notice {
+		margin-top: 56px;
 	}
 
-	/* A .card heading reads as a section heading (the global .card is drawn as a .section). */
-	:global(.profile .card h2) {
-		margin: 0 0 16px;
-		font-size: 28px;
-		font-weight: 700;
-		letter-spacing: -0.01em;
-		color: var(--ink);
+	/* A tab is a column of sections; .cols puts two columns side by side, each a
+	   .stack of sections (or a .col-half section). The section gap does the spacing,
+	   so sections drop their own bottom margin here. */
+	.tab-body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--section-gap);
+		margin-top: 48px;
 	}
 
-	:global(.profile .section-subtitle) {
+	.tab-body :global(.section) {
+		margin-bottom: 0;
+	}
+
+	.tab-body :global(.stack) {
+		display: flex;
+		flex-direction: column;
+		gap: var(--section-gap);
+	}
+
+	.tab-body :global(.col-half) {
+		flex: 1 1 400px;
+		min-width: 0;
+	}
+
+	.tab-body :global(.section-subtitle) {
 		margin: -8px 0 16px;
 		font-size: 15px;
 		color: var(--muted);
 	}
 
 	@media (max-width: 699px) {
-		.profile {
-			padding-top: 32px;
-		}
-
-		:global(.profile .stats-overview) {
-			grid-template-columns: repeat(2, 1fr);
+		h1,
+		.notice {
+			margin-top: 32px;
 		}
 	}
 </style>

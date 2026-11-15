@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { keyboardNav, type KeyboardNavParams } from './keyboardNav';
+import type { TabId } from '$lib/profile/tabs';
 
 let active: { destroy?: () => void } | undefined;
 
 function mount(params: Partial<KeyboardNavParams> = {}) {
 	const full: KeyboardNavParams = {
-		sectionIds: [],
+		tab: () => 'overview',
+		onTab: vi.fn(),
+		onSearch: vi.fn(),
 		isDrawerOpen: () => false,
 		onCloseDrawer: vi.fn(),
 		onShowHelp: vi.fn(),
@@ -26,8 +29,6 @@ function press(key: string, from: EventTarget = document.body) {
 describe('keyboardNav action', () => {
 	beforeEach(() => {
 		document.body.innerHTML = '';
-		window.matchMedia = vi.fn().mockReturnValue({ matches: false }) as any;
-		Element.prototype.scrollIntoView = vi.fn();
 	});
 
 	afterEach(() => {
@@ -55,34 +56,54 @@ describe('keyboardNav action', () => {
 		expect(e.defaultPrevented).toBe(true);
 	});
 
-	it('ignores shortcuts while typing in an input', () => {
+	it('opens the next tab on "j" and the previous on "k"', () => {
+		let tab: TabId = 'charts';
+		const params = mount({ tab: () => tab });
+		press('j');
+		expect(params.onTab).toHaveBeenLastCalledWith('activity');
+		tab = 'activity';
+		press('k');
+		expect(params.onTab).toHaveBeenLastCalledWith('charts');
+	});
+
+	it('stays on the first and last tab', () => {
+		let tab: TabId = 'overview';
+		const params = mount({ tab: () => tab });
+		press('k');
+		expect(params.onTab).toHaveBeenLastCalledWith('overview');
+		tab = 'extras';
+		press('j');
+		expect(params.onTab).toHaveBeenLastCalledWith('extras');
+	});
+
+	it('asks for the search on "/" and "s", and prevents default', () => {
+		const params = mount();
+		const slash = press('/');
+		const s = press('s');
+		expect(params.onSearch).toHaveBeenCalledTimes(2);
+		expect(slash.defaultPrevented).toBe(true);
+		expect(s.defaultPrevented).toBe(true);
+	});
+
+	it('ignores every shortcut while typing in an input', () => {
 		const params = mount();
 		const input = document.createElement('input');
 		document.body.appendChild(input);
-		press('?', input);
+		for (const key of ['?', '/', 's', 'j', 'k']) press(key, input);
 		expect(params.onShowHelp).not.toHaveBeenCalled();
+		expect(params.onSearch).not.toHaveBeenCalled();
+		expect(params.onTab).not.toHaveBeenCalled();
 	});
 
-	it('focuses the collection search box on "/"', () => {
-		document.body.innerHTML = '<div id="collection"><input type="search" /></div>';
-		mount();
-		const search = document.querySelector('input')!;
-
-		const e = press('/');
-
-		expect(document.activeElement).toBe(search);
-		expect(e.defaultPrevented).toBe(true);
-		expect(search.scrollIntoView).toHaveBeenCalled();
-	});
-
-	it('scrolls to the next section on "j"', () => {
-		document.body.innerHTML = '<div id="s1"></div><div id="s2"></div>';
-		mount({ sectionIds: ['s1', 's2'] });
-
-		press('j');
-
-		// No section is "current" (jsdom rects are 0), so idx=0 → next=s2
-		expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
+	it('ignores shortcuts while typing in a textarea or choosing in a select', () => {
+		const params = mount();
+		const area = document.createElement('textarea');
+		const select = document.createElement('select');
+		document.body.append(area, select);
+		press('j', area);
+		press('s', select);
+		expect(params.onTab).not.toHaveBeenCalled();
+		expect(params.onSearch).not.toHaveBeenCalled();
 	});
 
 	it('removes the listener on destroy', () => {
@@ -90,6 +111,8 @@ describe('keyboardNav action', () => {
 		active?.destroy?.();
 		active = undefined;
 		press('Escape');
+		press('j');
 		expect(params.onCloseDrawer).not.toHaveBeenCalled();
+		expect(params.onTab).not.toHaveBeenCalled();
 	});
 });

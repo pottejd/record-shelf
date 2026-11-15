@@ -40,7 +40,7 @@ test('renders a profile from the stored copy without calling Discogs', async ({ 
 		return route.fulfill({ json: stored(2, 50) });
 	});
 	await pw.goto('/u/someuser');
-	await expect(pw.locator('h1')).toHaveText('someuser');
+	await expect(pw.locator('h1')).toHaveText("someuser's shelf");
 	await expect(pw.locator('#overview')).toContainText('150');
 	expect(discogsCalls).toBe(0);
 });
@@ -68,7 +68,7 @@ test('a list nobody has stored is fetched from Discogs by the browser and handed
 		return route.fulfill({ json: complete() });
 	});
 	await pw.goto('/u/someuser');
-	await expect(pw.locator('h1')).toHaveText('someuser');
+	await expect(pw.locator('h1')).toHaveText("someuser's shelf");
 	await expect(pw.locator('#overview')).toContainText('150', { timeout: 15_000 });
 	await expect.poll(() => sent.some((body) => body.includes('"complete"')), { timeout: 15_000 }).toBe(true);
 
@@ -98,7 +98,7 @@ test('when Discogs gives no readable answer the busy banner shows, the records s
 	});
 	await pw.goto('/u/someuser');
 	await expect(pw.getByText(/Discogs is busy or unreachable — retrying in \d+s\./)).toBeVisible();
-	await expect(pw.locator('h1')).toHaveText('someuser');
+	await expect(pw.locator('h1')).toHaveText("someuser's shelf");
 
 	await pw.clock.fastForward(31_000);
 	await expect(pw.locator('#overview')).toContainText('150', { timeout: 15_000 });
