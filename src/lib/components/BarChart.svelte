@@ -9,18 +9,28 @@
 	let { data, horizontal = false, clickable = false, onItemClick }: Props = $props();
 
 	let maxValue = $derived(data.length > 0 ? Math.max(...data.map((d) => d.value)) : 1);
+
+	/** "1950s" becomes "50s" on a phone; other labels stay whole. */
+	function shortLabel(label: string): string | null {
+		return /^\d{4}s$/.test(label) ? label.slice(2) : null;
+	}
 </script>
 
 <!-- One series, so every bar is ink; each bar has its number beside it. -->
 <div class="chart" class:horizontal class:clickable>
 	{#each data as item}
+		{@const short = horizontal ? null : shortLabel(item.label)}
 		<button
 			class="bar-container"
 			type="button"
 			disabled={!clickable}
 			onclick={() => onItemClick?.(item.label)}
 		>
-			<span class="label">{item.label}</span>
+			{#if short}
+				<span class="label"><span class="label-long">{item.label}</span><span class="label-short">{short}</span></span>
+			{:else}
+				<span class="label">{item.label}</span>
+			{/if}
 			<div class="bar-wrapper">
 				<div class="bar" style:--v={item.value / maxValue}></div>
 				<span class="value">{item.value.toLocaleString()}</span>
@@ -35,11 +45,13 @@
 		flex-direction: column;
 	}
 
+	/* Vertical: ink columns side by side, the number over each and the label
+	   under it. */
 	.chart:not(.horizontal) {
 		flex-direction: row;
 		align-items: stretch;
 		height: 220px;
-		gap: 8px;
+		gap: 16px;
 	}
 
 	.bar-container {
@@ -112,7 +124,6 @@
 		width: 100%;
 		height: 100%;
 		gap: 6px;
-		border-bottom: 1px solid var(--ink);
 	}
 
 	.bar {
@@ -127,7 +138,6 @@
 
 	.chart:not(.horizontal) .bar {
 		width: 100%;
-		max-width: 48px;
 		/* 28px is kept above the bar for its number. */
 		height: calc((100% - 28px) * var(--v));
 		min-height: 2px;
@@ -145,11 +155,28 @@
 		max-width: 100%;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		line-height: 1.2;
+	}
+
+	.chart:not(.horizontal) .bar-container {
+		gap: 10px;
+	}
+
+	.label-short {
+		display: none;
 	}
 
 	@media (max-width: 699px) {
 		.chart:not(.horizontal) {
-			gap: 4px;
+			gap: 8px;
+		}
+
+		.label-long {
+			display: none;
+		}
+
+		.label-short {
+			display: inline;
 		}
 
 		.horizontal .bar-container {
@@ -161,7 +188,6 @@
 			font-size: 15px;
 		}
 
-		.chart:not(.horizontal) .label,
 		.chart:not(.horizontal) .value {
 			font-size: 13px;
 		}

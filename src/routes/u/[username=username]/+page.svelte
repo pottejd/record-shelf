@@ -274,6 +274,7 @@
 			<TabOverview
 				{stats}
 				{items}
+				url={page.url}
 				{shelfItems}
 				total={s.totalItems}
 				{badges}

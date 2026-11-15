@@ -2,17 +2,20 @@
 	import type { DiscogsCollectionItem, CollectionStats } from '$lib/types/discogs';
 	import type { ChartDatum } from '$lib/utils/chart';
 	import type { Badge } from '$lib/utils/badges';
-	import StatCard from '$lib/components/StatCard.svelte';
-	import RecentlyAdded from '$lib/components/RecentlyAdded.svelte';
+	import { tabHref } from '$lib/profile/tabs';
+	import JustAdded from './JustAdded.svelte';
+	import AtAGlance from './AtAGlance.svelte';
 	import BarChart from '$lib/components/BarChart.svelte';
 	import TopList from '$lib/components/TopList.svelte';
 	import CoverGrid from '$lib/components/CoverGrid.svelte';
 	import Shelf from '$lib/components/shelf/Shelf.svelte';
 
-	// `items` is for the sections a later task redraws ("See all").
-	let { stats, shelfItems, total, badges, randomHighlights, decadeData, onDecade, onArtistClick, openDrawer }: {
+	let { stats, items, url, shelfItems, total, badges, randomHighlights, decadeData, onDecade, onArtistClick, openDrawer }: {
 		stats: CollectionStats;
+		/** Every record so far; "Just added" picks the newest from it. */
 		items: DiscogsCollectionItem[];
+		/** The page's address, for the link to the Records tab. */
+		url: URL;
 		/** What the shelf draws now (held back while a stored copy is still arriving). */
 		shelfItems: DiscogsCollectionItem[];
 		/** The full count, known from the first reply. */
@@ -37,36 +40,26 @@
 
 <div class="cols">
 	<div class="col-wide stack">
-		<section class="section">
+		<section class="section rows-follow">
 			<h2>Just added</h2>
-			<RecentlyAdded items={stats.recentlyAdded} />
+			<JustAdded {items} {total} allHref={tabHref(url, 'records')} />
 		</section>
 
-		<section class="section">
+		<section class="section chart-follows">
 			<h2>By decade</h2>
 			<BarChart data={decadeData} clickable onItemClick={onDecade} />
 		</section>
 	</div>
 
 	<div class="col-narrow stack">
-		<section class="section">
+		<section class="section rows-follow">
 			<h2>At a glance</h2>
-			<div class="stats">
-				<StatCard label="Records" value={stats.totalItems} />
-				<StatCard label="Artists" value={stats.totalArtists} />
-				<StatCard label="Labels" value={stats.totalLabels} />
-				<StatCard label="Avg. year" value={stats.averageYear ? String(stats.averageYear) : '—'} />
-				<StatCard label="Year span" value={stats.collectionSpan ? `${stats.collectionSpan} yrs` : '—'} />
-				<StatCard label="Top genre" value={stats.dominantGenre || '—'} />
-			</div>
-			{#if badges.length > 0}
-				<p class="badges small">{badges.map((b) => b.label).join(', ')}</p>
-			{/if}
+			<AtAGlance {stats} {badges} />
 		</section>
 
-		<section class="section">
+		<section class="section rows-follow">
 			<h2>Top artists</h2>
-			<TopList items={stats.topArtists} clickable onItemClick={onArtistClick} />
+			<TopList items={stats.topArtists} bars="spines" clickable onItemClick={onArtistClick} />
 		</section>
 	</div>
 </div>
@@ -74,7 +67,7 @@
 <section class="section">
 	<h2>Highlights</h2>
 	<p class="section-subtitle">A random selection from the collection</p>
-	<CoverGrid items={randomHighlights} />
+	<CoverGrid items={randomHighlights} columns={6} />
 </section>
 
 <style>
@@ -90,23 +83,19 @@
 		margin-bottom: 40px;
 	}
 
-	.stats {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-		gap: 16px;
+	/* As drawn: a heading sits 8px over rows that bring their own padding, and
+	   24px over a chart. */
+	.rows-follow h2 {
+		margin-bottom: 8px;
 	}
 
-	.badges {
-		margin: 16px 0 0;
+	.chart-follows h2 {
+		margin-bottom: 24px;
 	}
 
 	@media (max-width: 699px) {
 		.lead {
 			margin-bottom: 32px;
-		}
-
-		.stats {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 	}
 </style>

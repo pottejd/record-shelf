@@ -3,14 +3,24 @@
 	import { formatArtists } from '$lib/utils/discogs';
 	import LazyImage from './LazyImage.svelte';
 
-	let { items, size = 'medium' }: { items: DiscogsCollectionItem[]; size?: 'small' | 'medium' | 'large' } = $props();
+	let { items, size = 'medium', columns }: {
+		items: DiscogsCollectionItem[];
+		size?: 'small' | 'medium' | 'large';
+		/** A fixed number of columns (half as many, rounded up, on a phone) instead of as many as fit. */
+		columns?: number;
+	} = $props();
 
 	function getArtistNames(item: DiscogsCollectionItem): string {
 		return formatArtists(item.basic_information.artists);
 	}
 </script>
 
-<div class="cover-grid size-{size}">
+<div
+	class="cover-grid size-{size}"
+	class:fixed={columns !== undefined}
+	style:--cols={columns}
+	style:--cols-phone={columns ? Math.ceil(columns / 2) : undefined}
+>
 	{#each items as item (item.instance_id)}
 		<a
 			href="https://www.discogs.com/release/{item.basic_information.id}"
@@ -44,6 +54,18 @@
 
 	.size-large {
 		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	}
+
+	.cover-grid.fixed {
+		grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+		gap: 24px;
+	}
+
+	@media (max-width: 699px) {
+		.cover-grid.fixed {
+			grid-template-columns: repeat(var(--cols-phone), minmax(0, 1fr));
+			gap: 16px;
+		}
 	}
 
 	/* A square cover on the track colour; the image inside carries the .cover edge. */
