@@ -1,25 +1,25 @@
 <script lang="ts">
-	let { data, height = 120 }: { data: Array<{ date: string; count: number }>; height?: number } = $props();
+	let { data, height = 220 }: { data: Array<{ date: string; count: number }>; height?: number } = $props();
 
 	let maxCount = $derived(Math.max(1, ...data.map((d) => d.count)));
 	let divisor = $derived(Math.max(1, data.length - 1));
-	let points = $derived(data
-		.map((d, i) => {
-			const x = (i / divisor) * 100;
-			const y = 100 - (d.count / maxCount) * 100;
-			return `${x},${y}`;
-		})
-		.join(' '));
 
-	let areaPath = $derived(`M 0,100 L ${data
-		.map((d, i) => {
-			const x = (i / divisor) * 100;
-			const y = 100 - (d.count / maxCount) * 100;
-			return `${x},${y}`;
-		})
-		.join(' L ')} L 100,100 Z`);
+	/** Each month as an "x,y" point in a 100 by 100 box, y downwards. */
+	let coords = $derived(data.map((d, i) => `${(i / divisor) * 100},${100 - (d.count / maxCount) * 100}`));
+	let points = $derived(coords.join(' '));
+	let areaPath = $derived(`M 0,100 L ${coords.join(' L ')} L 100,100 Z`);
 
 	let totalAdded = $derived(data.reduce((sum, d) => sum + d.count, 0));
+	let last = $derived(data.length > 0 ? data[data.length - 1] : null);
+	/** How far down the plot the last point sits, in percent. */
+	let lastTop = $derived(last ? 100 - (last.count / maxCount) * 100 : 100);
+
+	/** "2026-03" as "Mar 2026" (or "March 2026" with `long`). */
+	function monthName(key: string, month: 'short' | 'long' = 'short'): string {
+		const [y, m] = key.split('-').map(Number);
+		if (!y || !m) return key;
+		return new Date(y, m - 1).toLocaleDateString('en-US', { month, year: 'numeric' });
+	}
 </script>
 
 <div class="timeline-chart">
@@ -31,35 +31,32 @@
 		<svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none">
 			<path d={areaPath} class="area" />
 			<polyline points={points} class="line" vector-effect="non-scaling-stroke" />
-			{#each data as d, i}
-				{@const x = (i / divisor) * 100}
-				{@const y = 100 - (d.count / maxCount) * 100}
-				<circle cx={x} cy={y} r="3" vector-effect="non-scaling-stroke" class="dot">
-					<title>{d.date}: {d.count} added</title>
-				</circle>
-			{/each}
 		</svg>
-		{#if data.length > 0}
-			<span
-				class="end-dot"
-				style:top="{100 - (data[data.length - 1].count / maxCount) * 100}%"
-				aria-hidden="true"
-			></span>
+		{#if last}
+			<span class="end-dot" style:top="{lastTop}%" aria-hidden="true"></span>
+			<!-- The last month's count, written beside the dot in a gutter of its
+			     own, so the line never crosses it. -->
+			<span class="end-value" style:top="{lastTop}%" aria-hidden="true">
+				{last.count.toLocaleString()}
+			</span>
 		{/if}
 	</div>
-	<ul class="visually-hidden" aria-label="Records added each month">
+	<ul class="visually-hidden" aria-label="Collection growth by month">
 		{#each data as d}
-			<li>{d.date}: {d.count} added</li>
+			<li>{monthName(d.date, 'long')}: {d.count} record{d.count !== 1 ? 's' : ''}</li>
 		{/each}
 	</ul>
-	<div class="x-labels">
-		<span>{data[0]?.date}</span>
-		<span>{data[data.length - 1]?.date}</span>
-	</div>
+	{#if data.length > 0}
+		<div class="x-labels" aria-hidden="true">
+			<span>{monthName(data[0].date)}</span>
+			<span>{monthName(data[data.length - 1].date)}</span>
+		</div>
+	{/if}
 </div>
 
 <style>
-	/* One 2px ink line over a 10% ink area, with an accent dot at the end. */
+	/* One 2px ink line over a 10% ink area, with an accent dot and the last
+	   month's count at the end. The dot is the one round shape on the tab. */
 	.timeline-chart {
 		width: 100%;
 	}
@@ -81,6 +78,12 @@
 	.period {
 		font-size: 15px;
 		color: var(--muted);
+	}
+
+	/* The plot stops short of the right edge; the gap holds the last count. */
+	.plot,
+	.x-labels {
+		margin-right: 56px;
 	}
 
 	.plot {
@@ -106,11 +109,6 @@
 		stroke-width: 2;
 	}
 
-	/* Each month's point is an unseen target that shows its count on hover. */
-	.dot {
-		fill: transparent;
-	}
-
 	.end-dot {
 		position: absolute;
 		right: -5px;
@@ -120,6 +118,17 @@
 		border-radius: 50%;
 		background: var(--accent);
 		outline: 2px solid var(--ground);
+	}
+
+	.end-value {
+		position: absolute;
+		left: calc(100% + 12px);
+		transform: translateY(-50%);
+		font-size: 15px;
+		font-weight: 600;
+		line-height: 1;
+		white-space: nowrap;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.x-labels {

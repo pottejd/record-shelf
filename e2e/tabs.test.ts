@@ -518,3 +518,151 @@ test('Charts: a year shows its count on hover and on keyboard focus; an empty ye
 	await years.first().click();
 	await expect(pw.getByRole('dialog')).toBeVisible();
 });
+
+const ACTIVITY_LEFT = ['Collection growth', 'New vs vintage', 'Genre evolution'];
+const ACTIVITY_RIGHT = ['Collecting activity', 'Day patterns', 'Milestones'];
+/** The reading order, and the order on a phone. */
+const ACTIVITY = ['Collecting calendar', ...ACTIVITY_LEFT, ...ACTIVITY_RIGHT, 'Collection timeline'];
+
+test('Activity: the calendar across the top, two columns as drawn, the timeline across the foot', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser?tab=activity');
+	const activity = pw.locator('#activity');
+	await expect(activity.locator('h2')).toHaveText(ACTIVITY);
+
+	await settled(pw);
+	const boxes = await boxesOf(activity, ACTIVITY.map((text) => ({ text })));
+	const calendar = boxes[0];
+	const left = boxes.slice(1, 4);
+	const right = boxes.slice(4, 7);
+	const timeline = boxes[7];
+	for (const column of [left, right]) {
+		for (let i = 1; i < column.length; i++) {
+			expect(column[i].x).toBeCloseTo(column[0].x, 0);
+			expect(column[i].y).toBeGreaterThan(column[i - 1].y);
+		}
+	}
+	expect(right[0].x).toBeGreaterThan(left[0].x + left[0].width);
+	expect(right[0].y).toBeCloseTo(left[0].y, 0);
+	expect(calendar.y).toBeLessThan(left[0].y);
+	expect(calendar.x).toBeCloseTo(left[0].x, 0);
+	expect(timeline.y).toBeGreaterThan(Math.max(left[2].y, right[2].y));
+	expect(timeline.x).toBeCloseTo(left[0].x, 0);
+
+	// 150 records: the next milestone is Collector, at 250.
+	const milestones = activity.locator('section', { has: pw.getByRole('heading', { name: 'Milestones' }) });
+	await expect(milestones.getByText('Next: Collector, at 250 records')).toBeVisible();
+	await expect(milestones.getByText('150 of 250')).toBeVisible();
+	await expect(milestones.getByText('100 to go')).toBeVisible();
+	await expect(milestones.getByText('Century')).toBeVisible();
+
+	// The growth line's end dot is the one round shape; the last month's count is
+	// written beside it, and every month is in a list for screen readers.
+	await expect(activity.locator('svg circle')).toHaveCount(0);
+	await expect(activity.locator('.end-dot')).toHaveCount(1);
+	const growth = pw.getByRole('list', { name: 'Collection growth by month' });
+	const last = (await growth.locator('li').last().textContent())!;
+	await expect(activity.locator('.end-value')).toBeVisible();
+	await expect(activity.locator('.end-value')).toHaveText(last.match(/: (\d+) records?$/)![1]);
+
+	// No two lists on the tab share a name.
+	const names = await activity.locator('ul[aria-label], ol[aria-label]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
+	expect(names.length).toBeGreaterThan(1);
+	expect(new Set(names).size).toBe(names.length);
+
+	// Bars and columns carry their numbers in text.
+	const days = activity.locator('section', { has: pw.getByRole('heading', { name: 'Day patterns' }) });
+	for (const day of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']) await expect(days.getByText(day, { exact: true })).toBeVisible();
+	await expect(days.locator('.value')).toHaveCount(7);
+	const vintage = activity.locator('section', { has: pw.getByRole('heading', { name: 'New vs vintage' }) });
+	await expect(vintage.getByText('Average age when bought')).toBeVisible();
+	await expect(vintage.getByText(/^\d+ \(\d+%\)$/)).toHaveCount(4);
+	const collecting = activity.locator('section', { has: pw.getByRole('heading', { name: 'Collecting activity' }) });
+	for (const fact of ['Average per month', 'Peak month', 'Month streak']) await expect(collecting.getByText(fact, { exact: true })).toBeVisible();
+});
+
+test('Activity on a phone: one column in reading order; only the calendar and the timeline scroll sideways', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.setViewportSize({ width: 390, height: 844 });
+	await pw.goto('/u/tabuser?tab=activity');
+	const activity = pw.locator('#activity');
+	await expect(activity.locator('h2')).toHaveText(ACTIVITY);
+	await settled(pw);
+	const boxes = await boxesOf(activity, ACTIVITY.map((text) => ({ text })));
+	for (let i = 1; i < boxes.length; i++) {
+		expect(boxes[i].x).toBeCloseTo(boxes[0].x, 0);
+		expect(boxes[i].y).toBeGreaterThan(boxes[i - 1].y);
+	}
+	expect(await pw.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+	// The calendar scrolls inside its own box, and opens on the latest weeks.
+	const calendar = pw.getByRole('grid', { name: 'Records added each day in the past year' });
+	const fit = await calendar.evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth, left: el.scrollLeft }));
+	expect(fit.scroll).toBeGreaterThan(fit.client);
+	expect(fit.left).toBeGreaterThan(0);
+
+	// The timeline scrolls inside its own named box, and the keyboard scrolls it.
+	const timeline = pw.getByRole('region', { name: 'Records added month by month' });
+	expect(await timeline.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+	await timeline.focus();
+	await pw.keyboard.press('ArrowRight');
+	await expect.poll(() => timeline.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+});
+
+test.describe('Activity calendar by keyboard', () => {
+	test.use({ timezoneId: 'UTC' });
+
+	test('the calendar is one tab stop; arrow keys move the day and show its count', async ({ page: pw }) => {
+		await pw.clock.setFixedTime(new Date('2026-11-14T18:00:00Z'));
+		const items = makeCollection(150);
+		// Saturday 14 November has two records, the Friday before it one, and the Friday a week before that one.
+		const dates = ['2026-11-14', '2026-11-14', '2026-11-13', '2026-11-06'];
+		dates.forEach((d, i) => { items[i] = { ...items[i], date_added: `${d}T12:00:00.000Z` }; });
+		const on = (d: string) => items.filter((i) => i.date_added.startsWith(d)).length;
+		const label = (day: string, d: string) => `${day}: ${on(d)} record${on(d) === 1 ? '' : 's'}`;
+		await mockStored(pw, 'tabuser', items);
+		await pw.goto('/u/tabuser?tab=activity');
+		const grid = pw.getByRole('grid', { name: 'Records added each day in the past year' });
+		await expect(grid).toBeVisible();
+		await settled(pw);
+		await expect(grid.locator('[tabindex="0"]')).toHaveCount(1);
+
+		// One Tab from the tab row lands on the latest day with records, and shows its count.
+		await pw.getByRole('link', { name: 'Extras' }).focus();
+		await pw.keyboard.press('Tab');
+		const sat = grid.getByRole('gridcell', { name: label('Sat, Nov 14, 2026', '2026-11-14') });
+		await expect(sat).toBeFocused();
+		await expect(sat.locator('.day-tip')).toBeVisible();
+		await expect(sat.locator('.day-tip')).toHaveText(label('Sat, Nov 14, 2026', '2026-11-14'));
+
+		// Up is the day before: the Friday, with its own count.
+		await pw.keyboard.press('ArrowUp');
+		const fri = grid.getByRole('gridcell', { name: label('Fri, Nov 13, 2026', '2026-11-13') });
+		await expect(fri).toBeFocused();
+		await expect(fri.locator('.day-tip')).toBeVisible();
+		await expect(fri.locator('.day-tip')).toHaveText(label('Fri, Nov 13, 2026', '2026-11-13'));
+		await expect(sat.locator('.day-tip')).toBeHidden();
+
+		// Left is the week before.
+		await pw.keyboard.press('ArrowLeft');
+		const before = grid.getByRole('gridcell', { name: label('Fri, Nov 6, 2026', '2026-11-06') });
+		await expect(before).toBeFocused();
+		await expect(before.locator('.day-tip')).toBeVisible();
+
+		// Still one tab stop, now on the day last chosen; Tab leaves the calendar.
+		await expect(grid.locator('[tabindex="0"]')).toHaveCount(1);
+		await expect(before).toHaveAttribute('tabindex', '0');
+		await pw.keyboard.press('Tab');
+		expect(await grid.evaluate((el) => el.contains(document.activeElement))).toBe(false);
+		await pw.keyboard.press('Shift+Tab');
+		await expect(before).toBeFocused();
+
+		// A day with no records is an empty cell: nothing shows on hover.
+		const empty = grid.getByRole('gridcell', { name: /: no records$/ }).first();
+		await expect(empty.locator('.day-tip')).toHaveCount(0);
+		// A day with records shows the same label on hover.
+		await pw.mouse.move(0, 0);
+		await sat.hover();
+		await expect(sat.locator('.day-tip')).toBeVisible();
+	});
+});

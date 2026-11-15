@@ -1,20 +1,17 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
+	import type { ChartDatum } from '$lib/utils/chart';
+	import BarChart from '$lib/components/BarChart.svelte';
 
 	let { items }: { items: DiscogsCollectionItem[] } = $props();
-
-	interface ActivityPeriod {
-		label: string;
-		count: number;
-		percentage: number;
-	}
 
 	let activityByYear = $derived(calculateYearlyActivity(items));
 	let peakMonth = $derived(findPeakMonth(items));
 	let averagePerMonth = $derived(items.length > 0 ? calculateAveragePerMonth(items) : 0);
 	let currentStreak = $derived(calculateStreak(items));
 
-	function calculateYearlyActivity(items: DiscogsCollectionItem[]): ActivityPeriod[] {
+	/** Records added in each of the last five years that had any, oldest first. */
+	function calculateYearlyActivity(items: DiscogsCollectionItem[]): ChartDatum[] {
 		const yearMap = new Map<number, number>();
 
 		for (const item of items) {
@@ -22,16 +19,10 @@
 			yearMap.set(year, (yearMap.get(year) || 0) + 1);
 		}
 
-		const maxCount = Math.max(...yearMap.values());
-
 		return Array.from(yearMap.entries())
 			.sort((a, b) => a[0] - b[0])
 			.slice(-5)
-			.map(([year, count]) => ({
-				label: String(year),
-				count,
-				percentage: (count / maxCount) * 100
-			}));
+			.map(([year, count]) => ({ label: String(year), value: count }));
 	}
 
 	function findPeakMonth(items: DiscogsCollectionItem[]): { month: string; count: number } | null {
@@ -111,163 +102,76 @@
 	}
 </script>
 
-<div class="collecting-activity">
-	<div class="activity-stats">
-		<div class="stat-box">
-			<span class="stat-value">{averagePerMonth.toFixed(1)}</span>
-			<span class="stat-label">Avg per month</span>
-		</div>
-		{#if peakMonth}
-			<div class="stat-box highlight">
-				<span class="stat-value">{peakMonth.count}</span>
-				<span class="stat-label">Peak month</span>
-				<span class="stat-detail">{peakMonth.month}</span>
-			</div>
-		{/if}
-		<div class="stat-box">
-			<span class="stat-value">{currentStreak.months}</span>
-			<span class="stat-label">Month streak</span>
-			{#if currentStreak.ongoing}
-				<span class="stat-badge">Active</span>
-			{/if}
-		</div>
+<dl class="facts">
+	<div class="fact">
+		<dt>Average per month</dt>
+		<dd>{averagePerMonth.toFixed(1)}</dd>
 	</div>
-
-	{#if activityByYear.length > 0}
-		<div class="yearly-activity">
-			<h4>Yearly activity</h4>
-			<div class="year-bars">
-				{#each activityByYear as year}
-					<div class="year-bar-container">
-						<div class="year-bar" style:--v={year.percentage / 100}>
-							<span class="year-count">{year.count}</span>
-						</div>
-						<span class="year-label">{year.label}</span>
-					</div>
-				{/each}
-			</div>
+	{#if peakMonth}
+		<div class="fact">
+			<dt>Peak month</dt>
+			<dd>{peakMonth.count.toLocaleString()} in {peakMonth.month}</dd>
 		</div>
 	{/if}
-</div>
+	<div class="fact">
+		<dt>Month streak</dt>
+		<dd>
+			{#if currentStreak.ongoing}<span class="note">Active</span>{/if}
+			{currentStreak.months}
+		</dd>
+	</div>
+</dl>
+
+{#if activityByYear.length > 0}
+	<div class="yearly">
+		<h3>Yearly activity</h3>
+		<BarChart data={activityByYear} />
+	</div>
+{/if}
 
 <style>
-	.collecting-activity {
-		display: flex;
-		flex-direction: column;
-		gap: 24px;
+	/* Three fact rows: label left, value right, 60px high, under a hairline. */
+	.facts {
+		margin: 0;
 	}
 
-	/* Three facts side by side, divided by hairlines. */
-	.activity-stats {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		border-top: 1px solid var(--hairline);
+	.fact {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 16px;
+		min-height: 60px;
 		border-bottom: 1px solid var(--hairline);
 	}
 
-	.stat-box {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		padding: 16px 0;
-		min-width: 0;
-	}
-
-	.stat-box + .stat-box {
-		padding-left: 24px;
-		border-left: 1px solid var(--hairline);
-	}
-
-	.stat-value {
-		font-size: 34px;
-		font-weight: 800;
-		letter-spacing: -0.02em;
-		line-height: 1.1;
-		font-variant-numeric: tabular-nums;
-	}
-
-	.stat-label {
-		font-size: 15px;
-		color: var(--muted);
-	}
-
-	.stat-detail {
-		font-size: 15px;
-		color: var(--muted);
-	}
-
-	.stat-badge {
-		font-size: 15px;
-		font-weight: 700;
-	}
-
-	.yearly-activity h4 {
-		margin: 0 0 16px;
+	dt {
 		font-size: 18px;
-		font-weight: 700;
 	}
 
-	/* Yearly ink columns, each with its count above it. */
-	.year-bars {
-		display: flex;
-		align-items: flex-end;
-		height: 160px;
-		gap: 16px;
-	}
-
-	.year-bar-container {
-		flex: 1;
+	dd {
+		margin: 0;
 		min-width: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		height: 100%;
-		padding-top: 24px;
-	}
-
-	.year-bar {
-		position: relative;
-		width: 100%;
-		/* 30px is kept below the bar for the year. */
-		height: calc((100% - 30px) * var(--v));
-		min-height: 2px;
-		margin-top: auto;
-		background: var(--ink);
-	}
-
-	.year-count {
-		position: absolute;
-		bottom: 100%;
-		left: 0;
-		right: 0;
-		padding-bottom: 4px;
-		text-align: center;
-		font-size: 15px;
+		text-align: right;
+		font-size: 18px;
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
 	}
 
-	.year-label {
-		width: 100%;
-		flex-shrink: 0;
-		margin-top: 0;
-		padding-top: 8px;
-		line-height: 20px;
-		border-top: 1px solid var(--ink);
-		text-align: center;
+	.note {
+		margin-right: 8px;
 		font-size: 15px;
+		font-weight: 400;
 		color: var(--muted);
 	}
 
-	@media (max-width: 400px) {
-		.activity-stats {
-			grid-template-columns: 1fr;
-		}
+	h3 {
+		margin: 24px 0 16px;
+		font-size: 18px;
+		font-weight: 700;
+	}
 
-		.stat-box + .stat-box {
-			padding-left: 0;
-			border-left: 0;
-			border-top: 1px solid var(--hairline);
-		}
+	/* Yearly ink columns, each with its count above it and its year under it. */
+	.yearly :global(.chart) {
+		height: 180px;
 	}
 </style>

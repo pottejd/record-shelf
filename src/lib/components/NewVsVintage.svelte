@@ -13,9 +13,9 @@
 	let categories = $derived(calculateCategories(items));
 	let averageAge = $derived(calculateAverageAge(items));
 	let buyingStyle = $derived(getBuyingStyle(categories));
+	let maxCount = $derived(Math.max(1, ...categories.map((c) => c.count)));
 
 	function calculateCategories(items: DiscogsCollectionItem[]): AgeCategory[] {
-		const now = new Date();
 		const counts = { newRelease: 0, recent: 0, classic: 0, vintage: 0 };
 
 		for (const item of items) {
@@ -33,31 +33,32 @@
 		}
 
 		const total = counts.newRelease + counts.recent + counts.classic + counts.vintage;
+		const share = (n: number) => (total > 0 ? (n / total) * 100 : 0);
 
 		return [
 			{
-				label: 'New Releases',
+				label: 'New releases',
 				count: counts.newRelease,
-				percentage: total > 0 ? (counts.newRelease / total) * 100 : 0,
+				percentage: share(counts.newRelease),
 				description: 'Bought within 1 year of release'
 			},
 			{
 				label: 'Recent',
 				count: counts.recent,
-				percentage: total > 0 ? (counts.recent / total) * 100 : 0,
-				description: '1-5 years after release'
+				percentage: share(counts.recent),
+				description: '1 to 5 years after release'
 			},
 			{
 				label: 'Classic',
 				count: counts.classic,
-				percentage: total > 0 ? (counts.classic / total) * 100 : 0,
-				description: '5-20 years after release'
+				percentage: share(counts.classic),
+				description: '5 to 20 years after release'
 			},
 			{
 				label: 'Vintage',
 				count: counts.vintage,
-				percentage: total > 0 ? (counts.vintage / total) * 100 : 0,
-				description: '20+ years after release'
+				percentage: share(counts.vintage),
+				description: '20 or more years after release'
 			}
 		];
 	}
@@ -84,199 +85,139 @@
 		const classicVintage = (categories[2]?.percentage || 0) + (categories[3]?.percentage || 0);
 
 		if (newRecent > 70) {
-			return { label: 'Trend Follower', description: 'Mostly new and recent releases' };
+			return { label: 'Trend follower', description: 'Mostly new and recent releases' };
 		} else if (classicVintage > 70) {
-			return { label: 'Crate Digger', description: 'Lots of older releases' };
+			return { label: 'Crate digger', description: 'Lots of older releases' };
 		} else if (categories[3]?.percentage > 40) {
-			return { label: 'Vintage Hunter', description: 'Specializes in records 20+ years old' };
+			return { label: 'Vintage hunter', description: 'Specializes in records 20 or more years old' };
 		} else {
-			return { label: 'Balanced Collector', description: 'A mix across all eras' };
+			return { label: 'Balanced collector', description: 'A mix across all eras' };
 		}
 	}
 </script>
 
-<div class="new-vs-vintage">
-	<div class="summary-stats">
-		<div class="stat-item">
-			<span class="stat-value">{averageAge}</span>
-			<span class="stat-label">Avg years old when bought</span>
-		</div>
-		<div class="stat-item highlight">
-			<span class="stat-value">{buyingStyle.label}</span>
-			<span class="stat-label">{buyingStyle.description}</span>
-		</div>
+<dl class="facts">
+	<div class="fact">
+		<dt>Average age when bought</dt>
+		<dd>{averageAge} {averageAge === 1 ? 'year' : 'years'}</dd>
 	</div>
+	<div class="fact">
+		<dt>Buying style</dt>
+		<dd>
+			<span class="style">{buyingStyle.label}</span>
+			<span class="style-note">{buyingStyle.description}</span>
+		</dd>
+	</div>
+</dl>
 
-	<div class="category-bars">
-		{#each categories as category}
-			<div class="category-row">
-				<div class="category-info">
-					<span class="category-label">{category.label}</span>
-					<span class="category-count">{category.count}</span>
-				</div>
-				<div class="bar-container">
-					<div
-						class="bar"
-						style:width="{category.percentage}%"
-					></div>
-				</div>
-				<span class="percentage">{category.percentage.toFixed(0)}%</span>
-			</div>
-		{/each}
-	</div>
-
-	<div class="category-legend">
-		{#each categories as category}
-			<div class="legend-item">
-				<span class="legend-name">{category.label}</span>
-				<span class="legend-text">{category.description}</span>
-			</div>
-		{/each}
-	</div>
-</div>
+<ul class="categories">
+	{#each categories as category (category.label)}
+		<li class="category">
+			<span class="category-info">
+				<span class="category-label">{category.label}</span>
+				<span class="category-text">{category.description}</span>
+			</span>
+			<span class="bar-cell">
+				<span class="bar" style:--v={category.count / maxCount}></span>
+				<span class="value">{category.count.toLocaleString()} ({category.percentage.toFixed(0)}%)</span>
+			</span>
+		</li>
+	{/each}
+</ul>
 
 <style>
-	.new-vs-vintage {
-		display: flex;
-		flex-direction: column;
-		gap: 24px;
+	/* Two fact rows: label left, value right, 60px high, under a hairline. */
+	.facts {
+		margin: 0;
 	}
 
-	/* Two facts side by side, divided by a hairline. */
-	.summary-stats {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		border-top: 1px solid var(--hairline);
+	.fact {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 16px;
+		min-height: 60px;
+		padding: 6px 0;
 		border-bottom: 1px solid var(--hairline);
 	}
 
-	.stat-item {
+	dt {
+		font-size: 18px;
+	}
+
+	dd {
+		margin: 0;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
-		padding: 16px 0;
-		min-width: 0;
+		align-items: flex-end;
+		text-align: right;
+		font-size: 18px;
+		font-weight: 600;
 	}
 
-	.stat-item + .stat-item {
-		padding-left: 24px;
-		border-left: 1px solid var(--hairline);
-	}
-
-	.stat-value {
-		font-size: 28px;
-		font-weight: 800;
-		letter-spacing: -0.02em;
-		line-height: 1.1;
-	}
-
-	.stat-label {
+	.style-note {
 		font-size: 15px;
+		font-weight: 400;
 		color: var(--muted);
 	}
 
-	/* Four ink bars on the track, each with its count and share. */
-	.category-bars {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
+	/* Four rows: the name and what it means, then an ink bar with its count and
+	   share after it. The longest bar is the biggest group. */
+	.categories {
+		margin: 16px 0 0;
+		padding: 0;
+		list-style: none;
 	}
 
-	.category-row {
+	.category {
 		display: flex;
 		align-items: center;
 		gap: 16px;
-		min-height: 36px;
+		min-height: 56px;
+		/* Keeps rows apart when a description wraps on a phone. */
+		padding: 6px 0;
 	}
 
 	.category-info {
-		width: 172px;
-		display: flex;
-		justify-content: space-between;
-		gap: 8px;
+		width: 46%;
 		flex-shrink: 0;
+		display: flex;
+		flex-direction: column;
+		line-height: 1.25;
 	}
 
 	.category-label {
 		font-size: 17px;
 		font-weight: 600;
-		white-space: nowrap;
 	}
 
-	.category-count {
+	.category-text {
 		font-size: 15px;
 		color: var(--muted);
-		font-variant-numeric: tabular-nums;
 	}
 
-	.bar-container {
+	.bar-cell {
 		flex: 1;
 		min-width: 0;
-		height: 16px;
-		background: var(--track);
+		display: flex;
+		align-items: center;
+		gap: 10px;
 	}
 
 	.bar {
-		height: 100%;
+		height: 16px;
+		/* 88px is kept after the longest bar for its count and share. */
+		width: calc((100% - 88px) * var(--v));
+		min-width: 2px;
 		background: var(--ink);
 	}
 
-	.percentage {
-		width: 44px;
-		text-align: right;
+	.value {
+		flex-shrink: 0;
 		font-size: 15px;
 		font-weight: 600;
+		white-space: nowrap;
 		font-variant-numeric: tabular-nums;
-	}
-
-	.category-legend {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 8px 24px;
-		padding-top: 16px;
-		border-top: 1px solid var(--hairline);
-	}
-
-	.legend-item {
-		display: flex;
-		flex-direction: column;
-		font-size: 15px;
-		line-height: 1.3;
-	}
-
-	.legend-name {
-		font-weight: 600;
-	}
-
-	.legend-text {
-		color: var(--muted);
-	}
-
-	@media (max-width: 699px) {
-		.stat-value {
-			font-size: 24px;
-		}
-
-		.stat-item + .stat-item {
-			padding-left: 16px;
-		}
-
-		.category-row {
-			gap: 12px;
-		}
-
-		.category-info {
-			width: 138px;
-		}
-
-		.category-label {
-			font-size: 15px;
-		}
-	}
-
-	@media (max-width: 400px) {
-		.category-legend {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>
