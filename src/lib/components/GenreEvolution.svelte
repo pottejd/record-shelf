@@ -1,156 +1,136 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
-	import { chartColour, foldSeries } from '$lib/utils/chart';
+	import { chartColour } from '$lib/utils/chart';
+	import { genreEvolution } from '$lib/utils/genreEvolution';
+	import SplitBar from '$lib/components/SplitBar.svelte';
 
 	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
-	interface GenrePeriod {
-		period: string;
-		genres: { name: string; count: number; percentage: number }[];
-	}
-
-	let evolution = $derived(calculateEvolution(items));
-
-	function calculateEvolution(items: DiscogsCollectionItem[]): GenrePeriod[] {
-		// Group items by year added
-		const byYear = new Map<number, DiscogsCollectionItem[]>();
-
-		for (const item of items) {
-			const year = new Date(item.date_added).getFullYear();
-			if (!byYear.has(year)) byYear.set(year, []);
-			byYear.get(year)!.push(item);
-		}
-
-		const years = Array.from(byYear.keys()).sort((a, b) => a - b);
-		if (years.length === 0) return [];
-
-		// Take last 5 years or all if less
-		const recentYears = years.slice(-5);
-
-		return recentYears.map(year => {
-			const yearItems = byYear.get(year)!;
-			const genreCount = new Map<string, number>();
-
-			for (const item of yearItems) {
-				for (const genre of item.basic_information.genres || []) {
-					genreCount.set(genre, (genreCount.get(genre) || 0) + 1);
-				}
-			}
-
-			const total = yearItems.length;
-			const genres = Array.from(genreCount.entries())
-				.sort((a, b) => b[1] - a[1])
-				.slice(0, 4)
-				.map(([name, count]) => ({
-					name,
-					count,
-					percentage: (count / total) * 100
-				}));
-
-			return { period: String(year), genres };
-		});
-	}
-
-	// Every genre shown, ranked by its count across the years shown: the five
-	// biggest keep one chart colour in every row, the rest share "Other".
-	let legend = $derived(
-		foldSeries(
-			[...evolution.flatMap((e) => e.genres).reduce(
-				(totals, g) => totals.set(g.name, (totals.get(g.name) ?? 0) + g.count),
-				new Map<string, number>()
-			)].map(([label, value]) => ({ label, value }))
-		).map((part, i) => ({ label: part.label, color: chartColour(i) }))
+	let evolution = $derived(genreEvolution(items));
+	let hasOther = $derived(
+		evolution.years.some((y) => y.parts.some((p) => p.label === 'Other' && p.value > 0))
 	);
-	let colourOf = $derived(new Map(legend.map((part) => [part.label, part.color])));
+
+	/** "Rock 12, Jazz 8, Other 3": every part with a count, in the order of the bar. */
+	function counts(parts: { label: string; value: number }[]): string {
+		return parts
+			.filter((p) => p.value > 0)
+			.map((p) => `${p.label} ${p.value.toLocaleString()}`)
+			.join(', ');
+	}
 </script>
 
-{#if evolution.length > 0}
+{#if evolution.years.length > 0}
 	<div class="genre-evolution">
-		<div class="timeline">
-			{#each evolution as period}
-				<div class="period">
-					<div class="period-label">{period.period}</div>
-					<div class="genre-bars">
-						{#each period.genres as genre}
-							<div
-								class="genre-bar"
-								style:width="{genre.percentage}%"
-								style:background={colourOf.get(genre.name) ?? chartColour(5)}
-								title="{genre.name}: {genre.count} ({genre.percentage.toFixed(0)}%)"
-							></div>
-						{/each}
+		<div class="rows">
+			{#each evolution.years as y (y.year)}
+				<div class="year">
+					<span class="year-label">{y.year}</span>
+					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+					<div class="bar-cell" role="group" aria-label="{y.year} by genre" tabindex="0">
+						<SplitBar parts={y.parts} height={20} legend={false} label="{y.year} by genre" />
+						<span class="counts">{counts(y.parts)}</span>
 					</div>
-					<ul class="visually-hidden" aria-label="{period.period} by genre">
-						{#each period.genres as genre}
-							<li>{genre.name}: {genre.count} ({genre.percentage.toFixed(0)}%)</li>
-						{/each}
-					</ul>
+					<span class="year-total">{y.total.toLocaleString()}</span>
 				</div>
 			{/each}
 		</div>
-		<div class="legend">
-			{#each legend as part}
-				<div class="legend-item">
-					<span class="swatch" style:background={part.color}></span>
-					<span class="legend-label">{part.label}</span>
-				</div>
+		<ul class="legend">
+			{#each evolution.genres as genre, i (genre)}
+				<li>
+					<span class="swatch" aria-hidden="true" style:background={chartColour(i)}></span>
+					<span>{genre}</span>
+				</li>
 			{/each}
-		</div>
+			{#if hasOther}
+				<li>
+					<span class="swatch" aria-hidden="true" style:background="var(--chart-other)"></span>
+					<span>Other</span>
+				</li>
+			{/if}
+		</ul>
 	</div>
 {:else}
 	<p class="no-data">Not enough data to show genre evolution</p>
 {/if}
 
 <style>
-	/* A row per year: one bar split by genre in the chart colours, on the track. */
 	.genre-evolution {
 		display: flex;
 		flex-direction: column;
 		gap: 16px;
 	}
 
-	.timeline {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-	}
-
-	.period {
+	.year {
 		display: flex;
 		align-items: center;
 		gap: 16px;
-		min-height: 40px;
+		min-height: 44px;
 	}
 
-	.period-label {
+	.year-label {
 		width: 44px;
+		flex-shrink: 0;
 		font-size: 15px;
 		color: var(--muted);
-		flex-shrink: 0;
+		font-variant-numeric: tabular-nums;
 	}
 
-	.genre-bars {
+	.bar-cell {
+		position: relative;
 		flex: 1;
 		min-width: 0;
-		display: flex;
-		gap: 2px;
-		height: 20px;
-		background: var(--track);
-		overflow: hidden;
 	}
 
-	.genre-bar {
-		height: 100%;
-		min-width: 4px;
+	.year-total {
+		min-width: 4ch;
+		flex-shrink: 0;
+		text-align: right;
+		font-size: 15px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* Always in the page for screen readers; seen on hover and on keyboard focus. */
+	.counts {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
+	.bar-cell:hover .counts,
+	.bar-cell:focus-visible .counts {
+		top: 100%;
+		left: 0;
+		z-index: 1;
+		width: auto;
+		height: auto;
+		margin: 4px 0 0;
+		padding: 4px 8px;
+		overflow: visible;
+		clip-path: none;
+		white-space: normal;
+		background: var(--ink);
+		color: var(--on-ink);
+		font-size: 15px;
 	}
 
 	.legend {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 8px 24px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		color: var(--ink);
+		font-size: 15px;
 	}
 
-	.legend-item {
+	.legend li {
 		display: flex;
 		align-items: center;
 		gap: 8px;
@@ -160,11 +140,6 @@
 		width: 14px;
 		height: 14px;
 		flex-shrink: 0;
-	}
-
-	.legend-label {
-		font-size: 15px;
-		color: var(--ink);
 	}
 
 	.no-data {
