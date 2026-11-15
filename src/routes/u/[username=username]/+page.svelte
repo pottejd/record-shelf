@@ -345,8 +345,9 @@
 
 	/* A tab is a column of sections; .cols puts two columns side by side, each a
 	   .stack of sections (or a .col-half section). The section gap does the spacing,
-	   so sections drop their own bottom margin here. The tab sits 48px under the tab
-	   row: 32px of it is the status line's reserved room, the rest is this margin. */
+	   so sections drop their own bottom margin here. Under the tab row comes the
+	   status line's reserved room (--status-room: 32px, 52px on a phone), then this
+	   margin: 48px from the tab row in all on a wide screen. */
 	.tab-body {
 		display: flex;
 		flex-direction: column;

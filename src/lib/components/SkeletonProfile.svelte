@@ -100,7 +100,7 @@
 	/* The status line's reserved room (LoadingBanner's .reserve), when the page
 	   gives no line of its own. */
 	.status-room {
-		height: 32px;
+		height: var(--status-room);
 	}
 
 	/* Straight under the status line, as on Overview, then the lead line at

@@ -69,7 +69,7 @@ for (const { tab, heading, board } of [
 	{ tab: '', heading: 'Just added', board: true },
 	{ tab: '?tab=charts', heading: 'By genre', board: false }
 ]) {
-	for (const width of [1280, 390]) {
+	for (const width of [1280, 390, 320]) {
 		test(`nothing moves while ${heading}'s tab loads and refreshes at ${width}px`, async ({ page: pw }) => {
 			await mockStored(pw, 'tabuser', makeCollection(679));
 			await slowReplies(pw, 'tabuser');
@@ -98,6 +98,97 @@ for (const { tab, heading, board } of [
 			expect(positions(samples, 'tabs')).toHaveLength(1);
 		});
 	}
+}
+
+/**
+ * The status line's text is whole: nothing cut off, nothing past the page's edge,
+ * and the line still fits the room the page keeps for it.
+ */
+async function expectWholeLine(pw: Page, text: RegExp): Promise<void> {
+	const line = pw.locator('main .loading-text');
+	await expect(line).toHaveText(text);
+	const fit = await line.evaluate((el) => {
+		const room = el.closest('.status')!;
+		return {
+			scroll: el.scrollWidth,
+			client: el.clientWidth,
+			right: el.getBoundingClientRect().right,
+			page: document.documentElement.clientWidth,
+			cut: getComputedStyle(el).textOverflow === 'ellipsis' || getComputedStyle(el).whiteSpace === 'nowrap',
+			room: room.getBoundingClientRect().height,
+			kept: parseFloat(getComputedStyle(room).minHeight)
+		};
+	});
+	expect(fit.scroll).toBeLessThanOrEqual(fit.client);
+	expect(fit.right).toBeLessThanOrEqual(fit.page);
+	expect(fit.cut).toBe(false);
+	expect(fit.room).toBe(fit.kept);
+}
+
+/** A list of 150 whose first Discogs call gets no readable answer: the line waits. */
+async function waitingOnDiscogs(pw: Page) {
+	const item = (n: number) => ({
+		id: n, instance_id: n, folder_id: 1, rating: 0, date_added: '2026-01-01T00:00:00-00:00',
+		basic_information: { id: n, title: `Album ${n}`, year: 1990, thumb: '', resource_url: '', artists: [{ id: 1, name: 'Artist', resource_url: '' }], labels: [{ id: 1, name: 'Label', catno: '1', resource_url: '' }], formats: [{ name: 'Vinyl', qty: '1' }], genres: ['Rock'], styles: [] }
+	});
+	await pw.clock.install();
+	await pw.route('https://api.discogs.com/**', (route) => route.abort());
+	await pw.route('**/api/collection/someuser**', async (route) => {
+		const req = route.request();
+		if (req.method() !== 'POST') return route.fulfill({ json: { status: 'missing' } });
+		const body = req.postDataJSON();
+		if (body.action === 'start') {
+			return route.fulfill({
+				json: {
+					status: 'ok', snapshot: 'S1', page: 1, totalPages: 2, totalItems: 150,
+					items: Array.from({ length: 100 }, (_, i) => item(i + 1)),
+					profile: { id: 1, username: 'someuser', avatar_url: '', location: '' }
+				}
+			});
+		}
+		return route.fulfill({ json: { status: 'stored' } });
+	});
+}
+
+/** Holds back every stored page after page 3 of the pass that `hold` picks, so its line stays on screen. */
+async function holdPages(pw: Page, hold: (starts: number) => boolean) {
+	let starts = 0;
+	await pw.route('**/api/collection/tabuser**', async (route) => {
+		const req = route.request();
+		if (req.method() === 'POST' && req.postDataJSON().action === 'start') starts++;
+		if (req.method() === 'GET' && Number(new URL(req.url()).searchParams.get('page')) > 3 && hold(starts)) {
+			await new Promise(() => {});
+		}
+		return route.fallback();
+	});
+}
+
+for (const width of [390, 320]) {
+	test.describe(`at ${width}px the status line is whole and fits its room`, () => {
+		test.beforeEach(async ({ page: pw }) => {
+			await pw.setViewportSize({ width, height: 900 });
+		});
+
+		test('waiting on Discogs, with its countdown', async ({ page: pw }) => {
+			await waitingOnDiscogs(pw);
+			await pw.goto('/u/someuser');
+			await expectWholeLine(pw, /^Discogs is busy or unreachable — retrying in \d+s\.$/);
+		});
+
+		test('loading with a count', async ({ page: pw }) => {
+			await mockStored(pw, 'tabuser', makeCollection(679));
+			await holdPages(pw, (starts) => starts === 1);
+			await pw.goto('/u/tabuser');
+			await expectWholeLine(pw, /^Loading collection: \d+ of 679 records…$/);
+		});
+
+		test('refreshing a copy a day old', async ({ page: pw }) => {
+			await mockStored(pw, 'tabuser', makeCollection(679));
+			await holdPages(pw, (starts) => starts > 1);
+			await pw.goto('/u/tabuser');
+			await expectWholeLine(pw, /^Showing a copy from \d+ (minutes?|hours?|days?) ago — updating \(\d+ of 679\)…$/);
+		});
+	});
 }
 
 test('Ctrl, Cmd and Alt with a shortcut key are left to the browser', async ({ page: pw }) => {

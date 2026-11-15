@@ -73,7 +73,9 @@
 <style>
 	/* In the approved picture the lead line sits 32px under the tab row, where every
 	   other tab's first section sits 48px under it (.tab-body's top margin,
-	   --tab-top-gap, set in the profile page). */
+	   --tab-top-gap, set in the profile page). The lead stands straight under the
+	   status line's room, so on a phone, where that room holds two lines, it sits
+	   52px under the tab row. */
 	.hero {
 		margin-top: calc(-1 * var(--tab-top-gap));
 	}

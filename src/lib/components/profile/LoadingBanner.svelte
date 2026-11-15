@@ -4,9 +4,9 @@
 	let { state: s, label = 'collection', reserve = false, onRetry }: {
 		state: EngineState<unknown>;
 		label?: string;
-		/** Hold one line's room whether or not there is anything to say, so the
-		 *  one-line states come and go without moving anything under them. Only the
-		 *  error, with its button, takes more room. */
+		/** Hold the status line's room (--status-room) whether or not there is
+		 *  anything to say, so the one-line states come and go without moving
+		 *  anything under them. Only the error, with its button, takes more room. */
 		reserve?: boolean;
 		onRetry: () => void;
 	} = $props();
@@ -72,7 +72,7 @@
 		</div>
 	{/if}
 
-	<!-- A reserved line has room for one line: the cooldown waits for the line above to go. -->
+	<!-- The reserved room holds one state at a time: the cooldown waits for the line above to go. -->
 	{#if coolingDown && !(reserve && (loading || s.phase === 'waiting' || retryable))}
 		<div class="loading-banner" aria-live="polite">
 			<div class="loading-text banner-only">Already refreshed in the last 10 minutes.</div>
@@ -128,11 +128,11 @@
 		transition: width 0.3s ease;
 	}
 
-	/* The reserved line: 32px, all of it inside the gap under the tab row. 5px, a
-	   20px line of text, 5px, then a 2px progress line. A line too long for the
-	   width ends in an ellipsis rather than wrapping onto a second line. */
+	/* The reserved room (--status-room): 5px, a 20px line of text, 5px, then a 2px
+	   progress line, 32px in all. On a phone the room is 52px, enough for the text
+	   to take two lines, so no line is ever cut short and none outgrows the room. */
 	.reserve {
-		min-height: 32px;
+		min-height: var(--status-room);
 	}
 
 	/* Unreserved, the wrapper makes no box of its own, so an empty line takes no
@@ -149,9 +149,6 @@
 		margin: 0;
 		padding-top: 5px;
 		line-height: 20px;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 
 	.reserve .progress-track {
@@ -169,6 +166,5 @@
 	.reserve .load-error .loading-text {
 		padding-top: 0;
 		line-height: 1.4;
-		white-space: normal;
 	}
 </style>

@@ -47,6 +47,15 @@
 	--page-pad: clamp(20px, 4.4%, 56px);
 	--control: 52px;
 	--touch: 44px;
+	/* The profile's status line keeps this room under the tab row whether or not it
+	   has anything to say: one line of text and a progress line; two on a phone. */
+	--status-room: 32px;
+}
+
+@media (max-width: 699px) {
+	:root {
+		--status-room: 52px;
+	}
 }
 
 /* Explicit dark mode via toggle */
