@@ -1,9 +1,37 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { makeCollection, mockStored, withToken } from './fixtures/collection';
 
 test.beforeEach(async ({ page: pw }) => {
 	await withToken(pw);
 });
+
+interface Box { x: number; y: number; width: number; height: number }
+
+/**
+ * Waits for the page to settle before anything is measured. The fixture's copy is
+ * over a day old, so the first load is followed by a background refresh, and the
+ * status line under the tab row comes and goes while they run, moving everything
+ * below it by its height.
+ */
+async function settled(pw: Page): Promise<void> {
+	await pw.waitForLoadState('networkidle');
+}
+
+/**
+ * The boxes of elements under `scope`, all read in one go so they come from the
+ * same layout: `{ text }` is the innermost element whose whole text is that,
+ * `{ css }` the first match of that selector.
+ */
+async function boxesOf(scope: Locator, targets: Array<{ text: string } | { css: string }>): Promise<Box[]> {
+	return scope.evaluate((root, targets) => targets.map((t) => {
+		const el = 'css' in t
+			? root.querySelector(t.css)
+			: [...root.querySelectorAll('*')].find((e) => e.children.length === 0 && e.textContent?.trim() === t.text);
+		if (!el) throw new Error(`nothing for ${JSON.stringify(t)}`);
+		const r = el.getBoundingClientRect();
+		return { x: r.x, y: r.y, width: r.width, height: r.height };
+	}), targets);
+}
 
 test('a tab changes the address and the content, and Back returns', async ({ page: pw }) => {
 	const net = await mockStored(pw, 'tabuser', makeCollection(150));
@@ -205,8 +233,9 @@ test('Records on a desktop: six columns, duplicates beside upgrade picks', async
 	await pw.goto('/u/tabuser?tab=records');
 	const columns = await pw.locator('#records .items-grid').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
 	expect(columns).toBe(6);
-	const dupes = (await pw.getByRole('heading', { name: 'Duplicates and variants' }).boundingBox())!;
-	const picks = (await pw.getByRole('heading', { name: 'Vinyl upgrade picks' }).boundingBox())!;
+	await expect(pw.getByRole('heading', { name: 'Vinyl upgrade picks' })).toBeVisible();
+	await settled(pw);
+	const [dupes, picks] = await boxesOf(pw.locator('#records'), [{ text: 'Duplicates and variants' }, { text: 'Vinyl upgrade picks' }]);
 	expect(picks.y).toBeCloseTo(dupes.y, 0);
 	expect(picks.x).toBeGreaterThan(dupes.x + dupes.width);
 	await pw.locator('.upg-list').getByRole('button', { name: new RegExp(`^${UPGRADE_TITLE}`) }).click();
@@ -217,8 +246,9 @@ test('Records on a phone: upgrade picks keep their titles readable', async ({ pa
 	await mockStored(pw, 'tabuser', withDuplicateAndUpgrade(makeCollection(150)));
 	await pw.setViewportSize({ width: 390, height: 844 });
 	await pw.goto('/u/tabuser?tab=records');
-	const dupes = (await pw.getByRole('heading', { name: 'Duplicates and variants' }).boundingBox())!;
-	const picks = (await pw.getByRole('heading', { name: 'Vinyl upgrade picks' }).boundingBox())!;
+	await expect(pw.getByRole('heading', { name: 'Vinyl upgrade picks' })).toBeVisible();
+	await settled(pw);
+	const [dupes, picks] = await boxesOf(pw.locator('#records'), [{ text: 'Duplicates and variants' }, { text: 'Vinyl upgrade picks' }]);
 	expect(picks.y).toBeGreaterThan(dupes.y);
 	const title = pw.locator('.upg-list .upg-title', { hasText: UPGRADE_TITLE });
 	await title.scrollIntoViewIfNeeded();
@@ -405,9 +435,16 @@ test('Charts: two columns as drawn, no donut, the release ends under the year gr
 	await expect(charts.locator('h2')).toHaveText([...CHARTS_LEFT, ...CHARTS_RIGHT]);
 	await expect(charts.locator('svg circle')).toHaveCount(0);
 
-	const box = async (name: string) => (await charts.getByRole('heading', { name, exact: true }).boundingBox())!;
-	const left = await Promise.all(CHARTS_LEFT.map(box));
-	const right = await Promise.all(CHARTS_RIGHT.map(box));
+	await settled(pw);
+	const ENDS = ['Oldest release', 'Newest release'];
+	const boxes = await boxesOf(charts, [
+		...[...CHARTS_LEFT, ...CHARTS_RIGHT, ...ENDS].map((text) => ({ text })),
+		{ css: '.year-heatmap' }
+	]);
+	const left = boxes.slice(0, 4);
+	const right = boxes.slice(4, 8);
+	const ends = boxes.slice(8, 10);
+	const grid = boxes[10];
 	for (const column of [left, right]) {
 		for (let i = 1; i < column.length; i++) {
 			expect(column[i].x).toBeCloseTo(column[0].x, 0);
@@ -418,10 +455,8 @@ test('Charts: two columns as drawn, no donut, the release ends under the year gr
 	expect(right[0].y).toBeCloseTo(left[0].y, 0);
 
 	// "Oldest release" and "Newest release" sit under the year grid, above Collection DNA.
-	const grid = (await charts.locator('.year-heatmap').boundingBox())!;
 	const dna = right[3];
-	for (const name of ['Oldest release', 'Newest release']) {
-		const at = (await charts.getByText(name, { exact: true }).boundingBox())!;
+	for (const at of ends) {
 		expect(at.y).toBeGreaterThan(grid.y + grid.height);
 		expect(at.y).toBeLessThan(dna.y);
 		expect(at.x).toBeGreaterThanOrEqual(right[0].x - 0.5);
@@ -443,7 +478,8 @@ test('Charts on a phone: one column in reading order, no sideways scroll', async
 	await pw.goto('/u/tabuser?tab=charts');
 	const charts = pw.locator('#charts');
 	await expect(charts.locator('h2')).toHaveText([...CHARTS_LEFT, ...CHARTS_RIGHT]);
-	const boxes = await charts.locator('h2').evaluateAll((els) => els.map((e) => e.getBoundingClientRect()));
+	await settled(pw);
+	const boxes = await boxesOf(charts, [...CHARTS_LEFT, ...CHARTS_RIGHT].map((text) => ({ text })));
 	for (let i = 1; i < boxes.length; i++) {
 		expect(boxes[i].x).toBeCloseTo(boxes[0].x, 0);
 		expect(boxes[i].y).toBeGreaterThan(boxes[i - 1].y);
