@@ -153,10 +153,6 @@
 		filterBy(genre, (item) => item.basic_information.genres?.includes(genre) ?? false);
 	}
 
-	function filterByFormat(format: string) {
-		filterBy(format, (item) => item.basic_information.formats?.some((f) => f.name === format) ?? false);
-	}
-
 	function filterByStyle(style: string) {
 		filterBy(style, (item) => item.basic_information.styles?.includes(style) ?? false);
 	}
@@ -260,7 +256,6 @@
 				{formatData}
 				{styleData}
 				onGenre={filterByGenre}
-				onFormat={filterByFormat}
 				onStyle={filterByStyle}
 				onYear={filterByYear}
 				onLabelClick={filterByLabel}

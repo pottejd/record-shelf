@@ -2,10 +2,9 @@
 	import type { DiscogsCollectionItem, CollectionStats } from '$lib/types/discogs';
 	import type { ChartDatum } from '$lib/utils/chart';
 	import BarChart from '$lib/components/BarChart.svelte';
-	import DonutChart from '$lib/components/DonutChart.svelte';
 	import RatingsOverview from '$lib/components/RatingsOverview.svelte';
 	import ArtistLoyalty from '$lib/components/ArtistLoyalty.svelte';
-	import FormatDrilldown from '$lib/components/FormatDrilldown.svelte';
+	import FormatBreakdown from '$lib/components/FormatBreakdown.svelte';
 	import TopList from '$lib/components/TopList.svelte';
 	import YearHeatmap from '$lib/components/YearHeatmap.svelte';
 	import OldestNewestHighlights from '$lib/components/profile/OldestNewestHighlights.svelte';
@@ -18,7 +17,6 @@
 		formatData,
 		styleData,
 		onGenre,
-		onFormat,
 		onStyle,
 		onYear,
 		onLabelClick,
@@ -30,7 +28,6 @@
 		formatData: ChartDatum[];
 		styleData: ChartDatum[];
 		onGenre: (genre: string) => void;
-		onFormat: (format: string) => void;
 		onStyle: (style: string) => void;
 		onYear: (year: number) => void;
 		onLabelClick: (name: string) => void;
@@ -42,7 +39,7 @@
 	<div class="col-half stack">
 		<section class="section">
 			<h2>By genre</h2>
-			<DonutChart data={genreData} clickable onItemClick={onGenre} />
+			<BarChart data={genreData} horizontal clickable onItemClick={onGenre} />
 		</section>
 
 		<section class="section">
@@ -67,11 +64,7 @@
 	<div class="col-half stack">
 		<section class="section">
 			<h2>By format</h2>
-			<DonutChart data={formatData} size={180} thickness={35} clickable onItemClick={onFormat} />
-			<div class="drilldown">
-				<p class="section-subtitle">Expand to see sub-formats</p>
-				<FormatDrilldown {items} onFilter={(title, filtered) => openDrawer(title, filtered)} />
-			</div>
+			<FormatBreakdown {items} {formatData} onFilter={openDrawer} />
 		</section>
 
 		<section class="section">
@@ -97,10 +90,6 @@
 </div>
 
 <style>
-	.drilldown {
-		margin-top: 40px;
-	}
-
 	/* "Oldest release" and "Newest release" side by side under the year grid. */
 	.release-ends {
 		display: flex;
