@@ -13,8 +13,8 @@
 	} = $props();
 </script>
 
+<!-- All records across the full width; under it, duplicates beside upgrade picks (one column on a phone). -->
 <section class="section">
-	<h2>All records</h2>
 	<CollectionBrowser {items} />
 </section>
 
@@ -23,7 +23,7 @@
 		{#if duplicates.length > 0}
 			<section class="section col-half">
 				<h2>Duplicates and variants</h2>
-				<p class="section-subtitle">Albums you own more than one copy or pressing of</p>
+				<p class="note">Albums on the shelf more than once.</p>
 				<DuplicateDetector groups={duplicates} {onSelect} />
 			</section>
 		{/if}
@@ -31,9 +31,21 @@
 		{#if formatUpgrades.length > 0}
 			<section class="section col-half">
 				<h2>Vinyl upgrade picks</h2>
-				<p class="section-subtitle">Owned on CD or cassette but not vinyl</p>
+				<p class="note">Albums you own on CD or cassette but not on vinyl.</p>
 				<FormatUpgrades groups={formatUpgrades} {onSelect} />
 			</section>
 		{/if}
 	</div>
 {/if}
+
+<style>
+	.col-half h2 {
+		margin-bottom: 8px;
+	}
+
+	.note {
+		margin: 0 0 8px;
+		font-size: 17px;
+		color: var(--muted);
+	}
+</style>

@@ -1,42 +1,14 @@
 <script lang="ts">
-	let { page = $bindable(1), totalPages }: { page: number; totalPages: number } = $props();
+	/** Under the grid: "Show more" while some are hidden, and how many are on show. */
+	let { shown, total, onMore }: { shown: number; total: number; onMore: () => void } = $props();
 </script>
 
-{#if totalPages > 1}
+{#if total > 0}
 	<div class="pagination">
-		<button
-			class="btn btn-secondary"
-			disabled={page === 1}
-			onclick={() => page = 1}
-		>
-			First
-		</button>
-		<button
-			class="btn btn-secondary"
-			disabled={page === 1}
-			onclick={() => page--}
-		>
-			Prev
-		</button>
-
-		<span class="page-info">
-			Page {page} of {totalPages}
-		</span>
-
-		<button
-			class="btn btn-secondary"
-			disabled={page === totalPages}
-			onclick={() => page++}
-		>
-			Next
-		</button>
-		<button
-			class="btn btn-secondary"
-			disabled={page === totalPages}
-			onclick={() => page = totalPages}
-		>
-			Last
-		</button>
+		{#if shown < total}
+			<button type="button" class="btn btn-secondary" onclick={onMore}>Show more</button>
+		{/if}
+		<span class="page-info">{shown.toLocaleString()} of {total.toLocaleString()} shown</span>
 	</div>
 {/if}
 
@@ -46,13 +18,16 @@
 		flex-wrap: wrap;
 		justify-content: center;
 		align-items: center;
-		gap: 12px;
-		margin-top: 32px;
+		gap: 12px 24px;
+		margin-top: 40px;
+	}
+
+	.pagination .btn {
+		font-size: 17px;
 	}
 
 	.page-info {
 		font-size: 17px;
 		color: var(--muted);
-		padding: 0 12px;
 	}
 </style>

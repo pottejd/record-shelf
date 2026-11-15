@@ -1,5 +1,9 @@
 <script lang="ts">
-	let { value = $bindable(''), placeholder = '' }: { value: string; placeholder?: string } = $props();
+	let {
+		value = $bindable(''),
+		placeholder = '',
+		label = ''
+	}: { value: string; placeholder?: string; label?: string } = $props();
 </script>
 
 <div class="search-box">
@@ -12,7 +16,7 @@
 		class="field"
 		bind:value
 		{placeholder}
-		aria-label={placeholder || 'Search'}
+		aria-label={label || placeholder || 'Search'}
 	/>
 	{#if value}
 		<button class="clear-search" onclick={() => value = ''} aria-label="Clear search">

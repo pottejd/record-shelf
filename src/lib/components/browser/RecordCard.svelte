@@ -74,6 +74,7 @@
 		font-size: 17px;
 		font-weight: 600;
 		line-height: 1.25;
+		overflow-wrap: anywhere;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
@@ -93,7 +94,7 @@
 	.item-meta {
 		display: flex;
 		gap: 8px;
-		margin-top: 2px;
+		margin-top: 6px;
 		font-size: 15px;
 	}
 

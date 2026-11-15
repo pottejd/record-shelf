@@ -34,6 +34,7 @@
 		list-style: none;
 		margin: 0;
 		padding: 0;
+		border-bottom: 1px solid var(--hairline);
 	}
 
 	.dup-row {
@@ -41,7 +42,7 @@
 		align-items: center;
 		gap: 16px;
 		width: 100%;
-		padding: 12px 0;
+		padding: 14px 0;
 		background: transparent;
 		border: 0;
 		border-radius: 0;
@@ -89,7 +90,7 @@
 
 	.dup-count {
 		flex-shrink: 0;
-		font-size: 17px;
-		font-weight: 600;
+		font-size: 15px;
+		color: var(--muted);
 	}
 </style>

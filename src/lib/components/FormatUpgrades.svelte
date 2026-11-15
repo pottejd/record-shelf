@@ -28,7 +28,7 @@
 					<span class="upg-title">{info.title}</span>
 					<span class="upg-artist">{formatArtists(info.artists)}</span>
 				</span>
-				<span class="upg-meta">owned on {ownedFormats(group)} · no vinyl</span>
+				<span class="upg-meta">Owned on {ownedFormats(group)} · no vinyl</span>
 			</button>
 		</li>
 	{/each}
@@ -37,17 +37,22 @@
 <style>
 	/* Rows on the ground divided by hairlines; the whole row opens the side list. */
 	.upg-list {
+		container: upgrades / inline-size;
 		list-style: none;
 		margin: 0;
 		padding: 0;
+		border-bottom: 1px solid var(--hairline);
 	}
 
+	/* Cover, title and artist, then the formats at the right edge. */
 	.upg-row {
-		display: flex;
+		display: grid;
+		grid-template-columns: 56px minmax(0, 1fr) fit-content(40%);
+		grid-template-areas: 'cover info meta';
 		align-items: center;
-		gap: 16px;
+		gap: 2px 16px;
 		width: 100%;
-		padding: 12px 0;
+		padding: 14px 0;
 		background: transparent;
 		border: 0;
 		border-radius: 0;
@@ -63,17 +68,17 @@
 	}
 
 	.upg-cover {
+		grid-area: cover;
 		width: 56px;
 		height: 56px;
 		background: var(--track);
-		flex-shrink: 0;
 	}
 
 	.upg-info {
+		grid-area: info;
 		display: flex;
 		flex-direction: column;
 		min-width: 0;
-		flex: 1;
 	}
 
 	.upg-title {
@@ -94,10 +99,26 @@
 	}
 
 	.upg-meta {
-		flex: 0 1 auto;
-		max-width: 45%;
+		grid-area: meta;
+		min-width: 0;
 		font-size: 15px;
 		color: var(--muted);
 		text-align: right;
+		overflow-wrap: anywhere;
+	}
+
+	/* In a narrow column (a phone) the formats go under the artist, so the title
+	   keeps the width of the row. */
+	@container upgrades (max-width: 480px) {
+		.upg-row {
+			grid-template-columns: 56px minmax(0, 1fr);
+			grid-template-areas:
+				'cover info'
+				'cover meta';
+		}
+
+		.upg-meta {
+			text-align: left;
+		}
 	}
 </style>

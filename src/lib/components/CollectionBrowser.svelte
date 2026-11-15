@@ -9,6 +9,7 @@
 	import FilterControls from './browser/FilterControls.svelte';
 	import SortToolbar from './browser/SortToolbar.svelte';
 	import RecordCard from './browser/RecordCard.svelte';
+	import Pagination from './browser/Pagination.svelte';
 
 	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
@@ -29,7 +30,6 @@
 	let sortOrder: 'asc' | 'desc' = $state(
 		(getInitialParam('order', 'desc') as 'asc' | 'desc')
 	);
-	let showFilters = $state(false);
 	let page = $state(parseInt(getInitialParam('page', '1'), 10) || 1);
 	const perPage = 24;
 	// SvelteKit's replaceState throws if its router has not started yet, which it
@@ -61,10 +61,12 @@
 		}
 	});
 
-	// Debounce search input
+	// Debounce search input. Read the query here, not in the timer: a read inside
+	// the timer is not tracked, and the effect would never run again.
 	$effect(() => {
+		const query = searchQuery;
 		const timeout = setTimeout(() => {
-			debouncedQuery = searchQuery;
+			debouncedQuery = query;
 		}, 300);
 		return () => clearTimeout(timeout);
 	});
@@ -140,7 +142,12 @@
 
 	let visibleCount = $derived(page * perPage);
 	let visibleItems = $derived(filteredItems.slice(0, visibleCount));
-	let hasMore = $derived(visibleCount < filteredItems.length);
+	let isFiltered = $derived(filteredItems.length !== items.length);
+	let hasFilter = $derived(Boolean(selectedGenre || selectedFormat || selectedDecade));
+
+	function recordCount(n: number): string {
+		return `${n.toLocaleString()} ${n === 1 ? 'record' : 'records'}`;
+	}
 
 	// Back to page 1 when the search, a filter or the sort changes. Only on a change
 	// after mount: the list remounts each time Records opens, and a page number from
@@ -170,88 +177,112 @@
 	}
 </script>
 
-<div class="collection-browser">
-	<div class="browser-header">
-		<SearchBar bind:value={searchQuery} placeholder="Search by title, artist, label, or catalog #..." />
-		<FilterControls
-			{genres}
-			{formats}
-			{decades}
-			{selectedGenre}
-			{selectedFormat}
-			{selectedDecade}
-			visible={showFilters}
-			onToggle={() => showFilters = !showFilters}
-			onGenreChange={(v) => selectedGenre = v}
-			onFormatChange={(v) => selectedFormat = v}
-			onDecadeChange={(v) => selectedDecade = v}
-			onClear={clearFilters}
+<div class="head">
+	<h2>All records</h2>
+	<span class="count" role="status" aria-live="polite">
+		{#if isFiltered}
+			{filteredItems.length.toLocaleString()} of {recordCount(items.length)}
+		{:else}
+			{recordCount(items.length)}
+		{/if}
+	</span>
+</div>
+
+<div class="controls">
+	<div class="search">
+		<SearchBar
+			bind:value={searchQuery}
+			label="Search the collection"
+			placeholder="Search by title, artist, label or catalog number"
 		/>
 	</div>
-
-	{#if selectedGenre || selectedFormat || selectedDecade}
-		<div class="active-filters">
-			{#if selectedGenre}
-				<button class="chip" onclick={() => (selectedGenre = '')} aria-label="Remove {selectedGenre} genre filter">
-					{selectedGenre} <span aria-hidden="true">✕</span>
-				</button>
-			{/if}
-			{#if selectedFormat}
-				<button class="chip" onclick={() => (selectedFormat = '')} aria-label="Remove {selectedFormat} format filter">
-					{selectedFormat} <span aria-hidden="true">✕</span>
-				</button>
-			{/if}
-			{#if selectedDecade}
-				<button class="chip" onclick={() => (selectedDecade = '')} aria-label="Remove {selectedDecade}s decade filter">
-					{selectedDecade}s <span aria-hidden="true">✕</span>
-				</button>
-			{/if}
-			<button class="chip clear-all" onclick={clearFilters}>Clear all</button>
-		</div>
-	{/if}
-
-	<SortToolbar
-		resultCount={filteredItems.length}
-		totalCount={items.length}
-		{sortBy}
-		{sortOrder}
-		onToggleSort={toggleSort}
+	<FilterControls
+		{genres}
+		{formats}
+		{decades}
+		{selectedGenre}
+		{selectedFormat}
+		{selectedDecade}
+		onGenreChange={(v) => (selectedGenre = v)}
+		onFormatChange={(v) => (selectedFormat = v)}
+		onDecadeChange={(v) => (selectedDecade = v)}
 	/>
+</div>
 
+{#if hasFilter}
+	<div class="active-filters">
+		{#if selectedGenre}
+			<button class="chip" onclick={() => (selectedGenre = '')} aria-label="Remove {selectedGenre} genre filter">
+				{selectedGenre} <span aria-hidden="true">✕</span>
+			</button>
+		{/if}
+		{#if selectedFormat}
+			<button class="chip" onclick={() => (selectedFormat = '')} aria-label="Remove {selectedFormat} format filter">
+				{selectedFormat} <span aria-hidden="true">✕</span>
+			</button>
+		{/if}
+		{#if selectedDecade}
+			<button class="chip" onclick={() => (selectedDecade = '')} aria-label="Remove {selectedDecade}s decade filter">
+				{selectedDecade}s <span aria-hidden="true">✕</span>
+			</button>
+		{/if}
+		<button class="chip clear-all" onclick={clearFilters}>Clear all</button>
+	</div>
+{/if}
+
+<SortToolbar {sortBy} {sortOrder} onToggleSort={toggleSort} />
+
+{#if filteredItems.length === 0}
+	<div class="no-results">
+		<p>No records match.</p>
+		{#if hasFilter || debouncedQuery}
+			<button class="btn btn-secondary" onclick={clearFilters}>Clear filters</button>
+		{/if}
+	</div>
+{:else}
 	<div class="items-grid">
 		{#each visibleItems as item (item.id)}
 			<RecordCard {item} />
 		{/each}
 	</div>
+{/if}
 
-	{#if filteredItems.length === 0}
-		<div class="no-results">
-			<p>No records found matching the search.</p>
-			<button class="btn btn-secondary" onclick={clearFilters}>Clear Filters</button>
-		</div>
-	{/if}
-
-	{#if hasMore}
-		<div class="load-more">
-			<button class="btn btn-secondary" onclick={() => page = page + 1}>
-				Show more ({filteredItems.length - visibleCount} remaining)
-			</button>
-		</div>
-	{/if}
-</div>
+<Pagination
+	shown={visibleItems.length}
+	total={filteredItems.length}
+	onMore={() => (page = page + 1)}
+/>
 
 <style>
-	.collection-browser {
+	.head {
 		display: flex;
-		flex-direction: column;
-		gap: 16px;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 4px 24px;
 	}
 
-	.browser-header {
+	.head h2 {
+		margin: 0;
+	}
+
+	.count {
+		font-size: 17px;
+		color: var(--muted);
+	}
+
+	.controls {
 		display: flex;
-		align-items: center;
-		gap: 16px 24px;
 		flex-wrap: wrap;
+		align-items: center;
+		gap: 16px 32px;
+		margin-top: 16px;
+	}
+
+	.search {
+		flex: 999 1 300px;
+		min-width: 0;
+		display: flex;
 	}
 
 	.active-filters {
@@ -259,6 +290,7 @@
 		flex-wrap: wrap;
 		gap: 8px;
 		align-items: center;
+		margin-top: 16px;
 	}
 
 	/* A chosen filter: ink text with a hairline edge, square. */
@@ -266,6 +298,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 8px;
+		max-width: 100%;
 		min-height: var(--touch);
 		padding: 0 14px;
 		border: 1px solid var(--hairline);
@@ -275,6 +308,7 @@
 		font: inherit;
 		font-size: 15px;
 		font-weight: 500;
+		overflow-wrap: anywhere;
 		cursor: pointer;
 	}
 
@@ -295,14 +329,15 @@
 
 	.items-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+		grid-template-columns: repeat(6, minmax(0, 1fr));
 		gap: 32px 24px;
-		margin-top: 16px;
+		margin-top: 32px;
 	}
 
 	.no-results {
-		text-align: center;
+		margin-top: 32px;
 		padding: 48px 0;
+		text-align: center;
 		color: var(--muted);
 	}
 
@@ -312,11 +347,6 @@
 
 	.no-results button {
 		margin-top: 16px;
-	}
-
-	.load-more {
-		text-align: center;
-		padding-top: 24px;
 	}
 
 	@media (max-width: 699px) {

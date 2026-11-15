@@ -42,8 +42,6 @@ test('Records filters live next to the tab and survive Back', async ({ page: pw 
 	await mockStored(pw, 'tabuser', makeCollection(150));
 	await pw.goto('/u/tabuser?tab=records');
 	await expect(pw.locator('#records')).toBeVisible();
-	// Until Task 11 the selects sit behind the "Filters" button.
-	await pw.getByRole('button', { name: 'Filters' }).click();
 	await pw.getByLabel('Genre', { exact: true }).selectOption('Jazz');
 	await expect(pw).toHaveURL(/\?tab=records&genre=Jazz$/);
 
@@ -54,7 +52,6 @@ test('Records filters live next to the tab and survive Back', async ({ page: pw 
 	await pw.goBack();
 	await expect(pw.locator('#records')).toBeVisible();
 	await expect(pw).toHaveURL(/\?tab=records&genre=Jazz$/);
-	await pw.getByRole('button', { name: 'Filters' }).click();
 	await expect(pw.getByLabel('Genre', { exact: true })).toHaveValue('Jazz');
 });
 
@@ -62,7 +59,6 @@ test('clicking the open tab changes nothing', async ({ page: pw }) => {
 	await mockStored(pw, 'tabuser', makeCollection(150));
 	await pw.goto('/u/tabuser?tab=records');
 	await expect(pw.locator('#records')).toBeVisible();
-	await pw.getByRole('button', { name: 'Filters' }).click();
 	await pw.getByLabel('Genre', { exact: true }).selectOption('Jazz');
 	await expect(pw).toHaveURL(/\?tab=records&genre=Jazz$/);
 	const steps = await pw.evaluate(() => history.length);
@@ -80,6 +76,24 @@ test('clicking the open tab changes nothing', async ({ page: pw }) => {
 });
 
 const cards = '#records .item-card';
+/** One of the fixture's 90-character titles. */
+const LONG_TITLE = 'The Complete Unabridged Recordings of the Midnight Orchestra Performing Live at the Old Ha';
+const UPGRADE_TITLE = 'Music for Airports, Waiting Rooms, Late Ferries and Other Places Where Nobody Stays for Long';
+
+/** Adds a record owned twice and a long-titled album owned only on CD and cassette. */
+function withDuplicateAndUpgrade(items: ReturnType<typeof makeCollection>) {
+	const [first, second, third] = items;
+	const copy = { ...first, id: 9_000_001, instance_id: 9_000_001 };
+	const onCd = (item: typeof first, id: number, name: string) => ({
+		...item, id, instance_id: id,
+		basic_information: {
+			...item.basic_information, id, title: UPGRADE_TITLE,
+			artists: [{ id: 77, name: 'The Long Titles', resource_url: '' }],
+			formats: [{ name, qty: '1', descriptions: ['Album'] }]
+		}
+	});
+	return [...items, copy, onCd(second, 9_000_002, 'CD'), onCd(third, 9_000_003, 'Cassette')];
+}
 
 test('a page number in the address opens on that page', async ({ page: pw }) => {
 	await mockStored(pw, 'tabuser', makeCollection(150));
@@ -109,7 +123,6 @@ test('changing a filter on page 2 returns to page 1', async ({ page: pw }) => {
 	await mockStored(pw, 'tabuser', makeCollection(150));
 	await pw.goto('/u/tabuser?tab=records&page=2');
 	await expect(pw.locator(cards)).toHaveCount(48);
-	await pw.getByRole('button', { name: 'Filters' }).click();
 	await pw.getByLabel('Genre', { exact: true }).selectOption('Rock');
 	await expect(pw).toHaveURL(/\?tab=records&genre=Rock$/);
 	await expect(pw.locator(cards)).toHaveCount(24);
@@ -122,8 +135,96 @@ test('an old filter link opens Records', async ({ page: pw }) => {
 	await expect(pw.getByRole('link', { name: 'Records' })).toHaveAttribute('aria-current', 'page');
 	// The address gains the tab once the router is up, keeping the filter.
 	await expect(pw).toHaveURL(/\?tab=records&genre=Rock$/);
-	await pw.getByRole('button', { name: 'Filters' }).click();
 	await expect(pw.getByLabel('Genre', { exact: true })).toHaveValue('Rock');
+});
+
+test('Records: filters are always visible and Show more steps by 24', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser?tab=records');
+	await expect(pw.getByRole('heading', { name: 'All records' })).toBeVisible();
+	await expect(pw.getByPlaceholder('Search by title, artist, label or catalog number')).toBeVisible();
+	for (const name of ['Genre', 'Format', 'Decade']) await expect(pw.getByRole('combobox', { name })).toBeVisible();
+	await expect(pw.getByRole('button', { name: 'Filters' })).toHaveCount(0);
+	await expect(pw.getByText('24 of 150 shown')).toBeVisible();
+	await pw.getByRole('button', { name: 'Show more' }).click();
+	await expect(pw.getByText('48 of 150 shown')).toBeVisible();
+});
+
+test('Records: the selects start on "All …", the sort says its direction, and the count follows a filter', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser?tab=records');
+	const firstOption = (name: string) => pw.getByRole('combobox', { name }).locator('option').first();
+	await expect(firstOption('Genre')).toHaveText('All genres');
+	await expect(firstOption('Format')).toHaveText('All formats');
+	await expect(firstOption('Decade')).toHaveText('All decades');
+
+	const added = pw.getByRole('button', { name: /^Date added/ });
+	await expect(added).toHaveAttribute('aria-pressed', 'true');
+	await expect(added).toHaveAccessibleName('Date added, newest first');
+	await added.click();
+	await expect(added).toHaveAccessibleName('Date added, oldest first');
+	const artist = pw.getByRole('button', { name: /^Artist/ });
+	await expect(artist).toHaveAttribute('aria-pressed', 'false');
+	await artist.click();
+	await expect(artist).toHaveAccessibleName('Artist, A to Z');
+	await expect(artist).toHaveAttribute('aria-pressed', 'true');
+
+	// The CD records are few: all of them fit on one page, so there is nothing more to show.
+	await pw.getByRole('combobox', { name: 'Format' }).selectOption('CD');
+	const cds = await pw.locator(cards).count();
+	expect(cds).toBeGreaterThan(0);
+	expect(cds).toBeLessThan(24);
+	await expect(pw.getByText(`${cds} of ${cds} shown`)).toBeVisible();
+	await expect(pw.getByRole('button', { name: 'Show more' })).toHaveCount(0);
+	await pw.getByRole('button', { name: 'Clear all' }).click();
+	await expect(pw.getByText('24 of 150 shown')).toBeVisible();
+
+	await pw.getByPlaceholder('Search by title, artist, label or catalog number').fill('no such record anywhere');
+	await expect(pw.getByText('No records match.')).toBeVisible();
+	await expect(pw.locator(cards)).toHaveCount(0);
+	await expect(pw).toHaveURL(/\?tab=records&search=no\+such\+record\+anywhere&sort=artist&order=asc$/);
+	await expect(pw.getByText(/ shown$/)).toHaveCount(0);
+});
+
+test('Records on a phone: two columns, long titles do not push the page sideways', async ({ page: pw }) => {
+	// makeCollection has 90-character titles and titles in Japanese and Russian.
+	// Page 7 shows all 150, so every one of them is on the page.
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.setViewportSize({ width: 390, height: 844 });
+	await pw.goto('/u/tabuser?tab=records&page=7');
+	await expect(pw.locator(cards)).toHaveCount(150);
+	await expect(pw.getByText(LONG_TITLE)).toBeVisible();
+	await expect(pw.getByText('150 of 150 shown')).toBeVisible();
+	const columns = await pw.locator('#records .items-grid').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+	expect(columns).toBe(2);
+	expect(await pw.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('Records on a desktop: six columns, duplicates beside upgrade picks', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', withDuplicateAndUpgrade(makeCollection(150)));
+	await pw.goto('/u/tabuser?tab=records');
+	const columns = await pw.locator('#records .items-grid').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+	expect(columns).toBe(6);
+	const dupes = (await pw.getByRole('heading', { name: 'Duplicates and variants' }).boundingBox())!;
+	const picks = (await pw.getByRole('heading', { name: 'Vinyl upgrade picks' }).boundingBox())!;
+	expect(picks.y).toBeCloseTo(dupes.y, 0);
+	expect(picks.x).toBeGreaterThan(dupes.x + dupes.width);
+	await pw.locator('.upg-list').getByRole('button', { name: new RegExp(`^${UPGRADE_TITLE}`) }).click();
+	await expect(pw.getByRole('dialog')).toBeVisible();
+});
+
+test('Records on a phone: upgrade picks keep their titles readable', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', withDuplicateAndUpgrade(makeCollection(150)));
+	await pw.setViewportSize({ width: 390, height: 844 });
+	await pw.goto('/u/tabuser?tab=records');
+	const dupes = (await pw.getByRole('heading', { name: 'Duplicates and variants' }).boundingBox())!;
+	const picks = (await pw.getByRole('heading', { name: 'Vinyl upgrade picks' }).boundingBox())!;
+	expect(picks.y).toBeGreaterThan(dupes.y);
+	const title = pw.locator('.upg-list .upg-title', { hasText: UPGRADE_TITLE });
+	await title.scrollIntoViewIfNeeded();
+	// The title has most of the row to itself: the formats sit underneath it, not beside it.
+	expect((await title.boundingBox())!.width).toBeGreaterThan(200);
+	expect(await pw.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
 test('j and k move between tabs; / opens Records and focuses search', async ({ page: pw }) => {
