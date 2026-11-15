@@ -7,7 +7,6 @@
 	import FormatBreakdown from '$lib/components/FormatBreakdown.svelte';
 	import TopList from '$lib/components/TopList.svelte';
 	import YearHeatmap from '$lib/components/YearHeatmap.svelte';
-	import OldestNewestHighlights from '$lib/components/profile/OldestNewestHighlights.svelte';
 	import CollectionDNA from '$lib/components/CollectionDNA.svelte';
 
 	let {
@@ -33,13 +32,23 @@
 		onLabelClick: (name: string) => void;
 		openDrawer: (title: string, items: DiscogsCollectionItem[]) => void;
 	} = $props();
+
+	let releaseEnds = $derived(
+		[
+			{ label: 'Oldest release', release: stats.oldestRelease },
+			{ label: 'Newest release', release: stats.newestRelease }
+		].filter((end) => end.release)
+	);
 </script>
 
-<div class="cols">
+<!-- Two columns; on a phone the left one comes first, then the right. -->
+<div class="cols charts">
 	<div class="col-half stack">
 		<section class="section">
 			<h2>By genre</h2>
-			<BarChart data={genreData} horizontal clickable onItemClick={onGenre} />
+			<div class="genre-rows">
+				<BarChart data={genreData} horizontal clickable onItemClick={onGenre} />
+			</div>
 		</section>
 
 		<section class="section">
@@ -56,13 +65,15 @@
 
 		<section class="section">
 			<h2>Artist loyalty</h2>
-			<p class="section-subtitle">Artists that keep showing up</p>
+			<p class="intro">
+				Artists you own five or more records by. Loyal is 5 or more, Devoted is 10, Superfan is 20.
+			</p>
 			<ArtistLoyalty {items} />
 		</section>
 	</div>
 
 	<div class="col-half stack">
-		<section class="section">
+		<section class="section format">
 			<h2>By format</h2>
 			<FormatBreakdown {items} {formatData} onFilter={openDrawer} />
 		</section>
@@ -72,24 +83,56 @@
 			<TopList items={stats.topLabels} clickable onItemClick={onLabelClick} />
 		</section>
 
-		<section class="section">
+		<section class="section years">
 			<h2>Release years</h2>
 			<YearHeatmap data={stats.yearBreakdown} onYearClick={onYear} />
-			{#if stats.oldestRelease || stats.newestRelease}
+			{#if releaseEnds.length > 0}
 				<div class="release-ends">
-					<OldestNewestHighlights {stats} />
+					{#each releaseEnds as end (end.label)}
+						<div class="release-end">
+							<img src={end.release?.thumb || '/placeholder.svg'} alt="" class="end-cover cover" />
+							<div class="end-text">
+								<span class="small">{end.label}</span>
+								<span class="end-title">{end.release?.title}</span>
+								<span class="small">{end.release?.year}</span>
+							</div>
+						</div>
+					{/each}
 				</div>
 			{/if}
 		</section>
 
 		<section class="section">
 			<h2>Collection DNA</h2>
+			<p class="intro">Four traits worked out from the whole collection.</p>
 			<CollectionDNA {stats} />
 		</section>
 	</div>
 </div>
 
 <style>
+	/* As drawn: every heading sits 8px over what follows; the split bar and the
+	   year grid stand a further 16px down. */
+	.charts h2 {
+		margin-bottom: 8px;
+	}
+
+	.format h2,
+	.years h2 {
+		margin-bottom: 24px;
+	}
+
+	.intro {
+		margin: 0 0 8px;
+		font-size: 17px;
+		color: var(--muted);
+	}
+
+	/* By genre has eight rows, a little taller than the twelve of Top styles. */
+	.genre-rows :global(.bar-container) {
+		min-height: 40px;
+	}
+
 	/* "Oldest release" and "Newest release" side by side under the year grid. */
 	.release-ends {
 		display: flex;
@@ -98,8 +141,32 @@
 		margin-top: 24px;
 	}
 
-	.release-ends > :global(*) {
+	.release-end {
 		flex: 1 1 200px;
 		min-width: 0;
+		display: flex;
+		align-items: center;
+		gap: 14px;
+	}
+
+	.end-cover {
+		width: 56px;
+		height: 56px;
+		flex-shrink: 0;
+		background: var(--track);
+	}
+
+	.end-text {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.end-title {
+		font-size: 17px;
+		font-weight: 600;
+		line-height: 1.25;
+		overflow-wrap: anywhere;
 	}
 </style>

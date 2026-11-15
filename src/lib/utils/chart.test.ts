@@ -51,4 +51,10 @@ describe('chart colours and shades', () => {
 		expect(foldSeries([{ label: 'b', value: 1 }, { label: 'a', value: 9 }])[0].label).toBe('a');
 	});
 	it('shadeStep', () => { expect(shadeStep(0, 10)).toBe(0); expect(shadeStep(1, 10)).toBe(1); expect(shadeStep(10, 10)).toBe(5); expect(shadeStep(5, 10)).toBe(3); expect(shadeStep(3, 0)).toBe(1); });
+	it('shadeStep is safe for counts and maximums that are not finite numbers', () => {
+		for (const count of [NaN, Infinity, -Infinity]) expect(shadeStep(count, 10)).toBe(0);
+		for (const max of [NaN, Infinity, -Infinity, 0]) expect(shadeStep(3, max)).toBe(1);
+		expect(shadeStep(NaN, NaN)).toBe(0);
+		expect(shadeStep(20, 10)).toBe(5);
+	});
 });

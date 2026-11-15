@@ -65,3 +65,8 @@ export const CHART_OTHER_DARK = '#7C867F';
 // Shade ramp, fewest to most.
 export const SHADES_LIGHT = ['#DDE1D8', '#AEB7AC', '#869288', '#4A574E', '#18201C'];
 export const SHADES_DARK = ['#404E46', '#5C6B61', '#93A097', '#BCC5BC', '#E8EBE3'];
+
+// The text on each shade (the year numbers in Release years): ink or ground,
+// whichever reads better on that step.
+export const SHADE_TEXT_LIGHT = [LIGHT.ink, LIGHT.ink, LIGHT.ink, LIGHT.ground, LIGHT.ground];
+export const SHADE_TEXT_DARK = [DARK.ink, DARK.ink, DARK.ground, DARK.ground, DARK.ground];

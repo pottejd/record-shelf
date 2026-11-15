@@ -393,3 +393,92 @@ test('a small collection is a partly filled shelf, left-aligned', async ({ page:
 		expect(box).toBeLessThanOrEqual(4 * 1.4 * 12 + 0.5);
 	}
 });
+
+const CHARTS_LEFT = ['By genre', 'Top styles', 'Ratings', 'Artist loyalty'];
+const CHARTS_RIGHT = ['By format', 'Top labels', 'Release years', 'Collection DNA'];
+
+test('Charts: two columns as drawn, no donut, the release ends under the year grid', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser?tab=charts');
+	const charts = pw.locator('#charts');
+	await expect(charts).toBeVisible();
+	await expect(charts.locator('h2')).toHaveText([...CHARTS_LEFT, ...CHARTS_RIGHT]);
+	await expect(charts.locator('svg circle')).toHaveCount(0);
+
+	const box = async (name: string) => (await charts.getByRole('heading', { name, exact: true }).boundingBox())!;
+	const left = await Promise.all(CHARTS_LEFT.map(box));
+	const right = await Promise.all(CHARTS_RIGHT.map(box));
+	for (const column of [left, right]) {
+		for (let i = 1; i < column.length; i++) {
+			expect(column[i].x).toBeCloseTo(column[0].x, 0);
+			expect(column[i].y).toBeGreaterThan(column[i - 1].y);
+		}
+	}
+	expect(right[0].x).toBeGreaterThan(left[0].x + left[0].width);
+	expect(right[0].y).toBeCloseTo(left[0].y, 0);
+
+	// "Oldest release" and "Newest release" sit under the year grid, above Collection DNA.
+	const grid = (await charts.locator('.year-heatmap').boundingBox())!;
+	const dna = right[3];
+	for (const name of ['Oldest release', 'Newest release']) {
+		const at = (await charts.getByText(name, { exact: true }).boundingBox())!;
+		expect(at.y).toBeGreaterThan(grid.y + grid.height);
+		expect(at.y).toBeLessThan(dna.y);
+		expect(at.x).toBeGreaterThanOrEqual(right[0].x - 0.5);
+	}
+
+	// The first genre opens the side list with its records.
+	const genres = charts.locator('section', { has: pw.getByRole('heading', { name: 'By genre' }) });
+	const first = genres.getByRole('button').first();
+	const genre = (await first.locator('.label').textContent())!.trim();
+	await first.click();
+	const dialog = pw.getByRole('dialog');
+	await expect(dialog).toBeVisible();
+	await expect(dialog.getByRole('heading', { level: 2 })).toHaveText(genre);
+});
+
+test('Charts on a phone: one column in reading order, no sideways scroll', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.setViewportSize({ width: 390, height: 844 });
+	await pw.goto('/u/tabuser?tab=charts');
+	const charts = pw.locator('#charts');
+	await expect(charts.locator('h2')).toHaveText([...CHARTS_LEFT, ...CHARTS_RIGHT]);
+	const boxes = await charts.locator('h2').evaluateAll((els) => els.map((e) => e.getBoundingClientRect()));
+	for (let i = 1; i < boxes.length; i++) {
+		expect(boxes[i].x).toBeCloseTo(boxes[0].x, 0);
+		expect(boxes[i].y).toBeGreaterThan(boxes[i - 1].y);
+	}
+	expect(await pw.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('Charts: a year shows its count on hover and on keyboard focus; an empty year is not a button', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser?tab=charts');
+	const grid = pw.locator('#charts .year-heatmap');
+	const years = grid.getByRole('button', { name: /^\d{4}: \d+ releases?$/ });
+	expect(await years.count()).toBeGreaterThan(10);
+
+	// Keyboard: Tab from the year before lands on the next year, which shows its label.
+	await years.nth(0).focus();
+	await pw.keyboard.press('Tab');
+	const focused = years.nth(1);
+	await expect(focused).toBeFocused();
+	const name = (await focused.getAttribute('aria-label'))!;
+	await expect(focused.locator('.year-tip')).toBeVisible();
+	await expect(focused.locator('.year-tip')).toHaveText(name);
+
+	// Mouse: hovering another year shows that year's label.
+	const hovered = years.nth(5);
+	await expect(hovered.locator('.year-tip')).toBeHidden();
+	await hovered.hover();
+	await expect(hovered.locator('.year-tip')).toBeVisible();
+	await expect(hovered.locator('.year-tip')).toHaveText((await hovered.getAttribute('aria-label'))!);
+
+	// The fixture leaves some years empty: those cells are plain, not buttons.
+	const empty = grid.locator('[data-empty]');
+	expect(await empty.count()).toBeGreaterThan(0);
+	expect(await empty.evaluateAll((els) => els.filter((e) => e.tagName === 'BUTTON').length)).toBe(0);
+
+	await years.first().click();
+	await expect(pw.getByRole('dialog')).toBeVisible();
+});

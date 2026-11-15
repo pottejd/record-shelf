@@ -21,11 +21,12 @@ export function foldSeries(data: ChartDatum[], max = 5): ChartDatum[] {
 
 /**
  * The step on the five-step shade ramp for `count` out of the largest `max`:
- * 0 for nothing, otherwise 1 to 5. A count with no usable maximum is step 1.
+ * 0 for nothing (or a count that is not a finite number), otherwise 1 to 5.
+ * A count with no usable maximum (0, negative, NaN or infinite) is step 1.
  */
 export function shadeStep(count: number, max: number): 0 | 1 | 2 | 3 | 4 | 5 {
-	if (count <= 0) return 0;
-	if (max <= 0) return 1;
+	if (!Number.isFinite(count) || count <= 0) return 0;
+	if (!Number.isFinite(max) || max <= 0) return 1;
 	return Math.min(5, Math.max(1, Math.ceil((count / max) * 5))) as 1 | 2 | 3 | 4 | 5;
 }
 

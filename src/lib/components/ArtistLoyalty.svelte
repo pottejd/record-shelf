@@ -23,6 +23,9 @@
 		'unknown artist'
 	]);
 
+	/** The longest strip of covers; a phone shows the first four. */
+	const MAX_COVERS = 6;
+
 	let loyalArtists = $derived(calculateLoyalty(items));
 
 	function calculateLoyalty(items: DiscogsCollectionItem[]): LoyalArtist[] {
@@ -37,7 +40,7 @@
 
 				const existing = artistMap.get(name) || { count: 0, covers: [] };
 				existing.count++;
-				if (existing.covers.length < 5 && item.basic_information.thumb) {
+				if (existing.covers.length < MAX_COVERS && item.basic_information.thumb) {
 					existing.covers.push(item.basic_information.thumb);
 				}
 				artistMap.set(name, existing);
@@ -65,59 +68,42 @@
 </script>
 
 {#if loyalArtists.length > 0}
-	<div class="artist-loyalty rows">
+	<ul class="artist-loyalty">
 		{#each loyalArtists as artist}
-			{@const coverCount = Math.min(artist.covers.length, 4)}
-			<div class="loyal-artist">
-				<div class="artist-covers" style:width="{36 + (coverCount - 1) * 24}px">
-					{#each artist.covers.slice(0, 4) as cover, i}
-						<img
-							src={cover}
-							alt=""
-							class="cover-thumb"
-							style:z-index={4 - i}
-							style:left="{i * 24}px"
-						/>
-					{/each}
-				</div>
-				<div class="artist-info">
+			<li class="loyal-artist">
+				<span class="artist-info">
 					<span class="artist-name">{artist.name}</span>
 					<span class="artist-count">{artist.count} releases</span>
-				</div>
-				<span class="loyalty-badge">
-					{getLoyaltyLabel(artist.count)}
 				</span>
-			</div>
+				<span class="strip" aria-hidden="true">
+					{#each artist.covers as cover}
+						<img src={cover} alt="" class="strip-cover cover" loading="lazy" />
+					{/each}
+				</span>
+				<span class="loyalty-word">{getLoyaltyLabel(artist.count)}</span>
+			</li>
 		{/each}
-	</div>
+	</ul>
 {:else}
 	<p class="no-data">No artists with {minCount}+ releases yet. Keep collecting!</p>
 {/if}
 
 <style>
-	/* A row per artist: a strip of their covers, name and count, and the word. */
+	/* A row per artist, 60px high under a hairline: name and count, a strip of
+	   their covers, and the Loyal / Devoted / Superfan word in ink. */
+	.artist-loyalty {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
 	.loyal-artist {
 		display: flex;
 		align-items: center;
 		gap: 16px;
 		min-height: 60px;
-		padding: 8px 0;
-	}
-
-	.artist-covers {
-		position: relative;
-		flex-shrink: 0;
-		height: 36px;
-	}
-
-	.cover-thumb {
-		position: absolute;
-		top: 0;
-		width: 36px;
-		height: 36px;
-		object-fit: cover;
-		border: 2px solid var(--ground);
-		background: var(--track);
+		padding: 6px 0;
+		border-bottom: 1px solid var(--hairline);
 	}
 
 	.artist-info {
@@ -140,14 +126,39 @@
 		color: var(--muted);
 	}
 
-	.loyalty-badge {
+	/* Covers 26px square, 2px apart, as drawn. */
+	.strip {
+		display: flex;
+		gap: 2px;
+		flex-shrink: 0;
+	}
+
+	.strip-cover {
+		width: 26px;
+		height: 26px;
+		background: var(--track);
+	}
+
+	.loyalty-word {
+		width: 72px;
+		flex-shrink: 0;
 		font-size: 15px;
 		font-weight: 700;
-		flex-shrink: 0;
+		color: var(--ink);
 	}
 
 	.no-data {
 		color: var(--muted);
 		margin: 0;
+	}
+
+	@media (max-width: 699px) {
+		.loyal-artist {
+			gap: 12px;
+		}
+
+		.strip-cover:nth-child(n + 5) {
+			display: none;
+		}
 	}
 </style>

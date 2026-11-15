@@ -12,6 +12,8 @@ import {
 	CHART_OTHER_DARK,
 	SHADES_LIGHT,
 	SHADES_DARK,
+	SHADE_TEXT_LIGHT,
+	SHADE_TEXT_DARK,
 	type Palette
 } from './tokens';
 
@@ -55,12 +57,14 @@ function expectSets(
 	spines: string[],
 	chart: string[],
 	other: string,
-	shades: string[]
+	shades: string[],
+	shadeText: string[]
 ) {
 	spines.forEach((c, i) => expect(vars[`--spine-${i + 1}`]).toBe(c));
 	chart.forEach((c, i) => expect(vars[`--chart-${i + 1}`]).toBe(c));
 	expect(vars['--chart-other']).toBe(other);
 	shades.forEach((c, i) => expect(vars[`--shade-${i + 1}`]).toBe(c));
+	shadeText.forEach((c, i) => expect(vars[`--shade-${i + 1}-text`]).toBe(c));
 }
 
 function luminance(hex: string): number {
@@ -78,7 +82,7 @@ function contrast(a: string, b: string): number {
 describe('tokens', () => {
 	it('light tokens in app.css match tokens.ts', () => {
 		expectPalette(root, LIGHT);
-		expectSets(root, SPINES_LIGHT, CHART_LIGHT, CHART_OTHER_LIGHT, SHADES_LIGHT);
+		expectSets(root, SPINES_LIGHT, CHART_LIGHT, CHART_OTHER_LIGHT, SHADES_LIGHT, SHADE_TEXT_LIGHT);
 		expect(root['--spine-edge']).toBe('rgba(24,32,28,0.3)');
 		expect(root['--cover-edge']).toBe('rgba(24,32,28,0.12)');
 	});
@@ -87,7 +91,7 @@ describe('tokens', () => {
 		expect(Object.keys(darkAttr).length).toBeGreaterThan(0);
 		expect(darkAttr).toEqual(darkMedia);
 		expectPalette(darkAttr, DARK);
-		expectSets(darkAttr, SPINES_DARK, CHART_DARK, CHART_OTHER_DARK, SHADES_DARK);
+		expectSets(darkAttr, SPINES_DARK, CHART_DARK, CHART_OTHER_DARK, SHADES_DARK, SHADE_TEXT_DARK);
 		expect(darkAttr['--spine-edge']).toBe('rgba(0,0,0,0.45)');
 		expect(darkAttr['--cover-edge']).toBe('rgba(232,235,227,0.16)');
 	});
@@ -119,6 +123,20 @@ describe('tokens', () => {
 				const best = Math.max(contrast(s, t.ink), contrast(s, t.ground));
 				expect(best).toBeGreaterThanOrEqual(4.5);
 			}
+		}
+	});
+
+	it('the text on each shade is whichever of ink or ground reads better there', () => {
+		for (const [t, shades, text] of [
+			[LIGHT, SHADES_LIGHT, SHADE_TEXT_LIGHT],
+			[DARK, SHADES_DARK, SHADE_TEXT_DARK]
+		] as const) {
+			expect(text).toHaveLength(shades.length);
+			shades.forEach((s, i) => {
+				const better = contrast(s, t.ink) >= contrast(s, t.ground) ? t.ink : t.ground;
+				expect(text[i]).toBe(better);
+				expect(contrast(s, text[i])).toBeGreaterThanOrEqual(4.5);
+			});
 		}
 	});
 });

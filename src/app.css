@@ -33,6 +33,12 @@
 	--shade-3: #869288;
 	--shade-4: #4A574E;
 	--shade-5: #18201C;
+	/* Text on a shade: ink or ground, whichever reads better on that step. */
+	--shade-1-text: #18201C;
+	--shade-2-text: #18201C;
+	--shade-3-text: #18201C;
+	--shade-4-text: #ECEEE8;
+	--shade-5-text: #ECEEE8;
 
 	--font-sans: 'Bricolage Grotesque Variable', 'Segoe UI', system-ui, sans-serif;
 	--rule: 4px;
@@ -77,6 +83,11 @@ html[data-theme="dark"] {
 	--shade-3: #93A097;
 	--shade-4: #BCC5BC;
 	--shade-5: #E8EBE3;
+	--shade-1-text: #E8EBE3;
+	--shade-2-text: #E8EBE3;
+	--shade-3-text: #131815;
+	--shade-4-text: #131815;
+	--shade-5-text: #131815;
 }
 
 /* System preference fallback (when no explicit theme is set) */
@@ -114,6 +125,11 @@ html[data-theme="dark"] {
 		--shade-3: #93A097;
 		--shade-4: #BCC5BC;
 		--shade-5: #E8EBE3;
+		--shade-1-text: #E8EBE3;
+		--shade-2-text: #E8EBE3;
+		--shade-3-text: #131815;
+		--shade-4-text: #131815;
+		--shade-5-text: #131815;
 	}
 }
 

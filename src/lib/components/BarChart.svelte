@@ -16,7 +16,8 @@
 	}
 </script>
 
-<!-- One series, so every bar is ink; each bar has its number beside it. -->
+<!-- One series, so every bar is ink; each bar has its number beside it. Horizontal
+     bars stand on a track; columns do not. -->
 <div class="chart" class:horizontal class:clickable>
 	{#each data as item}
 		{@const short = horizontal ? null : shortLabel(item.label)}
@@ -32,7 +33,11 @@
 				<span class="label">{item.label}</span>
 			{/if}
 			<div class="bar-wrapper">
-				<div class="bar" style:--v={item.value / maxValue}></div>
+				{#if horizontal}
+					<div class="track"><div class="bar" style:--v={item.value / maxValue}></div></div>
+				{:else}
+					<div class="bar" style:--v={item.value / maxValue}></div>
+				{/if}
 				<span class="value">{item.value.toLocaleString()}</span>
 			</div>
 		</button>
@@ -130,10 +135,23 @@
 		background: var(--ink);
 	}
 
-	.horizontal .bar {
+	/* Horizontal: name, an ink bar on its track, and the count at the end. */
+	.track {
+		flex: 1;
+		min-width: 0;
 		height: 16px;
-		width: calc((100% - 64px) * var(--v));
+		background: var(--track);
+	}
+
+	.horizontal .bar {
+		height: 100%;
+		width: calc(100% * var(--v));
 		min-width: 2px;
+	}
+
+	.horizontal .value {
+		min-width: 3ch;
+		text-align: right;
 	}
 
 	.chart:not(.horizontal) .bar {
