@@ -280,6 +280,24 @@ test('a long username does not make the page scroll sideways at 390px', async ({
 	expect(await pw.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
+for (const width of [360, 375]) {
+	test(`at ${width}px the top bar is one row and the five tabs are one row`, async ({ page: pw }) => {
+		await mockStored(pw, 'tabuser', makeCollection(150));
+		await pw.setViewportSize({ width, height: 800 });
+		await pw.goto('/u/tabuser');
+		await expect(pw.locator('#overview')).toBeVisible();
+		await pw.evaluate(() => document.fonts.ready);
+		const tops = await pw.evaluate(() => {
+			const topsOf = (css: string) => [...document.querySelectorAll(css)].map((e) => Math.round(e.getBoundingClientRect().top));
+			return { bar: topsOf('header.bar .brand, header.bar .links > *'), tabs: topsOf('nav.tabs .tab') };
+		});
+		expect(tops.bar).toHaveLength(5); // the logo, three links and the refresh button
+		expect(new Set(tops.bar).size).toBe(1);
+		expect(tops.tabs).toHaveLength(5);
+		expect(new Set(tops.tabs).size).toBe(1);
+	});
+}
+
 test('the shelf has one spine per record and opens the side list', async ({ page: pw }) => {
 	await mockStored(pw, 'tabuser', makeCollection(679));
 	await pw.goto('/u/tabuser');
@@ -776,6 +794,44 @@ test.describe('Activity calendar by keyboard', () => {
 		expect(end.day.right).toBeGreaterThan(end.box.right - 40);
 		expectWholeTip(end);
 		expect(await pw.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+	});
+});
+
+test.describe('Activity by touch', () => {
+	test.use({ timezoneId: 'UTC', hasTouch: true, viewport: { width: 390, height: 844 } });
+
+	test('a tapped calendar day shows its count, and a tapped year in Genre evolution shows its counts', async ({ page: pw }) => {
+		await pw.clock.setFixedTime(new Date('2026-11-14T18:00:00Z'));
+		const { items, label } = calendarCollection();
+		await mockStored(pw, 'tabuser', items);
+		await pw.goto('/u/tabuser?tab=activity');
+		const grid = pw.getByRole('grid', { name: 'Records added each day in the past year' });
+		await expect(grid).toBeVisible();
+		await settled(pw);
+		const tip = pw.locator('#activity .day-tip');
+
+		const sat = grid.getByRole('gridcell', { name: label('Sat, Nov 14, 2026', '2026-11-14') });
+		await sat.tap();
+		await expect(sat).toBeFocused();
+		await expect(tip).toBeVisible();
+		await expect(tip).toHaveText(label('Sat, Nov 14, 2026', '2026-11-14'));
+		expectWholeTip(await calendarTip(pw));
+
+		// Another tapped day takes the label over.
+		const fri = grid.getByRole('gridcell', { name: label('Fri, Nov 13, 2026', '2026-11-13') });
+		await fri.tap();
+		await expect(fri).toBeFocused();
+		await expect(tip).toHaveText(label('Fri, Nov 13, 2026', '2026-11-13'));
+
+		// Genre evolution: a tapped year shows its counts, and keeps them once the finger lifts.
+		const year = pw.locator('#activity .genre-evolution [role="group"]').first();
+		await year.scrollIntoViewIfNeeded();
+		await year.tap();
+		await expect(year).toBeFocused();
+		await pw.mouse.move(0, 0);
+		const counts = year.locator('.counts');
+		await expect(counts).toHaveText(/^\S.*\d$/);
+		expect(await counts.evaluate((el) => getComputedStyle(el).clipPath)).toBe('none');
 	});
 });
 

@@ -68,4 +68,11 @@
 			font-size: 16px;
 		}
 	}
+
+	/* Under 375 (a 360 phone) the five tabs need closer spacing to stay on one row. */
+	@media (max-width: 374px) {
+		.tabs {
+			gap: 0 4px;
+		}
+	}
 </style>

@@ -92,7 +92,8 @@
 		font-variant-numeric: tabular-nums;
 	}
 
-	/* Always in the page for screen readers; seen on hover and on keyboard focus. */
+	/* Always in the page for screen readers; seen on hover and on focus (a tap
+	   focuses the year too, so a phone does not rely on sticky hover). */
 	.counts {
 		position: absolute;
 		width: 1px;
@@ -104,7 +105,7 @@
 	}
 
 	.bar-cell:hover .counts,
-	.bar-cell:focus-visible .counts {
+	.bar-cell:focus .counts {
 		top: 100%;
 		left: 0;
 		z-index: 1;

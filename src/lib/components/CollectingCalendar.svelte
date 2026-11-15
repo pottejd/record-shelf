@@ -193,7 +193,7 @@
 	}
 
 	// The label. A day with records shows it under the pointer; any day shows it
-	// on keyboard focus, an empty one included. There is one label, drawn outside
+	// on keyboard focus or a tap, an empty one included. There is one label, drawn outside
 	// the scroll box (which would clip it) and kept inside the part of the year
 	// on screen.
 	let hovered = $state<string | null>(null);
@@ -214,6 +214,13 @@
 	let tipEl = $state<HTMLSpanElement | undefined>();
 	let tipAt = $state<{ left: number; top: number } | null>(null);
 
+	/** Set by a touch or pen on a day: the focus that follows is a tap, and a tap shows the label too. */
+	let tapped = false;
+
+	function onPointerDown(e: PointerEvent) {
+		tapped = e.pointerType !== 'mouse';
+	}
+
 	function onFocusIn(e: FocusEvent, day: DayData) {
 		chosen = day.date;
 		let visible = true;
@@ -222,7 +229,8 @@
 		} catch {
 			// A browser without :focus-visible shows the label on any focus.
 		}
-		focused = visible ? day.date : null;
+		focused = visible || tapped ? day.date : null;
+		tapped = false;
 	}
 
 	/** Under the day for the top four rows, over it for the bottom three; never past the box's visible edges. */
@@ -299,6 +307,7 @@
 											aria-label={day.label}
 											tabindex={calendarData[activeIndex]?.date === day.date ? 0 : -1}
 											data-date={day.date}
+											onpointerdown={onPointerDown}
 											onfocus={(e) => onFocusIn(e, day)}
 											onblur={() => (focused = null)}
 											onpointermove={(e) => onPointerMove(e, day)}
@@ -338,8 +347,8 @@
 	/* A year of day cells, a column per week, shaded by count on the five-step
 	   ramp, with the "Fewer … More" key under it. A day with nothing is an empty
 	   cell with a hairline edge. A day with records shows its date and count in a
-	   label on hover and on keyboard focus alike; an empty day shows its label on
-	   keyboard focus only. */
+	   label on hover, on keyboard focus and on a tap alike; an empty day shows its
+	   label on keyboard focus or a tap only. */
 	.calendar-header {
 		display: flex;
 		flex-wrap: wrap;

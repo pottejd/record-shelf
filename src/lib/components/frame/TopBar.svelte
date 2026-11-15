@@ -137,4 +137,16 @@
 			gap: 10px;
 		}
 	}
+
+	/* Under 375 (a 360 phone) the logo, three links and the refresh button need
+	   closer spacing to stay on one row. */
+	@media (max-width: 374px) {
+		.bar {
+			gap: 8px;
+		}
+
+		.links {
+			gap: 6px;
+		}
+	}
 </style>
