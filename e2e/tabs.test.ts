@@ -725,6 +725,20 @@ test.describe('Activity calendar by keyboard', () => {
 		await expect(tip).toHaveText(label('Sat, Nov 14, 2026', '2026-11-14'));
 		await pw.mouse.move(0, 0);
 		await expect(tip).toHaveCount(0);
+
+		// Click a day, then arrow away with the pointer still resting on it: the label follows the keys.
+		await sat.click();
+		await expect(tip).toHaveText(label('Sat, Nov 14, 2026', '2026-11-14'));
+		await pw.keyboard.press('ArrowUp');
+		await expect(fri).toBeFocused();
+		await expect(tip).toHaveText(label('Fri, Nov 13, 2026', '2026-11-13'));
+		await pw.keyboard.press('ArrowLeft');
+		await expect(before).toBeFocused();
+		await expect(tip).toHaveText(label('Fri, Nov 6, 2026', '2026-11-06'));
+
+		// No rules between the weekday rows (as drawn): the grid's rows carry no border.
+		const borders = await grid.locator('[role="row"]').evaluateAll((rows) => rows.map((r) => getComputedStyle(r).borderTopWidth));
+		expect(borders).toEqual(Array(7).fill('0px'));
 	});
 
 	test('on a phone a focused day\'s label is whole at both edges of what is on screen', async ({ page: pw }) => {

@@ -14,6 +14,8 @@
 		step: number;
 		/** "Sat, Nov 14, 2026: 2 records", or "…: no records". */
 		label: string;
+		/** False for the days of the first week before the year starts: they are not drawn. */
+		inYear: boolean;
 	}
 
 	// One shared formatter reused for every cell label (vs. a new Intl format per
@@ -28,17 +30,22 @@
 	let calendarData = $derived(generateCalendarData(items));
 	let totalThisYear = $derived(calendarData.reduce((sum, d) => sum + d.count, 0));
 
-	/** Every day from the Sunday a year ago to today, oldest first: day `i` sits in week `i / 7`, row `i % 7`. */
+	/**
+	 * Every day from the Sunday on or before the year's first day to today, oldest
+	 * first: day `i` sits in week `i / 7`, row `i % 7`. The year runs from the
+	 * start of the same date a year ago; the days before it in that first week are
+	 * kept for the arithmetic but not drawn, so every drawn day and the total
+	 * count the same records.
+	 */
 	function generateCalendarData(items: DiscogsCollectionItem[]): DayData[] {
 		const now = new Date();
-		const oneYearAgo = new Date(now);
-		oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+		const yearStart = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
 
 		// Count items per day
 		const dayCounts = new Map<string, number>();
 		for (const item of items) {
 			const date = new Date(item.date_added);
-			if (date >= oneYearAgo && date <= now) {
+			if (date >= yearStart && date <= now) {
 				const key = localDayKey(date);
 				dayCounts.set(key, (dayCounts.get(key) || 0) + 1);
 			}
@@ -48,7 +55,7 @@
 
 		// Generate all days in the past year
 		const days: DayData[] = [];
-		const current = new Date(oneYearAgo);
+		const current = new Date(yearStart);
 
 		// Start from the beginning of the week
 		current.setDate(current.getDate() - current.getDay());
@@ -61,7 +68,8 @@
 				date: key,
 				count,
 				step: shadeStep(count, maxCount),
-				label: count > 0 ? `${when}: ${count} record${count !== 1 ? 's' : ''}` : `${when}: no records`
+				label: count > 0 ? `${when}: ${count} record${count !== 1 ? 's' : ''}` : `${when}: no records`,
+				inYear: current >= yearStart
 			});
 			current.setDate(current.getDate() + 1);
 		}
@@ -71,9 +79,16 @@
 
 	let weekCount = $derived(Math.ceil(calendarData.length / 7));
 
-	/** The grid's rows: one per weekday, Sunday first, each holding that day of every week. */
-	let rows = $derived(
-		Array.from({ length: 7 }, (_, d) => calendarData.filter((_, i) => i % 7 === d))
+	/** The first day drawn: the year's first day. */
+	let firstIndex = $derived(Math.max(0, calendarData.findIndex((d) => d.inYear)));
+
+	/** The grid's rows: one per weekday, Sunday first, each holding that day of every week drawn. */
+	let weekRows = $derived(
+		Array.from({ length: 7 }, (_, r) =>
+			calendarData
+				.map((day, i) => ({ day, week: Math.floor(i / 7) }))
+				.filter(({ day }, i) => i % 7 === r && day.inYear)
+		)
 	);
 
 	function getMonthLabels(days: DayData[]): { label: string; index: number }[] {
@@ -98,6 +113,7 @@
 	let monthTotals = $derived.by(() => {
 		const totals = new Map<string, { label: string; count: number }>();
 		for (const day of calendarData) {
+			if (!day.inYear) continue;
 			const date = parseLocalDayKey(day.date);
 			const key = `${date.getFullYear()}-${date.getMonth()}`;
 			const entry = totals.get(key) ?? {
@@ -129,21 +145,27 @@
 		if (box) box.scrollLeft = box.scrollWidth;
 	});
 
-	/** Arrow keys move a day (up, down) or a week (left, right); Home and End go to the ends of the row. */
+	/**
+	 * Arrow keys move a day (up, down) or a week (left, right); Home and End go to
+	 * the ends of the row, Ctrl+Home and Ctrl+End to the ends of the year. A move
+	 * off the drawn days stays put; -1 is a key the calendar does not use.
+	 */
 	function target(i: number, e: KeyboardEvent): number {
 		const last = calendarData.length - 1;
+		const first = firstIndex;
 		const row = i % 7;
+		const within = (j: number) => (j >= first && j <= last ? j : i);
 		switch (e.key) {
 			case 'ArrowUp':
-				return row > 0 ? i - 1 : i;
+				return row > 0 ? within(i - 1) : i;
 			case 'ArrowDown':
-				return row < 6 && i < last ? i + 1 : i;
+				return row < 6 ? within(i + 1) : i;
 			case 'ArrowLeft':
-				return i - 7 >= 0 ? i - 7 : i;
+				return within(i - 7);
 			case 'ArrowRight':
-				return i + 7 <= last ? i + 7 : i;
+				return within(i + 7);
 			case 'Home':
-				return e.ctrlKey ? 0 : row;
+				return e.ctrlKey ? first : row >= first ? row : row + 7;
 			case 'End':
 				return e.ctrlKey ? last : row + 7 * Math.floor((last - row) / 7);
 			default:
@@ -152,9 +174,13 @@
 	}
 
 	async function onKeydown(e: KeyboardEvent) {
+		// Alt and Cmd with an arrow are the browser's Back and Forward: leave them be.
+		if (e.altKey || e.metaKey) return;
 		const next = target(activeIndex, e);
 		if (next < 0) return;
 		e.preventDefault();
+		// The keys now lead: a label left by a resting pointer gives way to the focused day.
+		hovered = null;
 		chosen = calendarData[next].date;
 		await tick();
 		box?.querySelector<HTMLElement>(`[data-date="${chosen}"]`)?.focus();
@@ -165,6 +191,14 @@
 	// the scroll box (which would clip it) and kept inside the part of the year
 	// on screen.
 	let hovered = $state<string | null>(null);
+	/** Where the pointer last was, so a box scrolling under a still pointer does not count as a move. */
+	let pointerAt = { x: NaN, y: NaN };
+
+	function onPointerMove(e: PointerEvent, day: DayData) {
+		if (e.clientX === pointerAt.x && e.clientY === pointerAt.y) return;
+		pointerAt = { x: e.clientX, y: e.clientY };
+		hovered = day.count > 0 ? day.date : null;
+	}
 	let focused = $state<string | null>(null);
 	let shown = $derived.by(() => {
 		const date = hovered ?? focused;
@@ -244,12 +278,14 @@
 							{/each}
 						</div>
 
-						<div class="rows">
-							{#each rows as row}
+						<!-- Not "rows": the global .rows rule would draw hairlines between the weekdays. -->
+						<div class="days">
+							{#each weekRows as row}
 								<div class="row" role="row">
-									{#each row as day (day.date)}
+									{#each row as { day, week } (day.date)}
 										<div
 											class="day step-{day.step}"
+											style:grid-column={week + 1}
 											class:shown={shown?.date === day.date}
 											role="gridcell"
 											aria-label={day.label}
@@ -257,7 +293,7 @@
 											data-date={day.date}
 											onfocus={(e) => onFocusIn(e, day)}
 											onblur={() => (focused = null)}
-											onpointerenter={() => (hovered = day.count > 0 ? day.date : null)}
+											onpointermove={(e) => onPointerMove(e, day)}
 											onpointerleave={() => (hovered = null)}
 										></div>
 									{/each}
@@ -385,7 +421,7 @@
 		white-space: nowrap;
 	}
 
-	.rows {
+	.days {
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
