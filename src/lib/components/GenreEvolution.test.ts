@@ -25,7 +25,7 @@ describe('GenreEvolution', () => {
 		const row2024 = screen.getByRole('group', { name: '2024 by genre' });
 		expect(within(row2024).getByText('Rock 3, Jazz 1')).toBeInTheDocument();
 		expect(row2024.parentElement).toHaveTextContent('2024');
-		expect(row2024.parentElement).toHaveTextContent('4');
+		expect(row2024.parentElement!.querySelector('.year-total')).toHaveTextContent(/^4$/);
 		expect(within(screen.getByRole('group', { name: '2025 by genre' })).getByText('Rock 1, Jazz 2')).toBeInTheDocument();
 	});
 

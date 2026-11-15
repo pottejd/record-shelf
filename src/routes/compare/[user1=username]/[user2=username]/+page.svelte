@@ -372,9 +372,6 @@
 
 	.swatch {
 		display: inline-block;
-		width: 14px;
-		height: 14px;
-		flex-shrink: 0;
 	}
 
 	/* Fact rows: label left, value right, under a hairline (as At a glance). */

@@ -4,6 +4,7 @@
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import { localDayKey, parseLocalDayKey } from '$lib/utils/dates';
 	import { shadeStep } from '$lib/utils/chart';
+	import ShadeKey from './ShadeKey.svelte';
 
 	/** `children` is the section heading, drawn on the line with the year's total. */
 	let { items, children }: { items: DiscogsCollectionItem[]; children?: Snippet } = $props();
@@ -91,13 +92,18 @@
 		)
 	);
 
-	function getMonthLabels(days: DayData[]): { label: string; index: number }[] {
+	/**
+	 * A label over each week's column where the month changes. A column is read
+	 * from its Sunday, except the first, which is read from its first drawn day:
+	 * a year that starts mid-week must not take the month of a day it does not draw.
+	 */
+	function getMonthLabels(days: DayData[], first: number): { label: string; index: number }[] {
 		const labels: { label: string; index: number }[] = [];
 		let lastMonth = -1;
 
 		days.forEach((day, i) => {
 			const month = parseLocalDayKey(day.date).getMonth();
-			if (month !== lastMonth && i % 7 === 0) {
+			if (month !== lastMonth && (i === first || (i % 7 === 0 && day.inYear))) {
 				labels.push({
 					label: parseLocalDayKey(day.date).toLocaleDateString('en-US', { month: 'short' }),
 					index: Math.floor(i / 7)
@@ -126,7 +132,7 @@
 		return [...totals.values()];
 	});
 
-	let monthLabels = $derived(getMonthLabels(calendarData));
+	let monthLabels = $derived(getMonthLabels(calendarData, firstIndex));
 
 	// The calendar is one tab stop: the chosen day. Until one is chosen it is the
 	// latest day with records (or today, when the year has none).
@@ -241,6 +247,9 @@
 	});
 </script>
 
+<!-- A resize or a turn of the device moves the cells under the label. -->
+<svelte:window onresize={placeTip} />
+
 <div class="collecting-calendar">
 	<div class="calendar-header">
 		{@render children?.()}
@@ -286,7 +295,6 @@
 										<div
 											class="day step-{day.step}"
 											style:grid-column={week + 1}
-											class:shown={shown?.date === day.date}
 											role="gridcell"
 											aria-label={day.label}
 											tabindex={calendarData[activeIndex]?.date === day.date ? 0 : -1}
@@ -303,15 +311,7 @@
 					</div>
 				</div>
 
-				<div class="calendar-legend" aria-hidden="true">
-					<span>Fewer</span>
-					<div class="legend-squares">
-						{#each [1, 2, 3, 4, 5] as step}
-							<div class="legend-cell step-{step}"></div>
-						{/each}
-					</div>
-					<span>More</span>
-				</div>
+				<ShadeKey />
 			</div>
 		</div>
 
@@ -428,7 +428,6 @@
 	}
 
 	.day {
-		position: relative;
 		aspect-ratio: 1;
 	}
 
@@ -436,15 +435,13 @@
 		box-shadow: inset 0 0 0 1px var(--hairline);
 	}
 
+	/* The focus outline reaches into the 2px gaps and over the neighbours; the
+	   cells are grid items, so z-index lifts the focused one above the cells
+	   drawn after it. */
 	.day:focus-visible {
 		outline-offset: 1px;
+		z-index: 1;
 	}
-
-	.step-1 { background: var(--shade-1); }
-	.step-2 { background: var(--shade-2); }
-	.step-3 { background: var(--shade-3); }
-	.step-4 { background: var(--shade-4); }
-	.step-5 { background: var(--shade-5); }
 
 	/* The label: ink with ground-coloured text, placed by placeTip() over the
 	   box rather than inside it, so the scroll box cannot cut it. Hidden until
@@ -464,32 +461,5 @@
 
 	.day-tip.placed {
 		visibility: visible;
-	}
-
-	.day.shown,
-	.day:hover,
-	.day:focus-visible {
-		z-index: 1;
-	}
-
-	.calendar-legend {
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		gap: 6px;
-		margin-top: 16px;
-		font-size: 15px;
-		color: var(--muted);
-	}
-
-	.legend-squares {
-		display: flex;
-		gap: 6px;
-		margin: 0 4px;
-	}
-
-	.legend-cell {
-		width: 16px;
-		height: 16px;
 	}
 </style>

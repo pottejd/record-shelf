@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
-	import { chartColour, foldSeries, type ChartDatum } from '$lib/utils/chart';
+	import { partColour, foldSeries, type ChartDatum } from '$lib/utils/chart';
 	import SplitBar from '$lib/components/SplitBar.svelte';
 
 	let { items, formatData, onFilter }: {
@@ -22,8 +22,7 @@
 
 	/** A format in the bar has its colour; one folded into "Other" has the Other colour. */
 	function colourOf(name: string): string {
-		const i = parts.findIndex((p) => p.label === name);
-		return i >= 0 && name !== 'Other' ? chartColour(i) : 'var(--chart-other)';
+		return partColour(name, parts.findIndex((p) => p.label === name));
 	}
 
 	function percentOf(count: number): number {
@@ -134,12 +133,6 @@
 		align-items: center;
 		gap: 14px;
 		min-height: 52px;
-	}
-
-	.swatch {
-		width: 14px;
-		height: 14px;
-		flex-shrink: 0;
 	}
 
 	.format-name {

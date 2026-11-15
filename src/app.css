@@ -404,6 +404,20 @@ a.btn-secondary:hover {
 	color: var(--on-ink);
 }
 
+/* The colour key of a chart: a square beside a name, its colour set inline. */
+.swatch {
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+}
+
+/* The five steps of the shade ramp, with the text colour that reads on each. */
+.step-1 { background: var(--shade-1); color: var(--shade-1-text); }
+.step-2 { background: var(--shade-2); color: var(--shade-2-text); }
+.step-3 { background: var(--shade-3); color: var(--shade-3-text); }
+.step-4 { background: var(--shade-4); color: var(--shade-4-text); }
+.step-5 { background: var(--shade-5); color: var(--shade-5-text); }
+
 @media (prefers-reduced-motion: reduce) {
 	html {
 		scroll-behavior: auto;

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { shadeStep } from '$lib/utils/chart';
+	import ShadeKey from './ShadeKey.svelte';
 
 	let { data, onYearClick }: { data: Record<number, number>; onYearClick?: (year: number) => void } = $props();
 
@@ -52,15 +53,7 @@
 			</div>
 		</div>
 	{/each}
-	<div class="legend" aria-hidden="true">
-		<span>Fewer</span>
-		<div class="legend-scale">
-			{#each [1, 2, 3, 4, 5] as step}
-				<div class="legend-cell step-{step}"></div>
-			{/each}
-		</div>
-		<span>More</span>
-	</div>
+	<ShadeKey />
 </div>
 
 <style>
@@ -106,8 +99,8 @@
 		border-radius: 0;
 		padding: 0;
 		font: inherit;
-		background: none;
-		color: var(--ink);
+		/* Background and text colour come from the global .step-N class of a cell
+		   with records; setting them here would outrank it. */
 	}
 
 	.year-cell.clickable {
@@ -127,13 +120,6 @@
 	.year-cell.empty {
 		box-shadow: inset 0 0 0 1px var(--hairline);
 	}
-
-	/* Each step carries its own text colour: ink or ground, whichever reads there. */
-	.step-1 { background: var(--shade-1); color: var(--shade-1-text); }
-	.step-2 { background: var(--shade-2); color: var(--shade-2-text); }
-	.step-3 { background: var(--shade-3); color: var(--shade-3-text); }
-	.step-4 { background: var(--shade-4); color: var(--shade-4-text); }
-	.step-5 { background: var(--shade-5); color: var(--shade-5-text); }
 
 	/* The label: ink with ground-coloured text, over the cell, kept inside the
 	   grid (the left half of a row opens rightwards, the right half leftwards). */
@@ -166,27 +152,6 @@
 	.year-cell:hover,
 	.year-cell:focus-visible {
 		z-index: 1;
-	}
-
-	.legend {
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		gap: 6px;
-		margin-top: 16px;
-		font-size: 15px;
-		color: var(--muted);
-	}
-
-	.legend-scale {
-		display: flex;
-		gap: 6px;
-		margin: 0 4px;
-	}
-
-	.legend-cell {
-		width: 16px;
-		height: 16px;
 	}
 
 	@media (max-width: 699px) {

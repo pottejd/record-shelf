@@ -148,6 +148,17 @@ describe('CollectingCalendar', () => {
 		expect(within(list).getByText('November 2025: 1 record')).toBeInTheDocument();
 	});
 
+	it('labels the first column from its first drawn day, not from a Sunday the year does not draw', () => {
+		// Tuesday 1 December 2026: the year starts on Monday 1 December 2025, in a week
+		// whose Sunday is 30 November.
+		vi.setSystemTime(new Date(2026, 11, 1, 18));
+		const { container } = render(CollectingCalendar, { props: { items: [] } });
+		const labels = [...container.querySelectorAll('.month-labels span')];
+		expect(labels[0]).toHaveTextContent('Dec');
+		expect(labels[1]).toHaveTextContent('Jan');
+		expect((labels[0] as HTMLElement).style.gridColumn).toMatch(/^1(?: \/ auto)?$/);
+	});
+
 	it('does not draw the days of the first week before the year starts', () => {
 		render(CollectingCalendar, { props: { items: [] } });
 		const grid = screen.getByRole('grid');

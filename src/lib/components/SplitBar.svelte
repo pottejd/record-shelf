@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { chartColour, type ChartDatum } from '$lib/utils/chart';
+	import { partColour, type ChartDatum } from '$lib/utils/chart';
 
 	let { parts, height = 12, legend = true, label }: {
 		parts: ChartDatum[];
@@ -15,7 +15,7 @@
 			.map((p, i) => ({
 				label: p.label,
 				value: p.value,
-				colour: p.label === 'Other' ? 'var(--chart-other)' : chartColour(i),
+				colour: partColour(p.label, i),
 				percent: total > 0 ? Math.round((p.value / total) * 100) : 0
 			}))
 			.filter((p) => p.value > 0);
@@ -72,12 +72,6 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
-	}
-
-	.swatch {
-		width: 14px;
-		height: 14px;
-		flex-shrink: 0;
 	}
 
 	.pct {

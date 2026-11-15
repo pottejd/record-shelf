@@ -39,7 +39,7 @@
 
 	<section class="section col-half">
 		<h2>Collection value</h2>
-		<p class="intro">A rough estimate from Discogs marketplace prices. It samples 20 records and scales up.</p>
+		<p class="intro">A rough estimate from Discogs marketplace prices. It samples up to 20 records and scales up.</p>
 		<ValueEstimate {items} {username} />
 	</section>
 </div>

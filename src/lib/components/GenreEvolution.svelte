@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
-	import { chartColour } from '$lib/utils/chart';
+	import { partColour } from '$lib/utils/chart';
 	import { genreEvolution } from '$lib/utils/genreEvolution';
 	import SplitBar from '$lib/components/SplitBar.svelte';
 
@@ -39,13 +39,13 @@
 		<ul class="legend">
 			{#each evolution.genres as genre, i (genre)}
 				<li>
-					<span class="swatch" aria-hidden="true" style:background={chartColour(i)}></span>
+					<span class="swatch" aria-hidden="true" style:background={partColour(genre, i)}></span>
 					<span>{genre}</span>
 				</li>
 			{/each}
 			{#if hasOther}
 				<li>
-					<span class="swatch" aria-hidden="true" style:background="var(--chart-other)"></span>
+					<span class="swatch" aria-hidden="true" style:background={partColour('Other', evolution.genres.length)}></span>
 					<span>Other</span>
 				</li>
 			{/if}
@@ -135,12 +135,6 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
-	}
-
-	.swatch {
-		width: 14px;
-		height: 14px;
-		flex-shrink: 0;
 	}
 
 	.no-data {

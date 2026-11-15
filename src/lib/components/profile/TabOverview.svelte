@@ -72,9 +72,10 @@
 
 <style>
 	/* In the approved picture the lead line sits 32px under the tab row, where every
-	   other tab's first section sits 48px under it (.tab-body's top margin). */
+	   other tab's first section sits 48px under it (.tab-body's top margin,
+	   --tab-top-gap, set in the profile page). */
 	.hero {
-		margin-top: -16px;
+		margin-top: calc(-1 * var(--tab-top-gap));
 	}
 
 	/* The lead line wraps as in the approved picture; the shelf stands 40px under it. */

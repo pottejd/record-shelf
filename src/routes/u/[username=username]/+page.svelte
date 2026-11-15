@@ -351,7 +351,10 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--section-gap);
-		margin-top: 16px;
+		/* Set here, where the gap is defined; a tab that leads with a lead line
+		   (the Overview's .hero) cancels it by this name. */
+		--tab-top-gap: 16px;
+		margin-top: var(--tab-top-gap);
 	}
 
 	.tab-body :global(.section) {

@@ -1,5 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import { toChartData, chartColour, foldSeries, shadeStep } from './chart';
+import { toChartData, chartColour, partColour, foldSeries, shadeStep } from './chart';
+
+describe('partColour', () => {
+	it('gives a part labelled Other the Other colour, wherever it sits', () => {
+		expect(partColour('Other', 0)).toBe('var(--chart-other)');
+		expect(partColour('Other', 5)).toBe('var(--chart-other)');
+	});
+
+	it('gives any other part the colour of its place', () => {
+		expect(partColour('Rock', 0)).toBe('var(--chart-1)');
+		expect(partColour('Jazz', 4)).toBe('var(--chart-5)');
+	});
+
+	it('gives a part past the fifth, or with no place, the Other colour', () => {
+		expect(partColour('Folk', 5)).toBe('var(--chart-other)');
+		expect(partColour('Folk', -1)).toBe('var(--chart-other)');
+	});
+});
 
 describe('toChartData', () => {
 	it('maps a record to {label, value} entries', () => {

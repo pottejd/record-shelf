@@ -9,6 +9,15 @@ export function chartColour(i: number): string {
 }
 
 /**
+ * The colour of the part called `label` at place `i` of a whole: a part
+ * labelled "Other" (or one with no place, i < 0) takes the Other colour, any
+ * other part the chart colour of its place.
+ */
+export function partColour(label: string, i: number): string {
+	return label === 'Other' ? 'var(--chart-other)' : chartColour(i);
+}
+
+/**
  * Biggest first; keeps the first `max` parts and sums the rest into one
  * "Other" part (left out when the rest adds up to nothing).
  */

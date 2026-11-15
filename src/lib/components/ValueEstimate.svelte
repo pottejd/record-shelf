@@ -102,7 +102,7 @@
 <div class="value-estimate">
 	{#if result}
 		<!-- As drawn: the figure and its label over a hairline, then Most valuable as rows. -->
-		<div class="value-result">
+		<div>
 			<div class="value-head">
 				<span class="value-amount">{formatCurrency(result.totalValue, result.currency)}</span>
 				<span class="value-label">Estimated collection value</span>
