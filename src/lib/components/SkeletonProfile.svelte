@@ -1,180 +1,98 @@
 <script lang="ts">
-	// Skeleton loading placeholder for the profile page
+	// Stands in for the profile before it is known: the title, the tab row, the lead
+	// line and three empty boards, each taking the space the real one will, so the
+	// page does not jump when they arrive. The tab row is placeholders rather than
+	// the real links: nothing here is ready to be used yet.
+	const TAB_WIDTHS = [92, 82, 70, 76, 62];
 </script>
 
-<div class="skeleton-profile">
-	<div class="skeleton-header">
-		<div class="skeleton-avatar"></div>
-		<div class="skeleton-header-text">
-			<div class="skeleton-line w-200 h-48"></div>
-			<div class="skeleton-line w-120 h-16"></div>
-			<div class="skeleton-badges">
-				<div class="skeleton-badge"></div>
-				<div class="skeleton-badge"></div>
-				<div class="skeleton-badge"></div>
-			</div>
-		</div>
-	</div>
+<div class="skeleton-profile" aria-hidden="true">
+	<div class="title block"></div>
 
-	<div class="skeleton-stats">
-		{#each Array(6) as _}
-			<div class="skeleton-stat-card">
-				<div class="skeleton-line w-80 h-20"></div>
-				<div class="skeleton-line w-60 h-12"></div>
-			</div>
+	<div class="tabs">
+		{#each TAB_WIDTHS as w, i (i)}
+			<div class="tab"><div class="block" style="width: {w}px"></div></div>
 		{/each}
 	</div>
 
-	<div class="skeleton-grid">
-		<div class="skeleton-card">
-			<div class="skeleton-line w-140 h-16"></div>
-			<div class="skeleton-cover-grid">
-				{#each Array(4) as _}
-					<div class="skeleton-cover"></div>
-				{/each}
-			</div>
-		</div>
-		<div class="skeleton-card">
-			<div class="skeleton-line w-200 h-16"></div>
-			<div class="skeleton-line w-full h-120"></div>
-		</div>
+	<div class="lead">
+		<div class="block line"></div>
+		<div class="block line short"></div>
 	</div>
 
-	<div class="skeleton-grid">
-		<div class="skeleton-card">
-			<div class="skeleton-line w-120 h-16"></div>
-			{#each Array(5) as _}
-				<div class="skeleton-list-item">
-					<div class="skeleton-line w-140 h-14"></div>
-					<div class="skeleton-line w-40 h-14"></div>
-				</div>
-			{/each}
-		</div>
-		<div class="skeleton-card">
-			<div class="skeleton-line w-120 h-16"></div>
-			{#each Array(5) as _}
-				<div class="skeleton-list-item">
-					<div class="skeleton-line w-140 h-14"></div>
-					<div class="skeleton-line w-40 h-14"></div>
-				</div>
-			{/each}
-		</div>
+	<div class="boards">
+		{#each [0, 1, 2] as i (i)}
+			<div class="board"></div>
+		{/each}
 	</div>
 </div>
 
 <style>
-	/* Flat, square blocks in the track colour standing in for the profile. The
-	   frame's .page owns the side gutters. A plain opacity pulse; the global
-	   reduced-motion rule stops it. */
-	.skeleton-profile {
-		padding-top: 56px;
-	}
-
-	/* Inside the profile page's <main>, which already gives the top space. */
-	:global(main) > .skeleton-profile {
-		padding-top: 0;
-	}
-
-	.skeleton-header {
-		display: flex;
-		align-items: flex-start;
-		gap: 20px;
-		margin-bottom: 40px;
-	}
-
-	.skeleton-avatar,
-	.skeleton-line,
-	.skeleton-badge,
-	.skeleton-cover {
+	/* Flat, square blocks in the track colour pulse gently (the global reduced-motion
+	   rule stops it). The boards are the real thing, so they stay still and ink.
+	   Every size below mirrors the profile page: h1, ProfileTabs, .tab-body, .lead
+	   and Shelf. The frame's .page owns the side gutters. */
+	.block {
 		background: var(--track);
 		animation: pulse 1.5s ease-in-out infinite;
 	}
 
-	.skeleton-avatar {
-		width: 64px;
-		height: 64px;
-		flex-shrink: 0;
+	.title {
+		width: min(560px, 80%);
+		height: calc(0.95 * clamp(44px, 6.9vw, 88px));
+		margin-top: 56px;
 	}
 
-	.skeleton-header-text {
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-		min-width: 0;
-	}
-
-	.w-40 { width: 40px; }
-	.w-60 { width: 60px; }
-	.w-80 { width: 80px; }
-	.w-120 { width: 120px; }
-	.w-140 { width: 140px; }
-	.w-200 { width: 200px; max-width: 100%; }
-	.w-full { width: 100%; }
-	.h-12 { height: 12px; }
-	.h-14 { height: 14px; }
-	.h-16 { height: 16px; }
-	.h-20 { height: 20px; }
-	.h-48 { height: 48px; }
-	.h-120 { height: 120px; }
-
-	.skeleton-badges {
+	.tabs {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 0 36px;
+		margin-top: 48px;
 	}
 
-	.skeleton-badge {
-		width: 80px;
-		height: 28px;
-	}
-
-	.skeleton-stats {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-		gap: 24px;
-		margin-bottom: 56px;
-	}
-
-	.skeleton-stat-card {
-		border-top: 1px solid var(--hairline);
-		padding-top: 12px;
+	.tab {
 		display: flex;
-		flex-direction: column;
-		gap: 8px;
-	}
-
-	.skeleton-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-		gap: 0 64px;
-	}
-
-	/* A section to come: the thick rule in the track colour, then its blocks. */
-	.skeleton-card {
-		border-top: var(--rule) solid var(--track);
-		padding-top: 16px;
-		margin-bottom: var(--section-gap);
-		display: flex;
-		flex-direction: column;
-		gap: 16px;
-		min-width: 0;
-	}
-
-	.skeleton-cover-grid {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 12px;
-	}
-
-	.skeleton-cover {
-		aspect-ratio: 1;
-	}
-
-	.skeleton-list-item {
-		display: flex;
-		justify-content: space-between;
 		align-items: center;
-		padding: 8px 0;
+		height: 52px;
+	}
+
+	.tab .block {
+		height: 16px;
+	}
+
+	/* 32px under the tabs as on Overview, then the lead line at 20px / 1.4, wrapped
+	   in two lines as on the page. */
+	.lead {
+		display: flex;
+		flex-direction: column;
+		justify-content: space-around;
+		max-width: 44ch;
+		height: 56px;
+		margin-top: 32px;
+		font-size: 20px;
+	}
+
+	.line {
+		height: 16px;
+	}
+
+	.line.short {
+		width: 55%;
+	}
+
+	.boards {
+		margin-top: 40px;
+	}
+
+	.board {
+		box-sizing: content-box;
+		height: 104px;
+		margin-top: 18px;
+		border-bottom: 8px solid var(--ink);
+	}
+
+	.board:first-child {
+		margin-top: 0;
 	}
 
 	@keyframes pulse {
@@ -183,20 +101,34 @@
 	}
 
 	@media (max-width: 699px) {
-		.skeleton-profile {
-			padding-top: 32px;
+		.title {
+			height: calc(0.95 * 40px);
+			margin-top: 32px;
 		}
 
-		:global(main) > .skeleton-profile {
-			padding-top: 0;
+		.tabs {
+			justify-content: space-between;
+			gap: 0 8px;
 		}
 
-		.skeleton-stats {
-			grid-template-columns: repeat(2, 1fr);
+		.tab .block {
+			height: 13px;
+			max-width: 56px;
 		}
 
-		.skeleton-grid {
-			grid-template-columns: minmax(0, 1fr);
+		.lead {
+			height: 50px;
+			font-size: 18px;
+		}
+
+		.boards {
+			margin-top: 32px;
+		}
+
+		.board {
+			height: 44px;
+			margin-top: 10px;
+			border-bottom-width: 5px;
 		}
 	}
 </style>

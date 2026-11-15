@@ -15,7 +15,8 @@
 	import { computeCollectionStats } from '$lib/api/discogs';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { tick } from 'svelte';
+	import { tick, untrack } from 'svelte';
+	import { shelfSource } from '$lib/shelf/spines';
 	import { createLoader } from '$lib/sync/loader.svelte';
 	import { useFrame } from '$lib/frame/frame.svelte';
 	import { keyboardNav } from '$lib/actions/keyboardNav';
@@ -47,15 +48,24 @@
 			keyOf: (i) => i.instance_id
 		})
 	);
+	// What the shelf draws. Records arrive newest-added first, which is not shelf
+	// order, so a stored copy is drawn once, when it is whole; see shelfSource.
+	let shelfItems = $state.raw<DiscogsCollectionItem[]>([]);
+
 	$effect(() => {
 		const l = loader;
 		randomHighlights = [];
+		shelfItems = [];
 		l.run();
 		return () => l.stop();
 	});
 	let s = $derived(loader.state);
 	let items = $derived(s.items);
 	let stats = $derived(computeCollectionStats(items));
+
+	$effect(() => {
+		shelfItems = shelfSource(untrack(() => shelfItems), s, data.stored?.complete === true);
+	});
 
 	let profile = $derived(s.profile);
 	let totalDiscogsItems = $derived(s.totalItems);
@@ -264,6 +274,8 @@
 			<TabOverview
 				{stats}
 				{items}
+				{shelfItems}
+				total={s.totalItems}
 				{badges}
 				{randomHighlights}
 				{decadeData}

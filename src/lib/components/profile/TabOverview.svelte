@@ -7,11 +7,16 @@
 	import BarChart from '$lib/components/BarChart.svelte';
 	import TopList from '$lib/components/TopList.svelte';
 	import CoverGrid from '$lib/components/CoverGrid.svelte';
+	import Shelf from '$lib/components/shelf/Shelf.svelte';
 
-	// `items` and `openDrawer` are for the sections later tasks redraw (the shelf, "See all").
-	let { stats, badges, randomHighlights, decadeData, onDecade, onArtistClick }: {
+	// `items` is for the sections a later task redraws ("See all").
+	let { stats, shelfItems, total, badges, randomHighlights, decadeData, onDecade, onArtistClick, openDrawer }: {
 		stats: CollectionStats;
 		items: DiscogsCollectionItem[];
+		/** What the shelf draws now (held back while a stored copy is still arriving). */
+		shelfItems: DiscogsCollectionItem[];
+		/** The full count, known from the first reply. */
+		total: number;
 		badges: Badge[];
 		randomHighlights: DiscogsCollectionItem[];
 		decadeData: ChartDatum[];
@@ -20,6 +25,15 @@
 		openDrawer: (title: string, items: DiscogsCollectionItem[]) => void;
 	} = $props();
 </script>
+
+<div class="hero">
+	{#if total > 0}
+		<p class="lead">
+			{total.toLocaleString()} {total === 1 ? 'record' : 'records'}, one spine each. The oldest pressing sits on the left.
+		</p>
+	{/if}
+	<Shelf items={shelfItems} {total} onOpen={openDrawer} />
+</div>
 
 <div class="cols">
 	<div class="col-wide stack">
@@ -64,6 +78,18 @@
 </section>
 
 <style>
+	/* In the approved picture the lead line sits 32px under the tab row, where every
+	   other tab's first section sits 48px under it (.tab-body's top margin). */
+	.hero {
+		margin-top: -16px;
+	}
+
+	/* The lead line wraps as in the approved picture; the shelf stands 40px under it. */
+	.lead {
+		max-width: 44ch;
+		margin-bottom: 40px;
+	}
+
 	.stats {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -75,6 +101,10 @@
 	}
 
 	@media (max-width: 699px) {
+		.lead {
+			margin-bottom: 32px;
+		}
+
 		.stats {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
