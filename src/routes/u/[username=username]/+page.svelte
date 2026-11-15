@@ -145,14 +145,22 @@
 		}
 	}
 
+	// Where focus goes when the side list closes: what opened it, if still on the page.
+	let drawerReturn: HTMLElement | null = null;
+
 	function openDrawer(title: string, items: DiscogsCollectionItem[]) {
+		const active = document.activeElement;
+		drawerReturn = active instanceof HTMLElement && active !== document.body ? active : null;
 		drawerTitle = title;
 		drawerItems = items;
 		drawerOpen = true;
 	}
 
 	function closeDrawer() {
+		if (!drawerOpen) return;
 		drawerOpen = false;
+		if (drawerReturn?.isConnected) drawerReturn.focus();
+		drawerReturn = null;
 	}
 
 	// Filter functions: each opens the drawer with the items matching a predicate.

@@ -24,6 +24,14 @@ async function slowReplies(pw: Page, username: string, { firstStart = 250, refre
 	});
 }
 
+/**
+ * Waits for the background refresh to end: when it lands the shelf is drawn again,
+ * which can drop a focus mid-test.
+ */
+async function settled(pw: Page): Promise<void> {
+	await pw.waitForLoadState('networkidle');
+}
+
 interface Sample { status: string; tabs: number | null; board: number | null; heading: number | null }
 
 /**
@@ -260,6 +268,89 @@ test('the keyboard help holds focus, and gives it back to what opened it', async
 	await pw.keyboard.press('Escape');
 	await expect(help).toHaveCount(0);
 	await expect(opener).toBeFocused();
+});
+
+test('closing the side list gives focus back to what opened it: Escape, the close button, the veil', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser');
+	await expect(pw.locator('#overview')).toBeVisible();
+	await settled(pw);
+	const shelf = pw.getByRole('button', { name: /^Shelf 1 of 1/ });
+	const list = pw.getByRole('dialog', { name: /^\d{4} to \d{4}$/ });
+
+	const ways: Array<[string, () => Promise<void>]> = [
+		['Escape', () => pw.keyboard.press('Escape')],
+		['the close button', () => list.getByRole('button', { name: 'Close' }).press('Enter')],
+		['the veil', () => pw.mouse.click(20, 400)]
+	];
+	for (const [how, close] of ways) {
+		await shelf.focus();
+		await pw.keyboard.press('Enter');
+		await expect(list, how).toBeVisible();
+		await expect(list.getByRole('button', { name: 'Close' }), how).toBeFocused();
+		await close();
+		await expect(list, how).toHaveCount(0);
+		await expect(shelf, how).toBeFocused();
+	}
+
+	// Opened with the mouse, the same.
+	await shelf.click();
+	await expect(list).toBeVisible();
+	await pw.keyboard.press('Escape');
+	await expect(list).toHaveCount(0);
+	await expect(shelf).toBeFocused();
+});
+
+test('the side list holds focus, and its last "Show more" hands focus to the first record it brought in', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser');
+	await expect(pw.locator('#overview')).toBeVisible();
+	await settled(pw);
+	await pw.getByRole('button', { name: /^Shelf 1 of 1/ }).click();
+	const list = pw.getByRole('dialog', { name: /^\d{4} to \d{4}$/ });
+	await expect(list).toBeVisible();
+	const inside = () => list.evaluate((el) => el.contains(document.activeElement));
+
+	// Tab and Shift+Tab go round inside: from the close button back to the end, and on to the start.
+	await pw.keyboard.press('Shift+Tab');
+	await expect(list.getByRole('button', { name: /^Show more/ })).toBeFocused();
+	await pw.keyboard.press('Tab');
+	await expect(list.getByRole('button', { name: 'Close' })).toBeFocused();
+
+	// Focus that strays out of the list is pulled back by the next Tab or Shift+Tab.
+	for (const key of ['Tab', 'Shift+Tab']) {
+		await pw.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+		expect(await inside()).toBe(false);
+		await pw.keyboard.press(key);
+		expect(await inside()).toBe(true);
+	}
+
+	// The keyboard help over the list holds focus itself.
+	await pw.keyboard.press('?');
+	const help = pw.getByRole('dialog', { name: 'Keyboard shortcuts' });
+	await expect(help).toBeVisible();
+	for (const key of ['Tab', 'Tab', 'Shift+Tab']) {
+		await pw.keyboard.press(key);
+		expect(await help.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+	}
+	await pw.keyboard.press('Escape');
+	await expect(help).toHaveCount(0);
+
+	// 150 records, 50 at a time: the first "Show more" keeps focus, the last goes and hands it on.
+	const records = list.locator('li');
+	await expect(records).toHaveCount(50);
+	const more = list.getByRole('button', { name: /^Show more/ });
+	await more.focus();
+	await pw.keyboard.press('Enter');
+	await expect(records).toHaveCount(100);
+	await expect(more).toBeFocused();
+	await pw.keyboard.press('Enter');
+	await expect(records).toHaveCount(150);
+	await expect(more).toHaveCount(0);
+	await expect(records.nth(100)).toBeFocused();
+	// And the keyboard carries on inside the list.
+	await pw.keyboard.press('Tab');
+	expect(await inside()).toBe(true);
 });
 
 test('a tab opened from the keyboard keeps focus on its link', async ({ page: pw }) => {

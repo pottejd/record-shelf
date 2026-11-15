@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import { formatArtists } from '$lib/utils/discogs';
+	import { tick } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 
@@ -23,21 +24,41 @@
 		// closed so Escape/Tab elsewhere on the page don't trigger close/focus-trap.
 		if (!open) return;
 		if (e.key === 'Escape') onClose();
-		if (e.key === 'Tab' && backdropEl) {
-			const focusable = backdropEl.querySelectorAll<HTMLElement>(
-				'a[href], button:not(:disabled), input, select, textarea, [tabindex]:not([tabindex="-1"])'
-			);
-			if (focusable.length === 0) return;
-			const first = focusable[0];
-			const last = focusable[focusable.length - 1];
-			if (e.shiftKey && document.activeElement === first) {
-				e.preventDefault();
-				last.focus();
-			} else if (!e.shiftKey && document.activeElement === last) {
-				e.preventDefault();
-				first.focus();
-			}
+		if (e.key === 'Tab' && backdropEl) holdFocus(e, backdropEl);
+	}
+
+	/** Tab and Shift+Tab go round the list's own controls and never leave it; focus
+	 *  that has strayed out (to the page behind) is pulled back in. Focus in another
+	 *  dialog over this one (the keyboard help) is that dialog's to hold. */
+	function holdFocus(e: KeyboardEvent, root: HTMLElement) {
+		const at = document.activeElement;
+		const inside = at instanceof Node && root.contains(at);
+		if (!inside && at instanceof Element && at.closest('[aria-modal="true"]')) return;
+		const focusable = root.querySelectorAll<HTMLElement>(
+			'a[href], button:not(:disabled), input, select, textarea, [tabindex]:not([tabindex="-1"])'
+		);
+		if (focusable.length === 0) return;
+		const first = focusable[0];
+		const last = focusable[focusable.length - 1];
+		if (e.shiftKey && (at === first || !inside)) {
+			e.preventDefault();
+			last.focus();
+		} else if (!e.shiftKey && (at === last || !inside)) {
+			e.preventDefault();
+			first.focus();
 		}
+	}
+
+	let listEl: HTMLUListElement | undefined = $state();
+
+	/** Shows the next 50. The last press removes the button, so focus moves on to the
+	 *  first record it brought in rather than falling out of the list. */
+	async function showMore() {
+		const first = visibleCount;
+		visibleCount += PAGE_SIZE;
+		if (hasMore) return;
+		await tick();
+		(listEl?.children[first] as HTMLElement | undefined)?.focus();
 	}
 
 	function handleBackdropClick(e: MouseEvent) {
@@ -101,9 +122,9 @@
 				{#if items.length === 0}
 					<p class="empty">No records found</p>
 				{:else}
-					<ul class="record-list rows">
+					<ul class="record-list rows" bind:this={listEl}>
 						{#each visibleItems as item}
-							<li class="record-item">
+							<li class="record-item" tabindex="-1">
 								<img
 									src={item.basic_information.thumb || '/placeholder.svg'}
 									alt=""
@@ -146,7 +167,7 @@
 						{/each}
 					</ul>
 					{#if hasMore}
-						<button class="show-more-btn btn btn-secondary" onclick={() => visibleCount += PAGE_SIZE}>
+						<button class="show-more-btn btn btn-secondary" onclick={showMore}>
 							Show more ({items.length - visibleCount} remaining)
 						</button>
 					{/if}
