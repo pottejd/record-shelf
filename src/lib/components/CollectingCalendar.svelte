@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import { localDayKey, parseLocalDayKey } from '$lib/utils/dates';
+	import { shadeStep } from '$lib/utils/chart';
 
 	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
@@ -38,6 +39,8 @@
 			}
 		}
 
+		const maxCount = Math.max(0, ...dayCounts.values());
+
 		// Generate all days in the past year
 		const days: DayData[] = [];
 		const current = new Date(oneYearAgo);
@@ -51,21 +54,13 @@
 			days.push({
 				date: key,
 				count,
-				level: getLevel(count),
+				level: shadeStep(count, maxCount),
 				title: `${count} record${count !== 1 ? 's' : ''} on ${dateFormatter.format(parseLocalDayKey(key))}`
 			});
 			current.setDate(current.getDate() + 1);
 		}
 
 		return days;
-	}
-
-	function getLevel(count: number): number {
-		if (count === 0) return 0;
-		if (count === 1) return 1;
-		if (count <= 3) return 2;
-		if (count <= 6) return 3;
-		return 4;
 	}
 
 	function getWeeks(days: DayData[]): DayData[][] {
@@ -103,35 +98,37 @@
 		<span class="year-total">{totalThisYear} records added this year</span>
 	</div>
 
-	<div class="calendar-container">
-		<div class="day-labels">
-			<span></span>
-			<span>Mon</span>
-			<span></span>
-			<span>Wed</span>
-			<span></span>
-			<span>Fri</span>
-			<span></span>
-		</div>
-
-		<div class="calendar-grid">
-			<div class="month-labels">
-				{#each monthLabels as { label, index }}
-					<span style:grid-column={index + 1}>{label}</span>
-				{/each}
+	<div class="calendar-scroll">
+		<div class="calendar-container" style:--weeks={weeks.length}>
+			<div class="day-labels">
+				<span></span>
+				<span>Mon</span>
+				<span></span>
+				<span>Wed</span>
+				<span></span>
+				<span>Fri</span>
+				<span></span>
 			</div>
 
-			<div class="weeks">
-				{#each weeks as week, weekIndex}
-					<div class="week">
-						{#each week as day}
-							<div
-								class="day level-{day.level}"
-								title={day.title}
-							></div>
-						{/each}
-					</div>
-				{/each}
+			<div class="calendar-grid">
+				<div class="month-labels">
+					{#each monthLabels as { label, index }}
+						<span style:grid-column={index + 1}>{label}</span>
+					{/each}
+				</div>
+
+				<div class="weeks">
+					{#each weeks as week}
+						<div class="week">
+							{#each week as day}
+								<div
+									class="day level-{day.level}"
+									title={day.title}
+								></div>
+							{/each}
+						</div>
+					{/each}
+				</div>
 			</div>
 		</div>
 	</div>
@@ -139,77 +136,78 @@
 	<div class="calendar-legend">
 		<span>Less</span>
 		<div class="legend-squares">
-			<div class="day level-0"></div>
 			<div class="day level-1"></div>
 			<div class="day level-2"></div>
 			<div class="day level-3"></div>
 			<div class="day level-4"></div>
+			<div class="day level-5"></div>
 		</div>
 		<span>More</span>
 	</div>
 </div>
 
 <style>
+	/* A year of day cells, a column per week, shaded by count on the five-step
+	   ramp. A day with nothing is an empty cell with a hairline edge. */
 	.collecting-calendar {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.calendar-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
+		gap: 16px;
 	}
 
 	.year-total {
-		font-size: 0.875rem;
-		color: var(--color-text-secondary);
+		font-size: 17px;
+		color: var(--muted);
+	}
+
+	.calendar-scroll {
+		overflow-x: auto;
 	}
 
 	.calendar-container {
 		display: flex;
-		gap: 0.5rem;
-		overflow-x: auto;
-		padding-bottom: 0.5rem;
+		gap: 12px;
+		min-width: 720px;
 	}
 
+	/* The labels' rows line up with the seven day rows beside them. */
 	.day-labels {
-		display: flex;
-		flex-direction: column;
+		width: 36px;
+		flex-shrink: 0;
+		display: grid;
+		grid-template-rows: repeat(7, minmax(0, 1fr));
 		gap: 2px;
-		padding-top: 20px;
-	}
-
-	.day-labels span {
-		height: 12px;
-		font-size: 0.625rem;
-		color: var(--color-text-tertiary);
-		line-height: 12px;
+		align-items: center;
+		padding-top: 28px;
+		font-size: 13px;
+		line-height: 1;
+		color: var(--muted);
 	}
 
 	.calendar-grid {
+		flex: 1;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
+		gap: 8px;
+	}
+
+	.month-labels,
+	.weeks {
+		display: grid;
+		grid-template-columns: repeat(var(--weeks), minmax(0, 1fr));
 		gap: 2px;
 	}
 
 	.month-labels {
-		display: grid;
-		grid-auto-columns: 14px;
-		grid-auto-flow: column;
-		gap: 2px;
-		height: 18px;
+		height: 20px;
+		font-size: 15px;
+		line-height: 20px;
+		color: var(--muted);
 	}
 
 	.month-labels span {
-		font-size: 0.625rem;
-		color: var(--color-text-tertiary);
-	}
-
-	.weeks {
-		display: flex;
-		gap: 2px;
+		white-space: nowrap;
 	}
 
 	.week {
@@ -219,82 +217,35 @@
 	}
 
 	.day {
-		width: 12px;
-		height: 12px;
-		border-radius: 2px;
-		background: var(--color-bg-secondary);
+		aspect-ratio: 1;
 	}
 
 	.day.level-0 {
-		background: var(--color-bg-secondary);
+		box-shadow: inset 0 0 0 1px var(--hairline);
 	}
 
-	.day.level-1 {
-		background: #c6e48b;
-	}
-
-	.day.level-2 {
-		background: #7bc96f;
-	}
-
-	.day.level-3 {
-		background: #449b3e;
-	}
-
-	.day.level-4 {
-		background: #2c6e2f;
-	}
-
-	:global(html[data-theme="dark"]) .day.level-1 {
-		background: #0e4429;
-	}
-
-	:global(html[data-theme="dark"]) .day.level-2 {
-		background: #006d32;
-	}
-
-	:global(html[data-theme="dark"]) .day.level-3 {
-		background: #26a641;
-	}
-
-	:global(html[data-theme="dark"]) .day.level-4 {
-		background: #39d353;
-	}
-
-	@media (prefers-color-scheme: dark) {
-		:global(html:not([data-theme="light"])) .day.level-1 {
-			background: #0e4429;
-		}
-
-		:global(html:not([data-theme="light"])) .day.level-2 {
-			background: #006d32;
-		}
-
-		:global(html:not([data-theme="light"])) .day.level-3 {
-			background: #26a641;
-		}
-
-		:global(html:not([data-theme="light"])) .day.level-4 {
-			background: #39d353;
-		}
-	}
+	.day.level-1 { background: var(--shade-1); }
+	.day.level-2 { background: var(--shade-2); }
+	.day.level-3 { background: var(--shade-3); }
+	.day.level-4 { background: var(--shade-4); }
+	.day.level-5 { background: var(--shade-5); }
 
 	.calendar-legend {
 		display: flex;
 		align-items: center;
-		gap: 0.375rem;
+		gap: 8px;
 		justify-content: flex-end;
-		font-size: 0.625rem;
-		color: var(--color-text-tertiary);
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.legend-squares {
 		display: flex;
-		gap: 2px;
+		gap: 4px;
 	}
 
 	.legend-squares .day {
-		width: 10px;
-		height: 10px;
+		width: 16px;
+		height: 16px;
 	}
 </style>

@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { colorAt } from '$lib/utils/chart';
+	import { chartColour, foldSeries } from '$lib/utils/chart';
 
 	interface Props {
-		data: Array<{ label: string; value: number; color?: string }>;
+		data: Array<{ label: string; value: number }>;
 		size?: number;
 		thickness?: number;
 		clickable?: boolean;
@@ -15,21 +15,40 @@
 	let radius = $derived(size / 2);
 	let innerRadius = $derived(radius - thickness);
 
+	function percentOf(value: number) {
+		return ((value / total) * 100).toFixed(1);
+	}
+
+	// Biggest first. The five biggest parts take the chart colours; every later
+	// part is drawn in the "Other" colour but stays its own segment, with its own
+	// name and number on hover and focus, and still opens its records.
 	let segments = $derived((() => {
 		let currentAngle = -90;
-		return data.map((d, i) => {
-			const angle = (d.value / total) * 360;
-			const startAngle = currentAngle;
-			currentAngle += angle;
-			return {
-				...d,
-				color: d.color || colorAt(i),
-				startAngle,
-				endAngle: currentAngle,
-				percentage: ((d.value / total) * 100).toFixed(1)
-			};
-		});
+		return [...data]
+			.sort((a, b) => b.value - a.value)
+			.map((d, i) => {
+				const angle = (d.value / total) * 360;
+				const startAngle = currentAngle;
+				currentAngle += angle;
+				return {
+					...d,
+					color: chartColour(i),
+					startAngle,
+					endAngle: currentAngle,
+					percentage: percentOf(d.value)
+				};
+			});
 	})());
+
+	// The legend: the five biggest parts by name, then the rest together as "Other".
+	let legend = $derived(
+		foldSeries(data).map((d, i) => ({
+			...d,
+			color: chartColour(i),
+			percentage: percentOf(d.value),
+			other: i >= 5
+		}))
+	);
 
 	function polarToCartesian(angle: number, r: number) {
 		const rad = (angle * Math.PI) / 180;
@@ -84,26 +103,31 @@
 		{/each}
 		<text x={radius} y={radius} text-anchor="middle" dominant-baseline="middle" class="center-text">
 			<tspan x={radius} dy="-0.3em" class="center-value">{total.toLocaleString()}</tspan>
-			<tspan x={radius} dy="1.4em" class="center-label">total</tspan>
+			<tspan x={radius} dy="1.4em" class="center-label">Total</tspan>
 		</text>
 	</svg>
 	<div class="legend">
-		{#each segments.slice(0, 6) as segment}
-			<button
-				class="legend-item"
-				class:clickable
-				type="button"
-				disabled={!clickable}
-				onclick={() => onItemClick?.(segment.label)}
-			>
-				<span class="legend-color" style:background={segment.color}></span>
-				<span class="legend-label">{segment.label}</span>
-				<span class="legend-value">{segment.percentage}%</span>
-			</button>
+		{#each legend as part}
+			{#if part.other}
+				<div class="legend-item">
+					<span class="swatch" style:background={part.color}></span>
+					<span class="legend-label">{part.label}</span>
+					<span class="legend-value">{part.percentage}%</span>
+				</div>
+			{:else}
+				<button
+					class="legend-item"
+					class:clickable
+					type="button"
+					disabled={!clickable}
+					onclick={() => onItemClick?.(part.label)}
+				>
+					<span class="swatch" style:background={part.color}></span>
+					<span class="legend-label">{part.label}</span>
+					<span class="legend-value">{part.percentage}%</span>
+				</button>
+			{/if}
 		{/each}
-		{#if segments.length > 6}
-			<div class="legend-item more">+{segments.length - 6} more</div>
-		{/if}
 	</div>
 </div>
 
@@ -112,87 +136,83 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1rem;
+		gap: 24px;
 	}
 
 	svg {
 		overflow: visible;
 	}
 
-	.segment {
-		transition: opacity 0.2s;
+	.segment.clickable {
 		cursor: pointer;
 	}
 
-	.segment:hover {
-		opacity: 0.8;
-	}
-
 	.center-text {
-		fill: var(--color-text, #1a1a1a);
+		fill: var(--ink);
 	}
 
 	.center-value {
-		font-size: 1.5rem;
-		font-weight: 700;
+		font-size: 28px;
+		font-weight: 800;
 	}
 
 	.center-label {
-		font-size: 0.75rem;
-		fill: var(--color-text-secondary, #666);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		font-size: 15px;
+		fill: var(--muted);
 	}
 
+	/* A row per part: swatch, name in ink, share in ink. */
 	.legend {
 		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem 1rem;
-		justify-content: center;
-		max-width: 300px;
+		flex-direction: column;
+		width: 100%;
+		max-width: 360px;
 	}
 
 	.legend-item {
 		display: flex;
 		align-items: center;
-		gap: 0.375rem;
-		font-size: 0.75rem;
+		gap: 12px;
+		min-height: 44px;
+		width: 100%;
+		padding: 0;
+		border: 0;
+		border-top: 1px solid var(--hairline);
+		border-radius: 0;
 		background: none;
-		border: none;
-		padding: 0.25rem 0.5rem;
-		margin: -0.25rem -0.5rem;
-		border-radius: 6px;
 		font: inherit;
-		color: inherit;
+		font-size: 17px;
+		color: var(--ink);
+		text-align: left;
+	}
+
+	.legend-item:first-child {
+		border-top: 0;
 	}
 
 	.legend-item.clickable {
 		cursor: pointer;
-		transition: background-color 0.15s;
 	}
 
-	.legend-item.clickable:hover {
-		background: var(--color-bg-secondary, rgba(0, 0, 0, 0.05));
+	.legend-item.clickable:hover .legend-label {
+		text-decoration: underline;
+		text-underline-offset: 4px;
 	}
 
 	.legend-item:disabled {
 		cursor: default;
+		color: var(--ink);
 	}
 
-	.legend-item.more {
-		color: var(--color-text-secondary, #666);
-	}
-
-	.legend-color {
-		width: 10px;
-		height: 10px;
-		border-radius: 2px;
+	.swatch {
+		width: 14px;
+		height: 14px;
 		flex-shrink: 0;
 	}
 
 	.legend-label {
-		color: var(--color-text-secondary, #666);
-		max-width: 80px;
+		flex: 1;
+		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -200,5 +220,6 @@
 
 	.legend-value {
 		font-weight: 600;
+		font-variant-numeric: tabular-nums;
 	}
 </style>

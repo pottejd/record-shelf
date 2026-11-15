@@ -111,17 +111,17 @@
 				{/if}
 			</span>
 			{#if partial}
-				<span class="value-warning">Discogs is busy — this is a partial estimate. Try again in a minute.</span>
+				<span class="value-warning error-note">Discogs is busy — this is a partial estimate. Try again in a minute.</span>
 			{/if}
 			{#if result.failedCount > 0}
-				<span class="value-warning">
+				<span class="value-warning error-note">
 					⚠ {result.failedCount} price lookup{result.failedCount === 1 ? '' : 's'} failed — this estimate may be incomplete.
 				</span>
 			{/if}
 			{#if topValued.length > 0}
 				<div class="most-valuable">
 					<h3>Most valuable</h3>
-					<ul>
+					<ul class="rows">
 						{#each topValued as v}
 							<li>
 								<span class="mv-title">{v.item.basic_information.title}</span>
@@ -158,9 +158,9 @@
 		<div class="value-prompt">
 			<p>Get a rough estimate of this collection's market value based on Discogs marketplace data.</p>
 			{#if errorMsg}
-				<p class="error">{errorMsg}</p>
+				<p class="error error-note">{errorMsg}</p>
 			{/if}
-			<button class="estimate-btn" onclick={estimateValue} disabled={loading}>
+			<button class="estimate-btn btn btn-primary" onclick={estimateValue} disabled={loading}>
 				{#if loading}
 					<span class="spinner"></span>
 					{#if progress}
@@ -178,168 +178,119 @@
 </div>
 
 <style>
-	.value-estimate {
-		text-align: center;
-	}
-
 	.value-result {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 0.25rem;
-		padding: 1.5rem;
+		align-items: flex-start;
+		gap: 4px;
 	}
 
 	.value-amount {
-		font-size: 2.5rem;
-		font-weight: 700;
-		background: linear-gradient(135deg, #22c55e, #14b8a6);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
+		font-size: 44px;
+		font-weight: 800;
+		letter-spacing: -0.03em;
+		line-height: 1.05;
 	}
 
 	.value-label {
-		font-size: 0.875rem;
-		color: var(--color-text-secondary);
-		font-weight: 500;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.value-note {
-		font-size: 0.75rem;
-		color: var(--color-text-tertiary);
-		margin-top: 0.5rem;
+		margin-top: 8px;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.value-warning {
-		font-size: 0.75rem;
-		color: #b45309;
-		margin-top: 0.5rem;
+		margin-top: 12px;
+		font-size: 15px;
 	}
 
-	.most-valuable {
+	.most-valuable,
+	.value-history {
 		width: 100%;
-		max-width: 360px;
-		margin: 1.25rem auto 0;
-		text-align: left;
+		margin-top: 24px;
 	}
 
-	.most-valuable h3 {
-		font-size: 0.8125rem;
-		color: var(--color-text-secondary);
-		margin: 0 0 0.5rem;
+	.most-valuable h3,
+	.value-history h3 {
+		margin: 0 0 4px;
+		font-size: 18px;
+		font-weight: 700;
 	}
 
 	.most-valuable ul {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
 	}
 
 	.most-valuable li {
 		display: flex;
 		justify-content: space-between;
-		gap: 0.75rem;
-		font-size: 0.8125rem;
+		align-items: center;
+		gap: 16px;
+		min-height: 44px;
+		font-size: 17px;
 	}
 
 	.mv-title {
+		min-width: 0;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		color: var(--color-text);
 	}
 
 	.mv-price {
 		flex-shrink: 0;
 		font-weight: 600;
-		color: var(--color-primary);
+		font-variant-numeric: tabular-nums;
 	}
 
-	.value-history {
-		width: 100%;
-		max-width: 360px;
-		margin: 1.25rem auto 0;
-		text-align: left;
-	}
-
-	.value-history h3 {
-		font-size: 0.8125rem;
-		color: var(--color-text-secondary);
-		margin: 0 0 0.5rem;
-	}
-
+	/* One series: an ink bar per snapshot, its value on hover. */
 	.vh-spark {
 		display: flex;
 		align-items: flex-end;
 		gap: 2px;
-		height: 40px;
+		height: 48px;
+		border-bottom: 1px solid var(--ink);
 	}
 
 	.vh-bar {
 		flex: 1;
 		min-height: 2px;
-		background: var(--gradient-brand);
-		border-radius: 2px 2px 0 0;
+		background: var(--ink);
 	}
 
 	.vh-caption {
 		display: block;
-		margin-top: 0.375rem;
-		font-size: 0.7rem;
-		color: var(--color-text-tertiary);
+		margin-top: 8px;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.value-prompt {
-		padding: 1rem 0;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 16px;
 	}
 
 	.value-prompt p {
-		margin: 0 0 1rem;
-		font-size: 0.875rem;
-		color: var(--color-text-secondary);
+		margin: 0;
+		font-size: 17px;
 	}
 
-	.error {
-		color: #dc2626 !important;
-	}
-
-	.estimate-btn {
-		padding: 0.75rem 2rem;
-		font-size: 0.9375rem;
-		font-weight: 600;
-		background: linear-gradient(135deg, #22c55e, #14b8a6);
-		color: white;
-		border: none;
-		border-radius: 10px;
-		cursor: pointer;
-		transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
-	}
-
-	.estimate-btn:hover:not(:disabled) {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
-	}
-
-	.estimate-btn:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.disclaimer {
-		font-size: 0.6875rem !important;
-		color: var(--color-text-tertiary) !important;
-		margin-top: 0.75rem !important;
+	.value-prompt .disclaimer {
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	/* Base .spinner is global (app.css); this one is slightly smaller. */
 	.spinner {
 		width: 16px;
 		height: 16px;
-		vertical-align: middle;
-		margin-right: 0.5rem;
 	}
 </style>

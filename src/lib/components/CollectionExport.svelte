@@ -64,7 +64,7 @@
 
 		const style = d.createElement('style');
 		style.textContent =
-			'body{font-family:system-ui,sans-serif;margin:2rem;color:#111}h1{font-size:1.25rem}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #ccc;padding:4px 8px;text-align:left}th{background:#f3f3f3}@media print{@page{margin:1.5cm}}';
+			'body{font-family:system-ui,sans-serif;margin:2rem;color:black;background:white}h1{font-size:1.25rem}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid black;padding:4px 8px;text-align:left}th{font-weight:bold}@media print{@page{margin:1.5cm}}';
 		d.head.appendChild(style);
 
 		const h1 = d.createElement('h1');
@@ -109,7 +109,7 @@
 </script>
 
 <div class="export-actions">
-	<button class="export-btn" onclick={downloadCSV}>
+	<button class="export-btn btn btn-secondary" onclick={downloadCSV}>
 		<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 			<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
 			<polyline points="7 10 12 15 17 10" />
@@ -117,7 +117,7 @@
 		</svg>
 		Export CSV
 	</button>
-	<button class="export-btn" onclick={downloadJSON}>
+	<button class="export-btn btn btn-secondary" onclick={downloadJSON}>
 		<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 			<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
 			<polyline points="7 10 12 15 17 10" />
@@ -125,7 +125,7 @@
 		</svg>
 		Export JSON
 	</button>
-	<button class="export-btn" onclick={printList}>
+	<button class="export-btn btn btn-secondary" onclick={printList}>
 		<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 			<polyline points="6 9 6 2 18 2 18 9" />
 			<path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
@@ -138,33 +138,12 @@
 <style>
 	.export-actions {
 		display: flex;
-		gap: 0.5rem;
 		flex-wrap: wrap;
-	}
-
-	.export-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.625rem 1rem;
-		font-size: 0.8125rem;
-		font-weight: 500;
-		background: var(--color-bg-secondary);
-		border: 1px solid var(--color-border);
-		border-radius: 8px;
-		color: var(--color-text);
-		cursor: pointer;
-		transition: background-color 0.15s, border-color 0.15s;
-	}
-
-	.export-btn:hover {
-		background: var(--color-bg-tertiary);
-		border-color: var(--color-primary);
-		color: var(--color-primary);
+		gap: 12px;
 	}
 
 	.export-btn svg {
-		width: 16px;
-		height: 16px;
+		width: 18px;
+		height: 18px;
 	}
 </style>

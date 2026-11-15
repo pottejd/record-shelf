@@ -71,7 +71,7 @@
 		</div>
 	{/if}
 
-	<div class="milestone-grid">
+	<div class="milestone-grid rows">
 		{#each milestones.filter(m => m.reached || m === nextMilestone) as milestone}
 			<div class="milestone" class:reached={milestone.reached} class:next={milestone === nextMilestone}>
 				<div class="milestone-icon">
@@ -99,125 +99,93 @@
 	.milestones {
 		display: flex;
 		flex-direction: column;
-		gap: 1.25rem;
 	}
 
+	/* The next milestone: its name and count, an ink bar on the track, what is left. */
 	.progress-section {
-		padding: 1rem;
-		background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
-		border-radius: 12px;
+		padding: 0 0 16px;
+		border-bottom: 1px solid var(--hairline);
 	}
 
 	.progress-header {
 		display: flex;
+		flex-wrap: wrap;
 		justify-content: space-between;
-		margin-bottom: 0.5rem;
+		align-items: baseline;
+		gap: 4px 16px;
 	}
 
 	.progress-label {
-		font-weight: 600;
-		font-size: 0.9375rem;
+		font-size: 18px;
 	}
 
 	.progress-count {
-		font-size: 0.875rem;
-		color: var(--color-text-secondary);
+		font-size: 18px;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.progress-bar {
 		height: 8px;
-		background: var(--color-bg-tertiary);
-		border-radius: 4px;
-		overflow: hidden;
+		margin-top: 12px;
+		background: var(--track);
 	}
 
 	.progress-fill {
 		height: 100%;
-		background: linear-gradient(90deg, #6366f1, #8b5cf6);
-		border-radius: 4px;
-		transition: width 0.5s ease;
+		background: var(--ink);
 	}
 
 	.progress-hint {
-		margin: 0.5rem 0 0;
-		font-size: 0.8125rem;
-		color: var(--color-text-secondary);
+		margin: 8px 0 0;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
-	.milestone-grid {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
+	/* A row per milestone, divided by hairlines. */
 	.milestone {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		padding: 0.625rem 0.75rem;
-		border-radius: 10px;
-		background: var(--color-bg-secondary);
-		opacity: 0.5;
-		transition: opacity 0.2s, transform 0.2s;
-	}
-
-	.milestone.reached {
-		opacity: 1;
-		background: var(--color-bg-card);
-		border: 1px solid var(--color-border);
-	}
-
-	.milestone.next {
-		opacity: 1;
-		border: 2px dashed var(--color-primary);
-		background: transparent;
+		gap: 16px;
+		min-height: 52px;
+		padding: 6px 0;
 	}
 
 	.milestone-icon {
-		width: 40px;
-		height: 40px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: var(--gradient-brand);
-		color: white;
-		font-weight: 700;
-		font-size: 0.75rem;
-		border-radius: 8px;
+		width: 56px;
 		flex-shrink: 0;
+		font-size: 22px;
+		font-weight: 800;
+		letter-spacing: -0.02em;
 	}
 
 	.milestone.next .milestone-icon {
-		background: var(--color-bg-tertiary);
-		color: var(--color-text-secondary);
+		color: var(--muted);
 	}
 
 	.milestone-info {
 		flex: 1;
+		min-width: 0;
 		display: flex;
-		flex-direction: column;
-		gap: 0.125rem;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 2px 16px;
 	}
 
 	.milestone-label {
-		font-weight: 600;
-		font-size: 0.9375rem;
+		font-size: 18px;
 	}
 
 	.milestone-date {
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
-	}
-
-	.milestone-date.pending {
-		color: var(--color-primary);
-		font-style: italic;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.check-icon {
 		width: 20px;
 		height: 20px;
-		color: #10b981;
+		color: var(--ink);
 		flex-shrink: 0;
 	}
 </style>

@@ -85,50 +85,20 @@
 </div>
 
 <style>
+	/* Sticks to the top while the page scrolls: names in ink on the ground, the
+	   current one bold with an ink line under it. */
 	.section-nav-wrapper {
 		position: sticky;
 		top: 0;
 		z-index: 50;
-		margin: 0 -2rem 1.5rem;
-		background: var(--color-bg);
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	.section-nav-wrapper::before,
-	.section-nav-wrapper::after {
-		content: '';
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		width: 2rem;
-		z-index: 1;
-		pointer-events: none;
-		opacity: 0;
-		transition: opacity 0.2s;
-	}
-
-	.section-nav-wrapper::before {
-		left: 0;
-		background: linear-gradient(to right, var(--color-bg), transparent);
-	}
-
-	.section-nav-wrapper::after {
-		right: 0;
-		background: linear-gradient(to left, var(--color-bg), transparent);
-	}
-
-	.section-nav-wrapper.fade-left::before {
-		opacity: 1;
-	}
-
-	.section-nav-wrapper.fade-right::after {
-		opacity: 1;
+		margin: 0 0 24px;
+		background: var(--ground);
+		border-bottom: 1px solid var(--hairline);
 	}
 
 	.section-nav {
 		display: flex;
-		gap: 0.25rem;
-		padding: 0.5rem 2rem;
+		gap: 24px;
 		overflow-x: auto;
 		scrollbar-width: none;
 	}
@@ -138,35 +108,24 @@
 	}
 
 	.nav-item {
-		padding: 0.375rem 0.75rem;
-		font-size: 0.75rem;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		font-size: 17px;
 		font-weight: 500;
-		color: var(--color-text-tertiary);
+		color: var(--ink);
 		text-decoration: none;
-		border-radius: 6px;
 		white-space: nowrap;
-		transition: color 0.15s, background-color 0.15s;
 	}
 
 	.nav-item:hover {
-		color: var(--color-text-secondary);
-		background: var(--color-bg-secondary);
+		color: var(--ink);
+		text-decoration: underline;
+		text-underline-offset: 4px;
 	}
 
 	.nav-item.active {
-		color: var(--color-primary);
-		background: rgba(99, 102, 241, 0.1);
-		font-weight: 600;
-	}
-
-	@media (max-width: 600px) {
-		.section-nav-wrapper {
-			margin: 0 -1rem 1rem;
-		}
-
-		.section-nav {
-			padding-left: 1rem;
-			padding-right: 1rem;
-		}
+		font-weight: 700;
+		box-shadow: inset 0 -3px 0 var(--ink);
 	}
 </style>

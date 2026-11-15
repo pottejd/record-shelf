@@ -7,7 +7,6 @@
 		label: string;
 		count: number;
 		percentage: number;
-		color: string;
 		description: string;
 	}
 
@@ -40,28 +39,24 @@
 				label: 'New Releases',
 				count: counts.newRelease,
 				percentage: total > 0 ? (counts.newRelease / total) * 100 : 0,
-				color: '#10b981',
 				description: 'Bought within 1 year of release'
 			},
 			{
 				label: 'Recent',
 				count: counts.recent,
 				percentage: total > 0 ? (counts.recent / total) * 100 : 0,
-				color: '#3b82f6',
 				description: '1-5 years after release'
 			},
 			{
 				label: 'Classic',
 				count: counts.classic,
 				percentage: total > 0 ? (counts.classic / total) * 100 : 0,
-				color: '#f59e0b',
 				description: '5-20 years after release'
 			},
 			{
 				label: 'Vintage',
 				count: counts.vintage,
 				percentage: total > 0 ? (counts.vintage / total) * 100 : 0,
-				color: '#8b5cf6',
 				description: '20+ years after release'
 			}
 		];
@@ -123,7 +118,6 @@
 					<div
 						class="bar"
 						style:width="{category.percentage}%"
-						style:background={category.color}
 					></div>
 				</div>
 				<span class="percentage">{category.percentage.toFixed(0)}%</span>
@@ -134,7 +128,7 @@
 	<div class="category-legend">
 		{#each categories as category}
 			<div class="legend-item">
-				<span class="legend-dot" style:background={category.color}></span>
+				<span class="legend-name">{category.label}</span>
 				<span class="legend-text">{category.description}</span>
 			</div>
 		{/each}
@@ -145,119 +139,139 @@
 	.new-vs-vintage {
 		display: flex;
 		flex-direction: column;
-		gap: 1.25rem;
+		gap: 24px;
 	}
 
+	/* Two facts side by side, divided by a hairline. */
 	.summary-stats {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 0.75rem;
+		border-top: 1px solid var(--hairline);
+		border-bottom: 1px solid var(--hairline);
 	}
 
 	.stat-item {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		text-align: center;
-		padding: 1rem 0.5rem;
-		background: var(--color-bg-secondary);
-		border-radius: 10px;
+		gap: 2px;
+		padding: 16px 0;
+		min-width: 0;
 	}
 
-	.stat-item.highlight {
-		background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(236, 72, 153, 0.15));
+	.stat-item + .stat-item {
+		padding-left: 24px;
+		border-left: 1px solid var(--hairline);
 	}
 
 	.stat-value {
-		font-size: 1.25rem;
-		font-weight: 700;
-		background: linear-gradient(135deg, #6366f1, #ec4899);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
+		font-size: 28px;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		line-height: 1.1;
 	}
 
 	.stat-label {
-		font-size: 0.6875rem;
-		color: var(--color-text-secondary);
-		margin-top: 0.25rem;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
+	/* Four ink bars on the track, each with its count and share. */
 	.category-bars {
 		display: flex;
 		flex-direction: column;
-		gap: 0.625rem;
+		gap: 4px;
 	}
 
 	.category-row {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 16px;
+		min-height: 36px;
 	}
 
 	.category-info {
-		width: 100px;
+		width: 172px;
 		display: flex;
 		justify-content: space-between;
+		gap: 8px;
 		flex-shrink: 0;
 	}
 
 	.category-label {
-		font-size: 0.8125rem;
-		font-weight: 500;
+		font-size: 17px;
+		font-weight: 600;
+		white-space: nowrap;
 	}
 
 	.category-count {
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
+		font-size: 15px;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.bar-container {
 		flex: 1;
-		height: 20px;
-		background: var(--color-bg-secondary);
-		border-radius: 4px;
-		overflow: hidden;
+		min-width: 0;
+		height: 16px;
+		background: var(--track);
 	}
 
 	.bar {
 		height: 100%;
-		border-radius: 4px;
-		transition: width 0.5s ease;
+		background: var(--ink);
 	}
 
 	.percentage {
-		width: 36px;
+		width: 44px;
 		text-align: right;
-		font-size: 0.75rem;
+		font-size: 15px;
 		font-weight: 600;
-		color: var(--color-text-secondary);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.category-legend {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 0.5rem;
-		padding-top: 0.5rem;
-		border-top: 1px solid var(--color-border);
+		gap: 8px 24px;
+		padding-top: 16px;
+		border-top: 1px solid var(--hairline);
 	}
 
 	.legend-item {
 		display: flex;
-		align-items: center;
-		gap: 0.375rem;
+		flex-direction: column;
+		font-size: 15px;
+		line-height: 1.3;
 	}
 
-	.legend-dot {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		flex-shrink: 0;
+	.legend-name {
+		font-weight: 600;
 	}
 
 	.legend-text {
-		font-size: 0.6875rem;
-		color: var(--color-text-tertiary);
+		color: var(--muted);
+	}
+
+	@media (max-width: 699px) {
+		.stat-value {
+			font-size: 24px;
+		}
+
+		.stat-item + .stat-item {
+			padding-left: 16px;
+		}
+
+		.category-row {
+			gap: 12px;
+		}
+
+		.category-info {
+			width: 138px;
+		}
+
+		.category-label {
+			font-size: 15px;
+		}
 	}
 
 	@media (max-width: 400px) {

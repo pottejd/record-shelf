@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem, CollectionStats } from '$lib/types/discogs';
-	import { reveal } from '$lib/actions/reveal';
 	import StatCard from '$lib/components/StatCard.svelte';
 	import RecentlyAdded from '$lib/components/RecentlyAdded.svelte';
 	import RandomPicker from '$lib/components/RandomPicker.svelte';
@@ -26,7 +25,7 @@
 	<StatCard label="Top genre" value={stats.dominantGenre || '—'} />
 </section>
 
-<div class="grid-2col" use:reveal>
+<div class="grid-2col">
 	<section class="section">
 		<h2>Recently Added</h2>
 		<RecentlyAdded items={stats.recentlyAdded} />
@@ -38,7 +37,7 @@
 	</section>
 </div>
 
-<div id="top-lists" class="grid-2col" use:reveal>
+<div id="top-lists" class="grid-2col">
 	<section class="section">
 		<h2>Top Artists</h2>
 		<TopList items={stats.topArtists} clickable onItemClick={onArtistClick} />
@@ -50,7 +49,7 @@
 	</section>
 </div>
 
-<div class="grid-2col" use:reveal>
+<div class="grid-2col">
 	<section class="section">
 		<h2>Collection Highlights</h2>
 		<p class="section-subtitle">A random selection from the collection</p>

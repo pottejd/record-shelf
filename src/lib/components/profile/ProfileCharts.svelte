@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem, CollectionStats } from '$lib/types/discogs';
 	import type { ChartDatum } from '$lib/utils/chart';
-	import { reveal } from '$lib/actions/reveal';
 	import BarChart from '$lib/components/BarChart.svelte';
 	import DonutChart from '$lib/components/DonutChart.svelte';
 	import YearHeatmap from '$lib/components/YearHeatmap.svelte';
@@ -37,10 +36,10 @@
 	} = $props();
 </script>
 
-<div id="charts" class="grid-2col" use:reveal>
+<div id="charts" class="grid-2col">
 	<section class="card">
 		<h2>By Decade</h2>
-		<BarChart data={decadeData} colorful clickable onItemClick={onDecade} />
+		<BarChart data={decadeData} clickable onItemClick={onDecade} />
 	</section>
 
 	<section class="card">
@@ -49,7 +48,7 @@
 	</section>
 </div>
 
-<div class="grid-2col" use:reveal>
+<div class="grid-2col">
 	<section class="card">
 		<h2>Release Years</h2>
 		<YearHeatmap data={stats.yearBreakdown} onYearClick={onYear} />
@@ -77,5 +76,5 @@
 
 <section class="card">
 	<h2>Top Styles</h2>
-	<BarChart data={styleData} horizontal colorful clickable onItemClick={onStyle} />
+	<BarChart data={styleData} horizontal clickable onItemClick={onStyle} />
 </section>

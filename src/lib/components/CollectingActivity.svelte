@@ -135,11 +135,11 @@
 
 	{#if activityByYear.length > 0}
 		<div class="yearly-activity">
-			<h4>Yearly Activity</h4>
+			<h4>Yearly activity</h4>
 			<div class="year-bars">
 				{#each activityByYear as year}
 					<div class="year-bar-container">
-						<div class="year-bar" style:height="{year.percentage}%">
+						<div class="year-bar" style:--v={year.percentage / 100}>
 							<span class="year-count">{year.count}</span>
 						</div>
 						<span class="year-label">{year.label}</span>
@@ -154,117 +154,120 @@
 	.collecting-activity {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
+		gap: 24px;
 	}
 
+	/* Three facts side by side, divided by hairlines. */
 	.activity-stats {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 0.75rem;
+		border-top: 1px solid var(--hairline);
+		border-bottom: 1px solid var(--hairline);
 	}
 
 	.stat-box {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		padding: 1rem 0.5rem;
-		background: var(--color-bg-secondary);
-		border-radius: 10px;
-		text-align: center;
+		gap: 2px;
+		padding: 16px 0;
+		min-width: 0;
 	}
 
-	.stat-box.highlight {
-		background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(236, 72, 153, 0.15));
+	.stat-box + .stat-box {
+		padding-left: 24px;
+		border-left: 1px solid var(--hairline);
 	}
 
 	.stat-value {
-		font-size: 1.5rem;
-		font-weight: 700;
-		background: linear-gradient(135deg, #6366f1, #ec4899);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
+		font-size: 34px;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		line-height: 1.1;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.stat-label {
-		font-size: 0.6875rem;
-		color: var(--color-text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		margin-top: 0.25rem;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.stat-detail {
-		font-size: 0.6875rem;
-		color: var(--color-text-tertiary);
-		margin-top: 0.25rem;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.stat-badge {
-		margin-top: 0.375rem;
-		padding: 0.125rem 0.5rem;
-		background: #10b981;
-		color: white;
-		font-size: 0.625rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		border-radius: 8px;
+		font-size: 15px;
+		font-weight: 700;
 	}
 
 	.yearly-activity h4 {
-		margin: 0 0 0.75rem;
-		font-size: 0.75rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
+		margin: 0 0 16px;
+		font-size: 18px;
+		font-weight: 700;
 	}
 
+	/* Yearly ink columns, each with its count above it. */
 	.year-bars {
 		display: flex;
 		align-items: flex-end;
-		justify-content: space-around;
-		height: 120px;
-		gap: 0.5rem;
+		height: 160px;
+		gap: 16px;
 	}
 
 	.year-bar-container {
 		flex: 1;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		height: 100%;
+		padding-top: 24px;
 	}
 
 	.year-bar {
+		position: relative;
 		width: 100%;
-		max-width: 40px;
-		background: linear-gradient(180deg, #6366f1, #8b5cf6);
-		border-radius: 4px 4px 0 0;
-		display: flex;
-		align-items: flex-start;
-		justify-content: center;
-		padding-top: 0.375rem;
-		min-height: 20px;
+		/* 30px is kept below the bar for the year. */
+		height: calc((100% - 30px) * var(--v));
+		min-height: 2px;
 		margin-top: auto;
-		transition: height 0.5s ease;
+		background: var(--ink);
 	}
 
 	.year-count {
-		font-size: 0.6875rem;
-		font-weight: 700;
-		color: white;
+		position: absolute;
+		bottom: 100%;
+		left: 0;
+		right: 0;
+		padding-bottom: 4px;
+		text-align: center;
+		font-size: 15px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.year-label {
-		margin-top: 0.375rem;
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
+		width: 100%;
+		flex-shrink: 0;
+		margin-top: 0;
+		padding-top: 8px;
+		line-height: 20px;
+		border-top: 1px solid var(--ink);
+		text-align: center;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	@media (max-width: 400px) {
 		.activity-stats {
 			grid-template-columns: 1fr;
+		}
+
+		.stat-box + .stat-box {
+			padding-left: 0;
+			border-left: 0;
+			border-top: 1px solid var(--hairline);
 		}
 	}
 </style>

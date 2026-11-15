@@ -63,46 +63,41 @@
 	.day-patterns {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 24px;
 	}
 
+	/* A fact row: the label, then the day. */
 	.favorite-day {
 		display: flex;
-		flex-direction: column;
+		flex-wrap: wrap;
+		justify-content: space-between;
 		align-items: center;
-		gap: 0.25rem;
-		padding: 1rem;
-		background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
-		border-radius: 10px;
+		gap: 4px 16px;
+		min-height: 60px;
+		border-bottom: 1px solid var(--hairline);
 	}
 
 	.favorite-label {
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		font-size: 18px;
 	}
 
 	.favorite-value {
-		font-size: 1.25rem;
+		font-size: 18px;
 		font-weight: 700;
-		background: var(--gradient-brand);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
 	}
 
+	/* Seven ink columns, Sun to Sat, each with its count above it. */
 	.day-bars {
 		display: flex;
 		justify-content: space-between;
 		align-items: flex-end;
-		height: 120px;
-		gap: 0.5rem;
-		padding: 0 0.5rem;
+		height: 180px;
+		gap: 16px;
 	}
 
 	.day-bar-item {
 		flex: 1;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -116,48 +111,48 @@
 		flex-direction: column;
 		justify-content: flex-end;
 		align-items: center;
+		padding-top: 24px;
+		border-bottom: 1px solid var(--ink);
 	}
 
 	.day-bar {
+		position: relative;
 		width: 100%;
-		max-width: 32px;
-		min-height: 4px;
-		background: var(--color-bg-tertiary);
-		border-radius: 4px 4px 0 0;
-		display: flex;
-		align-items: flex-start;
-		justify-content: center;
-		padding-top: 0.25rem;
-		transition: height 0.3s ease;
-	}
-
-	.day-bar.is-max {
-		background: linear-gradient(180deg, #6366f1, #8b5cf6);
+		min-height: 2px;
+		background: var(--ink);
 	}
 
 	.day-count {
-		font-size: 0.6875rem;
+		position: absolute;
+		bottom: 100%;
+		left: 0;
+		right: 0;
+		padding-bottom: 4px;
+		text-align: center;
+		font-size: 15px;
 		font-weight: 600;
-		color: var(--color-text-secondary);
-	}
-
-	.day-bar.is-max .day-count {
-		color: white;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.day-name {
-		margin-top: 0.5rem;
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
-	}
-
-	.pattern-insights {
-		text-align: center;
+		margin-top: 10px;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.insight {
-		font-size: 0.8125rem;
-		color: var(--color-text-tertiary);
-		font-style: italic;
+		font-size: 15px;
+		color: var(--muted);
+	}
+
+	@media (max-width: 699px) {
+		.day-bars {
+			gap: 8px;
+		}
+
+		.day-count,
+		.day-name {
+			font-size: 13px;
+		}
 	}
 </style>

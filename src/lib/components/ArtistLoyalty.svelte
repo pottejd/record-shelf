@@ -62,15 +62,10 @@
 		return '';
 	}
 
-	function getLoyaltyColor(count: number): string {
-		if (count >= 20) return '#f59e0b';
-		if (count >= 10) return '#8b5cf6';
-		return '#6366f1';
-	}
 </script>
 
 {#if loyalArtists.length > 0}
-	<div class="artist-loyalty">
+	<div class="artist-loyalty rows">
 		{#each loyalArtists as artist}
 			{@const coverCount = Math.min(artist.covers.length, 4)}
 			<div class="loyal-artist">
@@ -89,7 +84,7 @@
 					<span class="artist-name">{artist.name}</span>
 					<span class="artist-count">{artist.count} releases</span>
 				</div>
-				<span class="loyalty-badge" style:background={getLoyaltyColor(artist.count)}>
+				<span class="loyalty-badge">
 					{getLoyaltyLabel(artist.count)}
 				</span>
 			</div>
@@ -100,25 +95,13 @@
 {/if}
 
 <style>
-	.artist-loyalty {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
+	/* A row per artist: a strip of their covers, name and count, and the word. */
 	.loyal-artist {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
-		padding: 0.75rem;
-		background: var(--color-bg-secondary);
-		border-radius: 10px;
-		transition: transform 0.15s, box-shadow 0.15s;
-	}
-
-	.loyal-artist:hover {
-		transform: translateX(4px);
-		box-shadow: var(--shadow-sm);
+		gap: 16px;
+		min-height: 60px;
+		padding: 8px 0;
 	}
 
 	.artist-covers {
@@ -132,10 +115,9 @@
 		top: 0;
 		width: 36px;
 		height: 36px;
-		border-radius: 4px;
 		object-fit: cover;
-		border: 2px solid var(--color-bg-secondary);
-		background: var(--color-bg-tertiary);
+		border: 2px solid var(--ground);
+		background: var(--track);
 	}
 
 	.artist-info {
@@ -143,38 +125,29 @@
 		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.125rem;
 	}
 
 	.artist-name {
 		font-weight: 600;
-		font-size: 0.9375rem;
+		font-size: 17px;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
 	.artist-count {
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.loyalty-badge {
-		padding: 0.25rem 0.625rem;
-		font-size: 0.6875rem;
+		font-size: 15px;
 		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: white;
-		border-radius: 12px;
 		flex-shrink: 0;
 	}
 
 	.no-data {
-		text-align: center;
-		color: var(--color-text-tertiary);
-		font-size: 0.875rem;
-		padding: 2rem 1rem;
+		color: var(--muted);
 		margin: 0;
 	}
 </style>

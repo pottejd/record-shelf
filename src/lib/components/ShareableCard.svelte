@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { CollectionStats } from '$lib/types/discogs';
+	import { LIGHT } from '$lib/theme/tokens';
 
 	let { username, stats, badges = [] }: {
 		username: string;
@@ -39,24 +40,20 @@ recordshelf.app/u/${username}`;
 		if (!ctx) return;
 		ctx.scale(scale, scale);
 
-		// Background gradient
-		const bg = ctx.createLinearGradient(0, 0, w, h);
-		bg.addColorStop(0, '#1a1a2e');
-		bg.addColorStop(1, '#16213e');
-		ctx.fillStyle = bg;
-		roundRect(ctx, 0, 0, w, h, 16);
-		ctx.fill();
+		// The picture is always drawn in the light Shelf colours.
+		ctx.fillStyle = LIGHT.ground;
+		ctx.fillRect(0, 0, w, h);
 
 		let y = 40;
 
 		// Brand
-		ctx.fillStyle = 'rgba(255,255,255,0.7)';
+		ctx.fillStyle = LIGHT.muted;
 		ctx.font = '600 14px system-ui, -apple-system, sans-serif';
 		ctx.fillText('Record Shelf', 24, y);
 		y += 36;
 
 		// Username
-		ctx.fillStyle = '#ffffff';
+		ctx.fillStyle = LIGHT.ink;
 		ctx.font = '700 28px system-ui, -apple-system, sans-serif';
 		ctx.fillText(username, 24, y);
 		y += 28;
@@ -68,10 +65,9 @@ recordshelf.app/u/${username}`;
 			ctx.font = '600 11px system-ui, -apple-system, sans-serif';
 			for (const badge of badges.slice(0, 4)) {
 				const tw = ctx.measureText(badge.label).width + 16;
-				ctx.fillStyle = 'rgba(139, 92, 246, 0.3)';
-				roundRect(ctx, bx, y - 12, tw, 22, 11);
-				ctx.fill();
-				ctx.fillStyle = '#ffffff';
+				ctx.fillStyle = LIGHT.track;
+				ctx.fillRect(bx, y - 12, tw, 22);
+				ctx.fillStyle = LIGHT.ink;
 				ctx.fillText(badge.label, bx + 8, y + 3);
 				bx += tw + 6;
 			}
@@ -80,7 +76,7 @@ recordshelf.app/u/${username}`;
 
 		// Divider
 		y += 8;
-		ctx.fillStyle = 'rgba(255,255,255,0.1)';
+		ctx.fillStyle = LIGHT.hairline;
 		ctx.fillRect(24, y, w - 48, 1);
 		y += 20;
 
@@ -93,12 +89,11 @@ recordshelf.app/u/${username}`;
 		const colW = (w - 48) / 3;
 		for (let i = 0; i < statItems.length; i++) {
 			const cx = 24 + colW * i + colW / 2;
-			// Gradient text emulation - use purple
-			ctx.fillStyle = '#8b5cf6';
+			ctx.fillStyle = LIGHT.ink;
 			ctx.font = '700 22px system-ui, -apple-system, sans-serif';
 			ctx.textAlign = 'center';
 			ctx.fillText(statItems[i].value, cx, y);
-			ctx.fillStyle = 'rgba(255,255,255,0.6)';
+			ctx.fillStyle = LIGHT.muted;
 			ctx.font = '600 10px system-ui, -apple-system, sans-serif';
 			ctx.textAlign = 'center';
 			ctx.fillText(statItems[i].label.toUpperCase(), cx, y + 18);
@@ -107,7 +102,7 @@ recordshelf.app/u/${username}`;
 		y += 40;
 
 		// Divider
-		ctx.fillStyle = 'rgba(255,255,255,0.1)';
+		ctx.fillStyle = LIGHT.hairline;
 		ctx.fillRect(24, y, w - 48, 1);
 		y += 24;
 
@@ -120,10 +115,10 @@ recordshelf.app/u/${username}`;
 		].filter(Boolean) as string[][];
 
 		for (const [label, value] of highlights) {
-			ctx.fillStyle = 'rgba(255,255,255,0.6)';
+			ctx.fillStyle = LIGHT.muted;
 			ctx.font = '400 13px system-ui, -apple-system, sans-serif';
 			ctx.fillText(label, 24, y);
-			ctx.fillStyle = '#ffffff';
+			ctx.fillStyle = LIGHT.ink;
 			ctx.font = '600 13px system-ui, -apple-system, sans-serif';
 			ctx.textAlign = 'right';
 			ctx.fillText(value, w - 24, y);
@@ -132,7 +127,7 @@ recordshelf.app/u/${username}`;
 		}
 
 		// Footer
-		ctx.fillStyle = 'rgba(255,255,255,0.4)';
+		ctx.fillStyle = LIGHT.muted;
 		ctx.font = '400 12px system-ui, -apple-system, sans-serif';
 		ctx.textAlign = 'center';
 		ctx.fillText(`recordshelf.app/u/${username}`, w / 2, h - 24);
@@ -145,19 +140,6 @@ recordshelf.app/u/${username}`;
 		link.click();
 	}
 
-	function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-		ctx.beginPath();
-		ctx.moveTo(x + r, y);
-		ctx.lineTo(x + w - r, y);
-		ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-		ctx.lineTo(x + w, y + h - r);
-		ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-		ctx.lineTo(x + r, y + h);
-		ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-		ctx.lineTo(x, y + r);
-		ctx.quadraticCurveTo(x, y, x + r, y);
-		ctx.closePath();
-	}
 </script>
 
 <div class="shareable-container">
@@ -221,7 +203,7 @@ recordshelf.app/u/${username}`;
 	</div>
 
 	<div class="share-actions">
-		<button class="share-btn" onclick={copyAsImage}>
+		<button class="share-btn btn btn-secondary" onclick={copyAsImage}>
 			{#if copied}
 				<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<polyline points="20 6 9 17 4 12" />
@@ -235,7 +217,7 @@ recordshelf.app/u/${username}`;
 				Copy Text
 			{/if}
 		</button>
-		<button class="share-btn" onclick={downloadPNG}>
+		<button class="share-btn btn btn-primary" onclick={downloadPNG}>
 			<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
 				<polyline points="7 10 12 15 17 10" />
@@ -249,144 +231,119 @@ recordshelf.app/u/${username}`;
 <style>
 	.shareable-container {
 		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		gap: 24px 32px;
 	}
 
+	/* The card is drawn open in ink inside a 2px ink frame, square. */
 	.stats-card {
 		width: 100%;
 		max-width: 340px;
-		padding: 1.5rem;
-		background: linear-gradient(145deg, #1a1a2e, #16213e);
-		border-radius: 16px;
-		color: white;
-		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+		padding: 20px;
+		border: 2px solid var(--ink);
+		color: var(--ink);
 	}
 
 	.card-header {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 1rem;
+		gap: 8px;
+		margin-bottom: 16px;
 	}
 
 	.logo {
 		width: 24px;
 		height: 24px;
-		color: #8b5cf6;
+		color: var(--ink);
 	}
 
 	.brand {
-		font-size: 0.875rem;
-		font-weight: 600;
-		opacity: 0.7;
+		font-size: 15px;
+		font-weight: 700;
 	}
 
 	.card-username {
-		font-size: 1.5rem;
-		font-weight: 700;
-		margin-bottom: 0.75rem;
+		font-size: 26px;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		line-height: 1.1;
+		margin-bottom: 12px;
+		overflow-wrap: anywhere;
 	}
 
 	.card-badges {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.375rem;
-		margin-bottom: 1.25rem;
+		gap: 4px 16px;
+		margin-bottom: 16px;
 	}
 
 	.card-badge {
-		padding: 0.25rem 0.625rem;
-		background: rgba(139, 92, 246, 0.3);
-		border-radius: 12px;
-		font-size: 0.6875rem;
+		font-size: 15px;
 		font-weight: 600;
 	}
 
 	.card-stats {
 		display: flex;
 		justify-content: space-between;
-		padding: 1rem 0;
-		border-top: 1px solid rgba(255, 255, 255, 0.1);
-		border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-		margin-bottom: 1rem;
+		gap: 8px;
+		padding: 12px 0;
+		border-top: 1px solid var(--hairline);
+		border-bottom: 1px solid var(--hairline);
+		margin-bottom: 12px;
 	}
 
 	.card-stat {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		text-align: center;
 	}
 
 	.card-stat-value {
-		font-size: 1.25rem;
-		font-weight: 700;
-		background: linear-gradient(135deg, #6366f1, #ec4899);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
+		font-size: 22px;
+		font-weight: 800;
+		letter-spacing: -0.02em;
 	}
 
 	.card-stat-label {
-		font-size: 0.6875rem;
-		opacity: 0.6;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		font-size: 13px;
+		color: var(--muted);
 	}
 
 	.card-highlights {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
-		margin-bottom: 1rem;
+		gap: 4px;
+		margin-bottom: 16px;
 	}
 
 	.highlight-item {
 		display: flex;
 		justify-content: space-between;
-		font-size: 0.8125rem;
+		gap: 16px;
+		font-size: 15px;
 	}
 
 	.highlight-label {
-		opacity: 0.6;
+		color: var(--muted);
 	}
 
 	.highlight-value {
 		font-weight: 600;
+		text-align: right;
 	}
 
 	.card-footer {
-		text-align: center;
-		font-size: 0.75rem;
-		opacity: 0.4;
+		font-size: 13px;
+		color: var(--muted);
+		overflow-wrap: anywhere;
 	}
 
 	.share-actions {
 		display: flex;
-		gap: 0.5rem;
-		flex-wrap: wrap;
-		justify-content: center;
-	}
-
-	.share-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.625rem 1.25rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		background: var(--color-bg-secondary);
-		border: none;
-		border-radius: 8px;
-		color: var(--color-text);
-		cursor: pointer;
-		transition: background-color 0.15s;
-	}
-
-	.share-btn:hover {
-		background: var(--color-bg-tertiary);
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 12px;
 	}
 
 	.share-btn svg {

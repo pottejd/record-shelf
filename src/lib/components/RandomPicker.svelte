@@ -64,7 +64,7 @@
 				<img
 					src={picked.basic_information.cover_image || picked.basic_information.thumb || '/placeholder.svg'}
 					alt=""
-					class="picked-cover"
+					class="picked-cover cover"
 				/>
 			</a>
 		</div>
@@ -107,9 +107,9 @@
 		</div>
 	{/if}
 
-	<button class="spin-btn" onclick={pickRandom} disabled={isSpinning || items.length === 0}>
+	<button class="spin-btn btn btn-primary" onclick={pickRandom} disabled={isSpinning || items.length === 0}>
 		{#if isSpinning}
-			<span class="spin-icon spinning">
+			<span class="spin-icon">
 				<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path d="M23 4v6h-6M1 20v-6h6" />
 					<path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
@@ -133,40 +133,27 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1rem;
+		gap: 16px;
 	}
 
 	.picker-display {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: transform 0.1s;
 	}
 
 	.picker-display.empty {
 		width: 100%;
 		min-height: 180px;
-		background: var(--color-bg-secondary);
-		border-radius: 12px;
-	}
-
-	.picker-display.spinning {
-		animation: shake 0.1s infinite;
-	}
-
-	@keyframes shake {
-		0%, 100% { transform: translateX(0); }
-		25% { transform: translateX(-2px); }
-		75% { transform: translateX(2px); }
 	}
 
 	.picker-placeholder {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.75rem;
-		padding: 2rem;
-		color: var(--color-text-tertiary);
+		gap: 12px;
+		padding: 32px 0;
+		color: var(--muted);
 	}
 
 	.picker-placeholder svg {
@@ -176,7 +163,7 @@
 
 	.picker-placeholder p {
 		margin: 0;
-		font-size: 0.875rem;
+		font-size: 17px;
 		text-align: center;
 	}
 
@@ -186,101 +173,61 @@
 	}
 
 	.picked-cover {
-		width: 160px;
-		height: 160px;
-		border-radius: 10px;
-		object-fit: cover;
-		background: var(--color-bg-secondary);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-		transition: transform 0.2s, box-shadow 0.2s;
-	}
-
-	.picked-record:hover .picked-cover {
-		transform: scale(1.03);
-		box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+		width: 200px;
+		height: 200px;
+		background: var(--track);
 	}
 
 	.picked-info {
 		text-align: center;
-		margin-top: 1rem;
+		margin-top: 8px;
 	}
 
 	.picked-title {
 		margin: 0;
-		font-weight: 700;
-		font-size: 1.125rem;
-		line-height: 1.3;
+		font-size: 26px;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		line-height: 1.1;
 	}
 
 	.picked-artist {
-		margin: 0.25rem 0 0;
-		font-size: 0.9375rem;
-		color: var(--color-text-secondary);
+		margin: 8px 0 0;
+		font-size: 18px;
+		color: var(--muted);
 	}
 
 	.picked-meta {
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: center;
-		gap: 0.5rem;
-		margin-top: 0.75rem;
+		gap: 4px 16px;
+		margin-top: 12px;
 	}
 
 	.meta-item {
-		padding: 0.25rem 0.625rem;
-		background: var(--color-bg-secondary);
-		border-radius: 6px;
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.meta-item.year {
-		background: var(--gradient-brand);
-		color: white;
+		color: var(--ink);
 		font-weight: 600;
 	}
 
 	.picked-label {
-		margin: 0.5rem 0 0;
-		font-size: 0.75rem;
-		color: var(--color-text-tertiary);
+		margin: 4px 0 0;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.view-link {
-		display: inline-block;
-		margin-top: 0.75rem;
-		font-size: 0.8125rem;
-		color: var(--color-primary);
-		text-decoration: none;
-	}
-
-	.view-link:hover {
-		text-decoration: underline;
-	}
-
-	.spin-btn {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
-		padding: 0.75rem 1.5rem;
-		font-size: 0.9375rem;
+		min-height: 44px;
+		margin-top: 4px;
+		font-size: 17px;
 		font-weight: 600;
-		background: var(--gradient-brand);
-		color: white;
-		border: none;
-		border-radius: 10px;
-		cursor: pointer;
-		transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
-	}
-
-	.spin-btn:hover:not(:disabled) {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-	}
-
-	.spin-btn:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
 	}
 
 	.spin-icon {
@@ -292,13 +239,5 @@
 	.spin-icon svg {
 		width: 100%;
 		height: 100%;
-	}
-
-	.spin-icon.spinning {
-		animation: spin 0.5s linear infinite;
-	}
-
-	@keyframes spin {
-		to { transform: rotate(360deg); }
 	}
 </style>

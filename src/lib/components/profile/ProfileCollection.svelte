@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem, CollectionStats } from '$lib/types/discogs';
-	import { reveal } from '$lib/actions/reveal';
 	import CollectionBrowser from '$lib/components/CollectionBrowser.svelte';
 	import CollectionQuiz from '$lib/components/CollectionQuiz.svelte';
 	import Milestones from '$lib/components/Milestones.svelte';
@@ -14,13 +13,13 @@
 	} = $props();
 </script>
 
-<section id="collection" class="section" use:reveal>
+<section id="collection" class="section">
 	<h2>Full Collection</h2>
 	<p class="section-subtitle">Browse, search, and filter the entire collection</p>
 	<CollectionBrowser items={items} />
 </section>
 
-<div class="grid-2col" use:reveal>
+<div class="grid-2col">
 	<section class="section">
 		<h2>Collection Quiz</h2>
 		<CollectionQuiz items={items} />
@@ -33,20 +32,20 @@
 </div>
 
 {#if stats.ratedCount > 0}
-	<section class="section" use:reveal>
+	<section class="section">
 		<h2>Ratings</h2>
 		<RatingsOverview {stats} />
 	</section>
 {/if}
 
 {#if stats.addedByMonth.length > 1}
-	<section class="section" use:reveal>
+	<section class="section">
 		<h2>Collection Growth</h2>
 		<TimelineChart data={stats.addedByMonth} />
 	</section>
 {/if}
 
-<section class="section" use:reveal>
+<section class="section">
 	<h2>Collection Timeline</h2>
 	<p class="section-subtitle">Additions month by month</p>
 	<CollectionTimeline items={items} />

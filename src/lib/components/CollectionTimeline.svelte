@@ -60,6 +60,7 @@
 							<LazyImage
 								src={info.cover_image || info.thumb || '/placeholder.svg'}
 								alt={info.title}
+								class="cover"
 							/>
 						</a>
 					{/each}
@@ -70,11 +71,12 @@
 {/if}
 
 <style>
+	/* A column per month: its name, how many arrived, then the covers. */
 	.timeline {
 		display: flex;
-		gap: 1.5rem;
+		gap: 32px;
 		overflow-x: auto;
-		padding-bottom: 0.75rem;
+		padding-bottom: 12px;
 		scroll-snap-type: x mandatory;
 		scrollbar-width: thin;
 	}
@@ -86,15 +88,14 @@
 	}
 
 	.month-label {
-		font-size: 0.8125rem;
+		font-size: 17px;
 		font-weight: 600;
-		margin-bottom: 0.125rem;
 	}
 
 	.month-count {
-		font-size: 0.6875rem;
-		color: var(--color-text-tertiary);
-		margin-bottom: 0.5rem;
+		margin: 2px 0 12px;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.covers {
@@ -107,15 +108,10 @@
 		display: block;
 		width: 48px;
 		height: 48px;
-		border-radius: 4px;
 		overflow: hidden;
-		transition: transform 0.15s;
+		background: var(--track);
 	}
 
-	.cover-link:hover {
-		transform: scale(1.1);
-		z-index: 1;
-	}
 
 	.cover-link :global(.lazy-image) {
 		width: 48px;

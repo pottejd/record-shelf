@@ -3,38 +3,30 @@ export interface ChartDatum {
 	value: number;
 }
 
-/**
- * Categorical color palette shared by BarChart and DonutChart for coloring
- * distinct series. Indices wrap (modulo) so any number of series renders.
- */
-export const CHART_PALETTE = [
-	'#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
-	'#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6'
-] as const;
+/** The chart colour for part `i` of a whole: five colours in order, then "Other". */
+export function chartColour(i: number): string {
+	return i >= 0 && i < 5 ? `var(--chart-${i + 1})` : 'var(--chart-other)';
+}
 
 /**
- * Monochromatic purple-fade palette for TopList rank coloring. Indices clamp
- * (the lowest ranks share the faintest shade) rather than wrap.
+ * Biggest first; keeps the first `max` parts and sums the rest into one
+ * "Other" part (left out when the rest adds up to nothing).
  */
-export const RANK_PALETTE = [
-	'#6366f1', '#8b5cf6', '#a855f7', '#c084fc', '#d8b4fe',
-	'#e9d5ff', '#f3e8ff', '#faf5ff', '#fdf4ff', '#fefce8'
-] as const;
+export function foldSeries(data: ChartDatum[], max = 5): ChartDatum[] {
+	const sorted = [...data].sort((a, b) => b.value - a.value);
+	const kept = sorted.slice(0, max);
+	const rest = sorted.slice(max).reduce((sum, d) => sum + d.value, 0);
+	return rest > 0 ? [...kept, { label: 'Other', value: rest }] : kept;
+}
 
 /**
- * Color for series index `i`. Defaults to the categorical palette with
- * wrapping; pass `'clamp'` (and usually RANK_PALETTE) for ranked lists where
- * indices past the end should reuse the last color rather than wrap.
+ * The step on the five-step shade ramp for `count` out of the largest `max`:
+ * 0 for nothing, otherwise 1 to 5. A count with no usable maximum is step 1.
  */
-export function colorAt(
-	i: number,
-	palette: readonly string[] = CHART_PALETTE,
-	mode: 'wrap' | 'clamp' = 'wrap'
-): string {
-	const n = palette.length;
-	if (n === 0) return '#6b7280';
-	const idx = mode === 'clamp' ? Math.min(Math.max(i, 0), n - 1) : ((i % n) + n) % n;
-	return palette[idx];
+export function shadeStep(count: number, max: number): 0 | 1 | 2 | 3 | 4 | 5 {
+	if (count <= 0) return 0;
+	if (max <= 0) return 1;
+	return Math.min(5, Math.max(1, Math.ceil((count / max) * 5))) as 1 | 2 | 3 | 4 | 5;
 }
 
 interface ToChartDataOptions {

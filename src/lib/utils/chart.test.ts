@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toChartData, colorAt, CHART_PALETTE, RANK_PALETTE } from './chart';
+import { toChartData, chartColour, foldSeries, shadeStep } from './chart';
 
 describe('toChartData', () => {
 	it('maps a record to {label, value} entries', () => {
@@ -42,36 +42,13 @@ describe('toChartData', () => {
 	});
 });
 
-describe('colorAt', () => {
-	it('returns the palette color at the given index', () => {
-		expect(colorAt(0)).toBe(CHART_PALETTE[0]);
-		expect(colorAt(3)).toBe(CHART_PALETTE[3]);
+describe('chart colours and shades', () => {
+	it('chartColour', () => { expect(chartColour(0)).toBe('var(--chart-1)'); expect(chartColour(4)).toBe('var(--chart-5)'); expect(chartColour(5)).toBe('var(--chart-other)'); expect(chartColour(99)).toBe('var(--chart-other)'); });
+	it('foldSeries keeps five and sums the rest', () => {
+		const d = [7, 6, 5, 4, 3, 2, 1].map((v, i) => ({ label: `g${i}`, value: v }));
+		expect(foldSeries(d)).toEqual([...d.slice(0, 5), { label: 'Other', value: 3 }]);
+		expect(foldSeries(d.slice(0, 3))).toEqual(d.slice(0, 3));
+		expect(foldSeries([{ label: 'b', value: 1 }, { label: 'a', value: 9 }])[0].label).toBe('a');
 	});
-
-	it('wraps around the palette by default (modulo)', () => {
-		const n = CHART_PALETTE.length;
-		expect(colorAt(n)).toBe(CHART_PALETTE[0]);
-		expect(colorAt(n + 2)).toBe(CHART_PALETTE[2]);
-	});
-
-	it('handles negative indices when wrapping', () => {
-		expect(colorAt(-1)).toBe(CHART_PALETTE[CHART_PALETTE.length - 1]);
-	});
-
-	it('clamps to the last color in clamp mode (matches TopList rank coloring)', () => {
-		const n = RANK_PALETTE.length;
-		expect(colorAt(0, RANK_PALETTE, 'clamp')).toBe(RANK_PALETTE[0]);
-		expect(colorAt(n + 5, RANK_PALETTE, 'clamp')).toBe(RANK_PALETTE[n - 1]);
-		expect(colorAt(-3, RANK_PALETTE, 'clamp')).toBe(RANK_PALETTE[0]);
-	});
-
-	it('accepts a custom palette', () => {
-		const palette = ['#aaa', '#bbb'];
-		expect(colorAt(1, palette)).toBe('#bbb');
-		expect(colorAt(2, palette)).toBe('#aaa');
-	});
-
-	it('falls back to a neutral gray for an empty palette', () => {
-		expect(colorAt(0, [])).toBe('#6b7280');
-	});
+	it('shadeStep', () => { expect(shadeStep(0, 10)).toBe(0); expect(shadeStep(1, 10)).toBe(1); expect(shadeStep(10, 10)).toBe(5); expect(shadeStep(5, 10)).toBe(3); expect(shadeStep(3, 0)).toBe(1); });
 });

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { shadeStep } from '$lib/utils/chart';
+
 	let { data, onYearClick }: { data: Record<number, number>; onYearClick?: (year: number) => void } = $props();
 
 	let years = $derived(Object.keys(data).map(Number).sort((a, b) => a - b));
@@ -20,11 +22,6 @@
 		return map;
 	});
 	let decades = $derived([...yearsByDecade.keys()].sort((a, b) => a - b));
-
-	function getIntensity(count: number): number {
-		if (!count) return 0;
-		return Math.max(0.15, count / maxCount);
-	}
 </script>
 
 <div class="year-heatmap">
@@ -34,12 +31,13 @@
 			<div class="years">
 				{#each yearsByDecade.get(decade) ?? [] as year}
 					{@const count = data[year] || 0}
+					{@const label = `${year}: ${count} release${count !== 1 ? 's' : ''}`}
 					<button
-						class="year-cell"
-						class:empty={!count}
+						class="year-cell step-{shadeStep(count, maxCount)}"
 						class:clickable={!!onYearClick && count > 0}
-						style:--intensity={getIntensity(count)}
-						title="{year}: {count} release{count !== 1 ? 's' : ''}"
+						style:grid-column={(year % 10) + 1}
+						title={label}
+						aria-label={label}
 						type="button"
 						disabled={!count}
 						onclick={() => count > 0 && onYearClick?.(year)}
@@ -53,8 +51,8 @@
 	<div class="legend">
 		<span>Less</span>
 		<div class="legend-scale">
-			{#each [0.15, 0.35, 0.55, 0.75, 1] as intensity}
-				<div class="legend-cell" style:--intensity={intensity}></div>
+			{#each [1, 2, 3, 4, 5] as step}
+				<div class="legend-cell step-{step}"></div>
 			{/each}
 		</div>
 		<span>More</span>
@@ -62,92 +60,126 @@
 </div>
 
 <style>
+	/* A row per decade of ten year cells, shaded by count on the five-step ramp.
+	   A year with nothing is an empty cell with a hairline edge. */
 	.year-heatmap {
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
+		gap: 2px;
 	}
 
 	.decade-row {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 12px;
 	}
 
 	.decade-label {
-		width: 40px;
-		font-size: 0.6875rem;
-		color: var(--color-text-secondary, #666);
-		text-align: right;
+		width: 52px;
+		font-size: 15px;
+		color: var(--muted);
 		flex-shrink: 0;
 	}
 
 	.years {
-		display: flex;
+		flex: 1;
+		min-width: 0;
+		display: grid;
+		grid-template-columns: repeat(10, minmax(0, 1fr));
 		gap: 2px;
-		flex-wrap: wrap;
 	}
 
 	.year-cell {
-		width: 28px;
-		height: 28px;
-		border-radius: 4px;
+		height: 32px;
+		min-width: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(99, 102, 241, var(--intensity, 0));
-		transition: transform 0.15s, box-shadow 0.15s;
-		border: none;
+		border: 0;
+		border-radius: 0;
 		padding: 0;
 		font: inherit;
+		background: none;
+		color: var(--ink);
 	}
 
 	.year-cell.clickable {
 		cursor: pointer;
 	}
 
-	.year-cell.clickable:hover {
-		transform: scale(1.1);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-		z-index: 1;
+	.year-cell.clickable:hover .year-num {
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 
-	.year-cell.empty {
-		background: var(--color-bg-secondary, #f0f0f0);
+	.year-cell:disabled {
 		cursor: default;
 	}
 
 	.year-num {
-		font-size: 0.625rem;
-		font-weight: 500;
-		color: var(--color-text, #1a1a1a);
-		opacity: 0.7;
+		font-size: 13px;
+		font-weight: 600;
 	}
 
-	.year-cell:not(.empty) .year-num {
-		color: white;
-		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-		opacity: 1;
+	.year-cell.step-0 {
+		box-shadow: inset 0 0 0 1px var(--hairline);
+		color: var(--muted);
+	}
+
+	.step-1 { background: var(--shade-1); }
+	.step-2 { background: var(--shade-2); }
+	.step-3 { background: var(--shade-3); }
+	.step-4 { background: var(--shade-4); }
+	.step-5 { background: var(--shade-5); }
+
+	/* The number on a cell takes ink or ground, whichever reads on that step. */
+	.year-cell.step-4,
+	.year-cell.step-5 {
+		color: var(--ground);
+	}
+
+	:global(html[data-theme="dark"]) .year-cell.step-3 {
+		color: var(--ground);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:global(html:not([data-theme="light"])) .year-cell.step-3 {
+			color: var(--ground);
+		}
 	}
 
 	.legend {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		margin-top: 0.75rem;
-		font-size: 0.6875rem;
-		color: var(--color-text-secondary, #666);
+		justify-content: flex-end;
+		gap: 8px;
+		margin-top: 16px;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.legend-scale {
 		display: flex;
-		gap: 2px;
+		gap: 4px;
 	}
 
 	.legend-cell {
-		width: 14px;
-		height: 14px;
-		border-radius: 2px;
-		background: rgba(99, 102, 241, var(--intensity));
+		width: 16px;
+		height: 16px;
+	}
+
+	@media (max-width: 699px) {
+		.decade-row {
+			gap: 8px;
+		}
+
+		.decade-label {
+			width: 44px;
+			font-size: 13px;
+		}
+
+		.year-num {
+			font-size: 11px;
+		}
 	}
 </style>

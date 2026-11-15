@@ -81,51 +81,48 @@
 {/if}
 
 <style>
+	/* Searches as rows divided by hairlines, in columns where there is room. */
 	.suggestions {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-		gap: 0.75rem;
+		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+		gap: 0 32px;
 	}
 
 	.suggestion-card {
+		position: relative;
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
-		padding: 1rem;
-		background: var(--color-bg-secondary);
-		border-radius: 10px;
+		justify-content: center;
+		gap: 2px;
+		min-height: 68px;
+		padding: 10px 28px 10px 0;
+		border-bottom: 1px solid var(--hairline);
 		text-decoration: none;
-		color: inherit;
-		position: relative;
-		transition: background-color 0.15s, transform 0.15s;
+		color: var(--ink);
 	}
 
-	.suggestion-card:hover {
-		background: var(--color-bg-tertiary);
-		transform: translateY(-2px);
+	.suggestion-card:hover .suggestion-label {
+		text-decoration: underline;
+		text-underline-offset: 4px;
 	}
 
 	.suggestion-label {
-		font-size: 0.875rem;
+		font-size: 17px;
 		font-weight: 600;
-		padding-right: 1.5rem;
 	}
 
 	.suggestion-reason {
-		font-size: 0.75rem;
-		color: var(--color-text-tertiary);
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.arrow {
 		position: absolute;
-		top: 1rem;
-		right: 1rem;
-		width: 14px;
-		height: 14px;
-		color: var(--color-text-tertiary);
-	}
-
-	.suggestion-card:hover .arrow {
-		color: var(--color-primary);
+		top: 50%;
+		right: 0;
+		width: 16px;
+		height: 16px;
+		margin-top: -8px;
+		color: var(--ink);
 	}
 </style>

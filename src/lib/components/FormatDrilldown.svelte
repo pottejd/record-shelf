@@ -68,7 +68,7 @@
 	}
 </script>
 
-<div class="drilldown">
+<div class="drilldown rows">
 	{#each tree as node}
 		<div class="format-row">
 			<div class="format-header" role="button" tabindex="0" onclick={() => toggle(node.name)} onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(node.name); } }}>
@@ -87,7 +87,7 @@
 				{/if}
 			</div>
 			{#if expanded === node.name && node.children.length > 0}
-				<div class="children">
+				<div class="children rows">
 					{#each node.children as child}
 						<button
 							class="child-row"
@@ -105,34 +105,25 @@
 </div>
 
 <style>
-	.drilldown {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-
+	/* A row per format, divided by hairlines; open one to see its sub-formats. */
 	.format-header {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 12px;
 		width: 100%;
-		padding: 0.625rem 0.75rem;
-		background: var(--color-bg-secondary);
-		border: none;
-		border-radius: 8px;
+		min-height: 52px;
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
-		transition: background-color 0.15s;
 	}
 
-	.format-header:hover {
-		background: var(--color-bg-tertiary);
+	.format-header:hover .format-name {
+		text-decoration: underline;
+		text-underline-offset: 4px;
 	}
 
 	.chevron {
 		display: flex;
-		transition: transform 0.2s;
 	}
 
 	.chevron.open {
@@ -140,77 +131,85 @@
 	}
 
 	.chevron svg {
-		width: 14px;
-		height: 14px;
-		color: var(--color-text-tertiary);
+		width: 16px;
+		height: 16px;
+		color: var(--ink);
 	}
 
 	.format-name {
 		font-weight: 600;
-		font-size: 0.875rem;
+		font-size: 17px;
 		flex: 1;
 		text-align: left;
 	}
 
 	.format-count {
-		font-size: 0.75rem;
-		color: var(--color-text-tertiary);
-		font-weight: 500;
+		font-size: 15px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.view-btn {
-		padding: 0.25rem 0.5rem;
-		font-size: 0.6875rem;
-		font-weight: 500;
-		background: var(--color-bg-card);
-		border: 1px solid var(--color-border);
-		border-radius: 4px;
-		color: var(--color-primary);
+		min-height: 44px;
+		min-width: 44px;
+		padding: 0 4px;
+		background: none;
+		border: 0;
+		border-radius: 0;
+		color: var(--ink);
+		font: inherit;
+		font-size: 15px;
+		font-weight: 600;
+		text-decoration: underline;
+		text-underline-offset: 4px;
 		cursor: pointer;
-		transition: background-color 0.15s;
 	}
 
 	.view-btn:hover {
-		background: var(--color-primary);
-		color: white;
+		text-decoration-thickness: 2px;
 	}
 
 	.children {
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
-		padding-left: 1.75rem;
-		margin-top: 2px;
+		padding-left: 28px;
+		border-top: 1px solid var(--hairline);
 	}
 
 	.child-row {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 0.5rem 0.75rem;
-		background: transparent;
-		border: none;
-		border-radius: 6px;
+		min-height: 40px;
+		padding: 0;
+		background: none;
+		border-left: 0;
+		border-right: 0;
+		border-bottom: 0;
+		border-radius: 0;
 		color: inherit;
 		font: inherit;
+		text-align: left;
 		cursor: pointer;
-		transition: background-color 0.15s;
 	}
 
-	.child-row:not(:disabled):hover {
-		background: var(--color-bg-secondary);
+	.child-row:not(:disabled):hover .child-name {
+		text-decoration: underline;
+		text-underline-offset: 4px;
 	}
 
 	.child-row:disabled {
 		cursor: default;
+		color: inherit;
 	}
 
 	.child-name {
-		font-size: 0.8125rem;
+		font-size: 15px;
 	}
 
 	.child-count {
-		font-size: 0.6875rem;
-		color: var(--color-text-tertiary);
+		font-size: 15px;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
 	}
 </style>

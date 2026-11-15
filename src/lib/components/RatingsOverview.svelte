@@ -42,8 +42,8 @@
 
 	{#if stats.topRatedItems.length > 0}
 		<div class="top-rated">
-			<h4>Top Rated</h4>
-			<div class="top-rated-list">
+			<h4>Top rated</h4>
+			<div class="top-rated-list rows">
 				{#each stats.topRatedItems.slice(0, 6) as item}
 					<a
 						href="https://www.discogs.com/release/{item.basic_information.id}"
@@ -54,7 +54,7 @@
 						<img
 							src={item.basic_information.thumb || '/placeholder.svg'}
 							alt=""
-							class="top-rated-thumb"
+							class="top-rated-thumb cover"
 						/>
 						<div class="top-rated-info">
 							<span class="top-rated-title">{item.basic_information.title}</span>
@@ -74,132 +74,107 @@
 	.ratings-overview {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
-	}
-
-	.rating-summary {
-		display: flex;
-		justify-content: center;
+		gap: 24px;
 	}
 
 	.avg-rating {
 		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.25rem;
-		padding: 1rem 2rem;
-		background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(236, 72, 153, 0.1));
-		border-radius: 12px;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 4px 16px;
 	}
 
 	.avg-value {
-		font-size: 2rem;
-		font-weight: 700;
-		background: linear-gradient(135deg, #6366f1, #ec4899);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
+		font-size: 34px;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		line-height: 1.1;
 	}
 
 	.stars {
 		display: flex;
-		gap: 0.125rem;
-		font-size: 1.25rem;
+		gap: 2px;
+		font-size: 20px;
 	}
 
 	.star {
-		color: var(--color-border);
+		color: var(--hairline);
 	}
 
 	.star.filled {
-		color: #eab308;
+		color: var(--ink);
 	}
 
 	.avg-label {
-		font-size: 0.75rem;
-		color: var(--color-text-tertiary);
+		font-size: 15px;
+		color: var(--muted);
 	}
 
+	/* Five ink bars, 5 stars to 1, each with its count. */
 	.rating-distribution {
 		display: flex;
 		flex-direction: column;
-		gap: 0.375rem;
 	}
 
 	.rating-row {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 16px;
+		min-height: 36px;
 	}
 
 	.rating-label {
-		width: 2.5rem;
-		font-size: 0.8125rem;
-		color: var(--color-text-secondary);
-		text-align: right;
+		width: 40px;
+		font-size: 15px;
+		color: var(--muted);
 		flex-shrink: 0;
 	}
 
 	.rating-bar-track {
 		flex: 1;
-		height: 8px;
-		background: var(--color-bg-secondary);
-		border-radius: 4px;
-		overflow: hidden;
+		height: 16px;
+		background: var(--track);
 	}
 
 	.rating-bar-fill {
 		height: 100%;
-		background: linear-gradient(90deg, #6366f1, #8b5cf6);
-		border-radius: 4px;
-		transition: width 0.3s ease;
+		background: var(--ink);
 		min-width: 2px;
 	}
 
 	.rating-count {
-		width: 2rem;
-		font-size: 0.75rem;
-		color: var(--color-text-tertiary);
+		width: 40px;
+		font-size: 15px;
+		font-weight: 600;
 		text-align: right;
 		flex-shrink: 0;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.top-rated h4 {
-		margin: 0 0 0.75rem;
-		font-size: 0.75rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
-	}
-
-	.top-rated-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
+		margin: 0 0 4px;
+		font-size: 18px;
+		font-weight: 700;
 	}
 
 	.top-rated-item {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		padding: 0.5rem;
-		border-radius: 8px;
+		gap: 16px;
+		padding: 10px 0;
 		text-decoration: none;
 		color: inherit;
-		transition: background-color 0.15s;
 	}
 
-	.top-rated-item:hover {
-		background: var(--color-bg-secondary);
+	.top-rated-item:hover .top-rated-title {
+		text-decoration: underline;
+		text-underline-offset: 4px;
 	}
 
 	.top-rated-thumb {
-		width: 40px;
-		height: 40px;
-		border-radius: 6px;
-		object-fit: cover;
-		background: var(--color-bg-secondary);
+		width: 48px;
+		height: 48px;
+		background: var(--track);
 		flex-shrink: 0;
 	}
 
@@ -211,24 +186,23 @@
 	}
 
 	.top-rated-title {
-		font-size: 0.8125rem;
-		font-weight: 500;
+		font-size: 17px;
+		font-weight: 600;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
 	.top-rated-artist {
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
+		font-size: 15px;
+		color: var(--muted);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
 	.top-rated-stars {
-		color: #eab308;
-		font-size: 0.75rem;
+		font-size: 15px;
 		flex-shrink: 0;
 	}
 </style>

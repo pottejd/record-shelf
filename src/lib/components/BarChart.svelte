@@ -1,25 +1,19 @@
 <script lang="ts">
-	import { colorAt } from '$lib/utils/chart';
-
 	interface Props {
-		data: Array<{ label: string; value: number; color?: string }>;
+		data: Array<{ label: string; value: number }>;
 		horizontal?: boolean;
-		colorful?: boolean;
 		clickable?: boolean;
 		onItemClick?: (label: string) => void;
 	}
 
-	let { data, horizontal = false, colorful = false, clickable = false, onItemClick }: Props = $props();
+	let { data, horizontal = false, clickable = false, onItemClick }: Props = $props();
 
 	let maxValue = $derived(data.length > 0 ? Math.max(...data.map((d) => d.value)) : 1);
-	let coloredData = $derived(data.map((d, i) => ({
-		...d,
-		color: d.color || (colorful ? colorAt(i) : 'var(--bar-color, #6366f1)')
-	})));
 </script>
 
+<!-- One series, so every bar is ink; each bar has its number beside it. -->
 <div class="chart" class:horizontal class:clickable>
-	{#each coloredData as item, i}
+	{#each data as item}
 		<button
 			class="bar-container"
 			type="button"
@@ -28,11 +22,7 @@
 		>
 			<span class="label">{item.label}</span>
 			<div class="bar-wrapper">
-				<div
-					class="bar"
-					style:--percent="{(item.value / maxValue) * 100}%"
-					style:background={item.color}
-				></div>
+				<div class="bar" style:--v={item.value / maxValue}></div>
 				<span class="value">{item.value.toLocaleString()}</span>
 			</div>
 		</button>
@@ -43,23 +33,23 @@
 	.chart {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
 	}
 
 	.chart:not(.horizontal) {
 		flex-direction: row;
 		align-items: stretch;
-		justify-content: space-around;
-		height: 200px;
-		gap: 0.25rem;
+		height: 220px;
+		gap: 8px;
 	}
 
 	.bar-container {
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
+		gap: 6px;
+		min-width: 0;
 		background: none;
-		border: none;
+		border: 0;
+		border-radius: 0;
 		padding: 0;
 		margin: 0;
 		text-align: left;
@@ -67,38 +57,43 @@
 		font: inherit;
 	}
 
+	.chart:not(.horizontal) .bar-container {
+		flex: 1 1 0;
+		align-items: center;
+	}
+
 	.clickable .bar-container {
 		cursor: pointer;
-		border-radius: 8px;
-		padding: 0.25rem;
-		margin: -0.25rem;
-		transition: background-color 0.15s;
 	}
 
-	.clickable .bar-container:hover {
-		background: var(--color-bg-secondary, rgba(0, 0, 0, 0.05));
+	.clickable .bar-container:hover .label {
+		text-decoration: underline;
+		text-underline-offset: 4px;
 	}
 
-	.clickable .bar-container:disabled {
+	.bar-container:disabled {
 		cursor: default;
+		color: inherit;
 	}
 
 	.horizontal .bar-container {
 		flex-direction: row;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 16px;
+		min-height: 36px;
 	}
 
 	.label {
-		font-size: 0.75rem;
-		color: var(--color-text-secondary, #666);
+		font-size: 15px;
+		color: var(--muted);
 		white-space: nowrap;
 	}
 
 	.horizontal .label {
-		width: 100px;
+		width: 28%;
 		flex-shrink: 0;
-		text-align: right;
+		font-size: 17px;
+		color: var(--ink);
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
@@ -106,55 +101,69 @@
 	.bar-wrapper {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 10px;
 		flex: 1;
+		min-width: 0;
 	}
 
 	.chart:not(.horizontal) .bar-wrapper {
 		flex-direction: column-reverse;
-		height: 100%;
 		justify-content: flex-start;
+		width: 100%;
+		height: 100%;
+		gap: 6px;
+		border-bottom: 1px solid var(--ink);
 	}
 
 	.bar {
-		border-radius: 4px;
-		transition: width 0.3s ease, height 0.3s ease, opacity 0.2s;
-	}
-
-	.bar:hover {
-		opacity: 0.8;
+		background: var(--ink);
 	}
 
 	.horizontal .bar {
-		height: 28px;
-		width: var(--percent);
-		min-width: 4px;
+		height: 16px;
+		width: calc((100% - 64px) * var(--v));
+		min-width: 2px;
 	}
 
 	.chart:not(.horizontal) .bar {
 		width: 100%;
-		min-width: 28px;
 		max-width: 48px;
-		height: var(--percent);
-		min-height: 4px;
+		/* 28px is kept above the bar for its number. */
+		height: calc((100% - 28px) * var(--v));
+		min-height: 2px;
 	}
 
 	.value {
-		font-size: 0.75rem;
+		font-size: 15px;
 		font-weight: 600;
 		white-space: nowrap;
-	}
-
-	.chart:not(.horizontal) .value {
-		font-size: 0.6875rem;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.chart:not(.horizontal) .label {
-		writing-mode: vertical-rl;
-		text-orientation: mixed;
-		transform: rotate(180deg);
-		max-height: 80px;
-		overflow: hidden;
 		order: 1;
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	@media (max-width: 699px) {
+		.chart:not(.horizontal) {
+			gap: 4px;
+		}
+
+		.horizontal .bar-container {
+			gap: 12px;
+		}
+
+		.horizontal .label {
+			width: 40%;
+			font-size: 15px;
+		}
+
+		.chart:not(.horizontal) .label,
+		.chart:not(.horizontal) .value {
+			font-size: 13px;
+		}
 	}
 </style>

@@ -27,23 +27,26 @@
 		<span class="total">{totalAdded.toLocaleString()} records added</span>
 		<span class="period">Last {data.length} months</span>
 	</div>
-	<svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" style:height="{height}px">
-		<defs>
-			<linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-				<stop offset="0%" stop-color="#6366f1" stop-opacity="0.3" />
-				<stop offset="100%" stop-color="#6366f1" stop-opacity="0.05" />
-			</linearGradient>
-		</defs>
-		<path d={areaPath} fill="url(#areaGradient)" />
-		<polyline points={points} fill="none" stroke="#6366f1" stroke-width="2" vector-effect="non-scaling-stroke" />
-		{#each data as d, i}
-			{@const x = (i / divisor) * 100}
-			{@const y = 100 - (d.count / maxCount) * 100}
-			<circle cx={x} cy={y} r="3" fill="#6366f1" vector-effect="non-scaling-stroke" class="dot">
-				<title>{d.date}: {d.count} added</title>
-			</circle>
-		{/each}
-	</svg>
+	<div class="plot" style:height="{height}px">
+		<svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none">
+			<path d={areaPath} class="area" />
+			<polyline points={points} class="line" vector-effect="non-scaling-stroke" />
+			{#each data as d, i}
+				{@const x = (i / divisor) * 100}
+				{@const y = 100 - (d.count / maxCount) * 100}
+				<circle cx={x} cy={y} r="3" vector-effect="non-scaling-stroke" class="dot">
+					<title>{d.date}: {d.count} added</title>
+				</circle>
+			{/each}
+		</svg>
+		{#if data.length > 0}
+			<span
+				class="end-dot"
+				style:top="{100 - (data[data.length - 1].count / maxCount) * 100}%"
+				aria-hidden="true"
+			></span>
+		{/if}
+	</div>
 	<div class="x-labels">
 		<span>{data[0]?.date}</span>
 		<span>{data[data.length - 1]?.date}</span>
@@ -51,46 +54,74 @@
 </div>
 
 <style>
+	/* One 2px ink line over a 10% ink area, with an accent dot at the end. */
 	.timeline-chart {
 		width: 100%;
 	}
 
 	.chart-header {
 		display: flex;
+		flex-wrap: wrap;
 		justify-content: space-between;
 		align-items: baseline;
-		margin-bottom: 0.5rem;
+		gap: 4px 16px;
+		margin-bottom: 16px;
 	}
 
 	.total {
 		font-weight: 600;
-		font-size: 0.9375rem;
+		font-size: 18px;
 	}
 
 	.period {
-		font-size: 0.75rem;
-		color: var(--color-text-secondary, #666);
+		font-size: 15px;
+		color: var(--muted);
+	}
+
+	.plot {
+		position: relative;
+		border-bottom: 1px solid var(--hairline);
 	}
 
 	svg {
 		width: 100%;
+		height: 100%;
 		display: block;
+		overflow: visible;
 	}
 
+	.area {
+		fill: var(--ink);
+		opacity: 0.1;
+	}
+
+	.line {
+		fill: none;
+		stroke: var(--ink);
+		stroke-width: 2;
+	}
+
+	/* Each month's point is an unseen target that shows its count on hover. */
 	.dot {
-		cursor: pointer;
-		transition: r 0.2s;
+		fill: transparent;
 	}
 
-	.dot:hover {
-		r: 5;
+	.end-dot {
+		position: absolute;
+		right: -5px;
+		width: 10px;
+		height: 10px;
+		margin-top: -5px;
+		border-radius: 50%;
+		background: var(--accent);
+		outline: 2px solid var(--ground);
 	}
 
 	.x-labels {
 		display: flex;
 		justify-content: space-between;
-		font-size: 0.6875rem;
-		color: var(--color-text-tertiary, #999);
-		margin-top: 0.25rem;
+		font-size: 15px;
+		color: var(--muted);
+		margin-top: 10px;
 	}
 </style>

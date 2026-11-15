@@ -1,29 +1,24 @@
 <script lang="ts">
 	import type { CollectionStats } from '$lib/types/discogs';
-	import { getGenreColor } from '$lib/constants';
+	import { chartColour, foldSeries } from '$lib/utils/chart';
 
 	let { stats }: { stats: CollectionStats } = $props();
 
 	// Generate a unique "DNA" based on collection characteristics
 	let dnaSegments = $derived(generateDNA(stats));
 
+	// The genres as parts of a whole: the five biggest in the chart colours, the
+	// rest together as "Other".
 	function generateDNA(s: CollectionStats) {
-		const segments: Array<{ color: string; size: number; label: string }> = [];
-
-		// Add genre segments
 		const totalGenres = Object.values(s.genreBreakdown).reduce((a, b) => a + b, 0);
-		Object.entries(s.genreBreakdown)
-			.sort((a, b) => b[1] - a[1])
-			.slice(0, 6)
-			.forEach(([genre, count]) => {
-				segments.push({
-					color: getGenreColor(genre),
-					size: (count / totalGenres) * 100,
-					label: genre
-				});
-			});
-
-		return segments;
+		const parts = foldSeries(
+			Object.entries(s.genreBreakdown).map(([label, value]) => ({ label, value }))
+		);
+		return parts.map((part, i) => ({
+			color: chartColour(i),
+			size: (part.value / totalGenres) * 100,
+			label: part.label
+		}));
 	}
 
 	// Calculate decade distribution for the rings
@@ -38,13 +33,12 @@
 	let traits = $derived(calculateTraits(stats));
 
 	function calculateTraits(s: CollectionStats) {
-		const traits: Array<{ name: string; value: number; color: string }> = [];
+		const traits: Array<{ name: string; value: number }> = [];
 
 		// Diversity (unique artists / total)
 		traits.push({
 			name: 'Diversity',
-			value: Math.min(s.uniqueArtistRatio * 100, 100),
-			color: '#8b5cf6'
+			value: Math.min(s.uniqueArtistRatio * 100, 100)
 		});
 
 		// Vintage factor (% of pre-1990 releases)
@@ -53,16 +47,14 @@
 			.reduce((sum, [, count]) => sum + count, 0);
 		traits.push({
 			name: 'Vintage',
-			value: (vintageCount / s.totalItems) * 100,
-			color: '#f59e0b'
+			value: (vintageCount / s.totalItems) * 100
 		});
 
 		// Vinyl dedication (% that are vinyl)
 		const vinylCount = s.formatBreakdown['Vinyl'] || 0;
 		traits.push({
 			name: 'Vinyl',
-			value: (vinylCount / s.totalItems) * 100,
-			color: '#ef4444'
+			value: (vinylCount / s.totalItems) * 100
 		});
 
 		// Genre focus (inverse of genre count - fewer genres = more focused)
@@ -70,8 +62,7 @@
 		const focusScore = Math.max(0, 100 - (genreCount - 1) * 10);
 		traits.push({
 			name: 'Focus',
-			value: focusScore,
-			color: '#10b981'
+			value: focusScore
 		});
 
 		return traits;
@@ -82,7 +73,7 @@
 	<div class="dna-visual">
 		<svg aria-hidden="true" viewBox="0 0 200 200" class="dna-ring">
 			<!-- Background ring -->
-			<circle cx="100" cy="100" r="85" fill="none" stroke="var(--color-bg-tertiary)" stroke-width="20" />
+			<circle cx="100" cy="100" r="85" fill="none" stroke="var(--track)" stroke-width="20" />
 
 			<!-- Genre segments -->
 			{#each dnaSegments as segment, i}
@@ -97,7 +88,7 @@
 					stroke={segment.color}
 					stroke-width="20"
 					stroke-dasharray={dashArray}
-					stroke-linecap="round"
+					stroke-linecap="butt"
 					transform="rotate({rotation} 100 100)"
 					class="segment"
 				>
@@ -105,13 +96,8 @@
 				</circle>
 			{/each}
 
-			<!-- Inner decoration -->
-			<circle cx="100" cy="100" r="60" fill="var(--color-bg-card)" />
-			<circle cx="100" cy="100" r="55" fill="none" stroke="var(--color-border)" stroke-width="1" />
-
-			<!-- Center icon -->
+			<!-- Center count -->
 			<g transform="translate(100, 100)">
-				<circle r="25" fill="var(--color-bg-secondary)" />
 				<text
 					y="1"
 					text-anchor="middle"
@@ -121,40 +107,39 @@
 					{stats.totalItems}
 				</text>
 				<text
-					y="14"
+					y="20"
 					text-anchor="middle"
 					class="dna-label"
 				>
-					records
+					Records
 				</text>
 			</g>
 		</svg>
 	</div>
 
 	<div class="dna-traits">
-		<h4>Collection Traits</h4>
-		{#each traits as trait}
-			<div class="trait">
-				<div class="trait-header">
-					<span class="trait-name">{trait.name}</span>
-					<span class="trait-value">{Math.round(trait.value)}%</span>
+		<h4>Collection traits</h4>
+		<div class="rows">
+			{#each traits as trait}
+				<div class="trait">
+					<div class="trait-header">
+						<span class="trait-name">{trait.name}</span>
+						<span class="trait-value">{Math.round(trait.value)}%</span>
+					</div>
+					<div class="trait-bar">
+						<div class="trait-fill" style:width="{trait.value}%"></div>
+					</div>
 				</div>
-				<div class="trait-bar">
-					<div
-						class="trait-fill"
-						style:width="{trait.value}%"
-						style:background={trait.color}
-					></div>
-				</div>
-			</div>
-		{/each}
+			{/each}
+		</div>
 	</div>
 
 	<div class="dna-legend">
 		{#each dnaSegments as segment}
 			<div class="legend-item">
-				<span class="legend-dot" style:background={segment.color}></span>
+				<span class="swatch" style:background={segment.color}></span>
 				<span class="legend-label">{segment.label}</span>
+				<span class="legend-value">{Math.round(segment.size)}%</span>
 			</div>
 		{/each}
 	</div>
@@ -165,7 +150,7 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1.5rem;
+		gap: 24px;
 	}
 
 	.dna-visual {
@@ -179,26 +164,41 @@
 		overflow: visible;
 	}
 
-	.segment {
-		transition: opacity 0.2s;
-		cursor: pointer;
-	}
-
-	.segment:hover {
-		opacity: 0.8;
-	}
-
 	.dna-count {
-		font-size: 1.25rem;
-		font-weight: 700;
-		fill: var(--color-text);
+		font-size: 28px;
+		font-weight: 800;
+		fill: var(--ink);
 	}
 
 	.dna-label {
-		font-size: 0.5rem;
-		fill: var(--color-text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		font-size: 13px;
+		fill: var(--muted);
+	}
+
+	.dna-legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px 24px;
+		justify-content: center;
+	}
+
+	.legend-item {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 15px;
+		color: var(--ink);
+	}
+
+	.legend-value {
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.swatch {
+		width: 14px;
+		height: 14px;
+		flex-shrink: 0;
 	}
 
 	.dna-traits {
@@ -206,71 +206,41 @@
 	}
 
 	.dna-traits h4 {
-		margin: 0 0 0.75rem;
-		font-size: 0.75rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
+		margin: 0 0 4px;
+		font-size: 18px;
+		font-weight: 700;
 	}
 
+	/* Name and percent, then an ink bar on the track. */
 	.trait {
-		margin-bottom: 0.625rem;
-	}
-
-	.trait:last-child {
-		margin-bottom: 0;
+		padding: 12px 0;
 	}
 
 	.trait-header {
 		display: flex;
 		justify-content: space-between;
-		margin-bottom: 0.25rem;
+		gap: 16px;
 	}
 
 	.trait-name {
-		font-size: 0.8125rem;
-		font-weight: 500;
+		font-size: 18px;
+		font-weight: 600;
 	}
 
 	.trait-value {
-		font-size: 0.75rem;
+		font-size: 17px;
 		font-weight: 600;
-		color: var(--color-text-secondary);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.trait-bar {
-		height: 6px;
-		background: var(--color-bg-secondary);
-		border-radius: 3px;
-		overflow: hidden;
+		height: 8px;
+		margin-top: 10px;
+		background: var(--track);
 	}
 
 	.trait-fill {
 		height: 100%;
-		border-radius: 3px;
-		transition: width 0.5s ease;
-	}
-
-	.dna-legend {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem 1rem;
-		justify-content: center;
-	}
-
-	.legend-item {
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
-	}
-
-	.legend-dot {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		flex-shrink: 0;
+		background: var(--ink);
 	}
 </style>

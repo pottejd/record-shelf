@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
-	import { getGenreColor } from '$lib/constants';
+	import { chartColour, foldSeries } from '$lib/utils/chart';
 
 	let { items }: { items: DiscogsCollectionItem[] } = $props();
 
@@ -51,7 +51,17 @@
 		});
 	}
 
-
+	// Every genre shown, ranked by its count across the years shown: the five
+	// biggest keep one chart colour in every row, the rest share "Other".
+	let legend = $derived(
+		foldSeries(
+			[...evolution.flatMap((e) => e.genres).reduce(
+				(totals, g) => totals.set(g.name, (totals.get(g.name) ?? 0) + g.count),
+				new Map<string, number>()
+			)].map(([label, value]) => ({ label, value }))
+		).map((part, i) => ({ label: part.label, color: chartColour(i) }))
+	);
+	let colourOf = $derived(new Map(legend.map((part) => [part.label, part.color])));
 </script>
 
 {#if evolution.length > 0}
@@ -65,7 +75,7 @@
 							<div
 								class="genre-bar"
 								style:width="{genre.percentage}%"
-								style:background={getGenreColor(genre.name)}
+								style:background={colourOf.get(genre.name) ?? chartColour(5)}
 								title="{genre.name}: {genre.count} ({genre.percentage.toFixed(0)}%)"
 							></div>
 						{/each}
@@ -74,10 +84,10 @@
 			{/each}
 		</div>
 		<div class="legend">
-			{#each [...new Set(evolution.flatMap(e => e.genres.map(g => g.name)))] as genre}
+			{#each legend as part}
 				<div class="legend-item">
-					<span class="legend-color" style:background={getGenreColor(genre)}></span>
-					<span class="legend-label">{genre}</span>
+					<span class="swatch" style:background={part.color}></span>
+					<span class="legend-label">{part.label}</span>
 				</div>
 			{/each}
 		</div>
@@ -87,81 +97,73 @@
 {/if}
 
 <style>
+	/* A row per year: one bar split by genre in the chart colours, on the track. */
 	.genre-evolution {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 16px;
 	}
 
 	.timeline {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 4px;
 	}
 
 	.period {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 16px;
+		min-height: 40px;
 	}
 
 	.period-label {
-		width: 48px;
-		font-size: 0.8125rem;
-		font-weight: 600;
-		color: var(--color-text-secondary);
-		text-align: right;
+		width: 44px;
+		font-size: 15px;
+		color: var(--muted);
 		flex-shrink: 0;
 	}
 
 	.genre-bars {
 		flex: 1;
+		min-width: 0;
 		display: flex;
-		height: 28px;
-		background: var(--color-bg-secondary);
-		border-radius: 6px;
+		gap: 2px;
+		height: 20px;
+		background: var(--track);
 		overflow: hidden;
 	}
 
 	.genre-bar {
 		height: 100%;
 		min-width: 4px;
-		transition: width 0.3s ease;
-	}
-
-	.genre-bar:hover {
-		opacity: 0.8;
 	}
 
 	.legend {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem 1rem;
-		padding-top: 0.5rem;
+		gap: 8px 24px;
 	}
 
 	.legend-item {
 		display: flex;
 		align-items: center;
-		gap: 0.375rem;
+		gap: 8px;
 	}
 
-	.legend-color {
-		width: 12px;
-		height: 12px;
-		border-radius: 3px;
+	.swatch {
+		width: 14px;
+		height: 14px;
+		flex-shrink: 0;
 	}
 
 	.legend-label {
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
+		font-size: 15px;
+		color: var(--ink);
 	}
 
 	.no-data {
-		text-align: center;
-		color: var(--color-text-tertiary);
-		font-size: 0.875rem;
-		padding: 2rem 1rem;
+		color: var(--muted);
 		margin: 0;
 	}
 </style>

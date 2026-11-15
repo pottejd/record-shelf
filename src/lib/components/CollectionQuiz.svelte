@@ -145,7 +145,7 @@
 			{#if questionsAnswered > 0}
 				<p class="last-score">Last score: {score}/{questionsAnswered}</p>
 			{/if}
-			<button class="start-btn" onclick={startQuiz}>Start Quiz</button>
+			<button class="start-btn btn btn-primary" onclick={startQuiz}>Start Quiz</button>
 		</div>
 	{:else if currentQuestion}
 		<div class="quiz-question">
@@ -157,7 +157,7 @@
 				<img
 					src={currentQuestion.item.basic_information.cover_image || currentQuestion.item.basic_information.thumb}
 					alt="Mystery album"
-					class="album-cover"
+					class="album-cover cover"
 					class:blur={currentQuestion.type === 'album' && !showResult}
 				/>
 			</div>
@@ -167,7 +167,7 @@
 			<div class="options">
 				{#each currentQuestion.options as option}
 					<button
-						class="option-btn"
+						class="option-btn btn btn-secondary"
 						class:selected={selectedAnswer === option}
 						class:correct={showResult && option === currentQuestion.correctAnswer}
 						class:incorrect={showResult && selectedAnswer === option && option !== currentQuestion.correctAnswer}
@@ -188,7 +188,7 @@
 							Wrong! It was {currentQuestion.correctAnswer}
 						</span>
 					{/if}
-					<button class="next-btn" onclick={nextQuestion}>Next Question</button>
+					<button class="next-btn btn btn-secondary" onclick={nextQuestion}>Next Question</button>
 				</div>
 			{/if}
 		</div>
@@ -205,16 +205,15 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 1rem;
-		padding: 2rem;
+		gap: 16px;
+		padding: 32px 0;
 		text-align: center;
 	}
 
 	.quiz-icon {
-		width: 64px;
-		height: 64px;
-		color: var(--color-primary);
-		opacity: 0.6;
+		width: 56px;
+		height: 56px;
+		color: var(--muted);
 	}
 
 	.quiz-icon svg {
@@ -224,38 +223,20 @@
 
 	.quiz-description {
 		margin: 0;
-		font-size: 0.9375rem;
-		color: var(--color-text-secondary);
+		font-size: 18px;
 	}
 
 	.last-score {
 		margin: 0;
-		font-size: 0.8125rem;
-		color: var(--color-text-tertiary);
-	}
-
-	.start-btn {
-		padding: 0.75rem 2rem;
-		font-size: 1rem;
-		font-weight: 600;
-		background: var(--gradient-brand);
-		color: white;
-		border: none;
-		border-radius: 10px;
-		cursor: pointer;
-		transition: transform 0.15s, box-shadow 0.15s;
-	}
-
-	.start-btn:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.quiz-question {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1rem;
+		gap: 16px;
 	}
 
 	.question-header {
@@ -265,22 +246,20 @@
 	}
 
 	.score {
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: var(--color-primary);
+		font-size: 17px;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.album-preview {
 		width: 140px;
 		height: 140px;
+		overflow: hidden;
+		background: var(--track);
 	}
 
 	.album-cover {
-		width: 100%;
 		height: 100%;
-		object-fit: cover;
-		border-radius: 8px;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 		transition: filter 0.3s;
 	}
 
@@ -290,89 +269,61 @@
 
 	.question-text {
 		margin: 0;
-		font-size: 1.125rem;
-		font-weight: 600;
+		font-size: 24px;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+		line-height: 1.15;
 		text-align: center;
-		color: var(--color-text);
 	}
 
 	.options {
 		width: 100%;
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 12px;
 	}
 
+	/* Answers are secondary buttons. Once answered, the right one fills with ink and
+	   a wrong pick is struck through; the line below says which in words. */
 	.option-btn {
 		width: 100%;
-		padding: 0.75rem 1rem;
-		font-size: 0.875rem;
-		font-weight: 500;
+		justify-content: flex-start;
+		padding: 8px 16px;
+		font-size: 17px;
+		line-height: 1.3;
 		text-align: left;
-		background: var(--color-bg-secondary);
-		color: var(--color-text);
-		border: 2px solid transparent;
-		border-radius: 8px;
-		cursor: pointer;
-		transition: background-color 0.15s, border-color 0.15s;
 	}
 
 	.option-btn:hover:not(:disabled) {
-		background: var(--color-bg-tertiary);
-	}
-
-	.option-btn.selected {
-		border-color: var(--color-primary);
-	}
-
-	.option-btn.correct {
-		background: rgba(16, 185, 129, 0.2);
-		border-color: #10b981;
-	}
-
-	.option-btn.incorrect {
-		background: rgba(239, 68, 68, 0.2);
-		border-color: #ef4444;
+		text-decoration: underline;
+		text-underline-offset: 4px;
 	}
 
 	.option-btn:disabled {
+		opacity: 1;
 		cursor: default;
+	}
+
+	.option-btn.correct {
+		background: var(--ink);
+		color: var(--on-ink);
+	}
+
+	.option-btn.incorrect {
+		text-decoration: line-through;
 	}
 
 	.result {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.75rem;
-		margin-top: 0.5rem;
+		gap: 12px;
+		margin-top: 8px;
 	}
 
 	.result-text {
-		font-size: 1rem;
-		font-weight: 600;
-	}
-
-	.result-text.correct {
-		color: #10b981;
-	}
-
-	.result-text.incorrect {
-		color: #ef4444;
-	}
-
-	.next-btn {
-		padding: 0.5rem 1.5rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		background: var(--color-bg-secondary);
-		color: var(--color-text);
-		border: none;
-		border-radius: 6px;
-		cursor: pointer;
-		transition: background-color 0.15s;
-	}
-
-	.next-btn:hover {
-		background: var(--color-bg-tertiary);
+		font-size: 18px;
+		font-weight: 700;
+		text-align: center;
 	}
 </style>

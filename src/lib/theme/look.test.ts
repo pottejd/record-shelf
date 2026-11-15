@@ -12,33 +12,7 @@ import { fileURLToPath } from 'node:url';
  * its entry; a task that deletes or moves a pending file removes its entry too.
  * Files not listed here, including every new file, are checked from the start.
  */
-export const PENDING: string[] = [
-	'src/lib/components/ArtistLoyalty.svelte',
-	'src/lib/components/BarChart.svelte',
-	'src/lib/components/CollectingActivity.svelte',
-	'src/lib/components/CollectingCalendar.svelte',
-	'src/lib/components/CollectionDNA.svelte',
-	'src/lib/components/CollectionExport.svelte',
-	'src/lib/components/CollectionQuiz.svelte',
-	'src/lib/components/CollectionTimeline.svelte',
-	'src/lib/components/DayPatterns.svelte',
-	'src/lib/components/DonutChart.svelte',
-	'src/lib/components/FormatDrilldown.svelte',
-	'src/lib/components/GenreEvolution.svelte',
-	'src/lib/components/Milestones.svelte',
-	'src/lib/components/NewVsVintage.svelte',
-	'src/lib/components/profile/ProfileActivity.svelte',
-	'src/lib/components/profile/ProfileCharts.svelte',
-	'src/lib/components/profile/ProfileShare.svelte',
-	'src/lib/components/RandomPicker.svelte',
-	'src/lib/components/RatingsOverview.svelte',
-	'src/lib/components/Recommendations.svelte',
-	'src/lib/components/SectionNav.svelte',
-	'src/lib/components/ShareableCard.svelte',
-	'src/lib/components/TimelineChart.svelte',
-	'src/lib/components/ValueEstimate.svelte',
-	'src/lib/components/YearHeatmap.svelte'
-];
+export const PENDING: string[] = [];
 
 export interface Violation {
 	line: number;
