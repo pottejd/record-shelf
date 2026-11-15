@@ -32,12 +32,12 @@ async function settled(pw: Page): Promise<void> {
 	await pw.waitForLoadState('networkidle');
 }
 
-interface Sample { status: string; tabs: number | null; board: number | null; heading: number | null }
+interface Sample { font: boolean; status: string; tabs: number | null; board: number | null; heading: number | null }
 
 /**
- * Every frame from the first, writes down the status line's text and where the tab
- * row's foot, the first board on screen and the heading named `heading` sit on the
- * page (null while one is not there).
+ * Every frame from the first, writes down whether the web font has arrived, the
+ * status line's text, and where the tab row's foot, the first board on screen and
+ * the heading named `heading` sit on the page (null while one is not there).
  */
 async function watchLayout(pw: Page, heading: string): Promise<void> {
 	await pw.addInitScript((heading) => {
@@ -45,10 +45,13 @@ async function watchLayout(pw: Page, heading: string): Promise<void> {
 		(window as unknown as { samples: unknown[] }).samples = samples;
 		const top = (el: Element | null | undefined, edge: 'top' | 'bottom' = 'top') =>
 			el ? el.getBoundingClientRect()[edge] + scrollY : null;
+		const fontIn = () =>
+			[...document.fonts].some((f) => f.family.replace(/["']/g, '') === 'Bricolage Grotesque Variable' && f.status === 'loaded');
 		const frame = () => {
 			const main = document.querySelector('main');
 			if (main) {
 				samples.push({
+					font: fontIn(),
 					status: [...main.querySelectorAll('.loading-banner')].map((el) => el.textContent?.trim()).join(' '),
 					tabs: top(main.querySelector('.tabs'), 'bottom'),
 					board: top([...main.querySelectorAll('.board')].find((b) => b.getClientRects().length > 0)),
@@ -100,10 +103,15 @@ for (const { tab, heading, board } of [
 			const refresh = statuses.findIndex((t) => t.startsWith('Showing a copy from'));
 			expect(statuses.slice(loaded, refresh)).toContain('');
 
-			// And nothing under the line moved.
-			expect(positions(samples, 'heading')).toHaveLength(1);
-			if (board) expect(positions(samples, 'board')).toHaveLength(1);
-			expect(positions(samples, 'tabs')).toHaveLength(1);
+			// And nothing under the line moved. Judged only once the web font is in: until
+			// it arrives the title is set in whatever fallback the machine has, and a wide
+			// one (as on GitHub's Linux runner) wraps the title at 320px, so everything
+			// under it sits a line lower for those first frames whatever the line does.
+			const inFont = samples.filter((s) => s.font);
+			expect(inFont.length).toBeGreaterThan(0);
+			expect(positions(inFont, 'heading')).toHaveLength(1);
+			if (board) expect(positions(inFont, 'board')).toHaveLength(1);
+			expect(positions(inFont, 'tabs')).toHaveLength(1);
 		});
 	}
 }
