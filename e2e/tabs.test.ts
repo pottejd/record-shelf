@@ -370,13 +370,17 @@ for (const width of [360, 375]) {
 	});
 }
 
-test('the shelf has one spine per record and opens the side list', async ({ page: pw }) => {
+test('the shelf has one spine per record, in the order they were added, and opens the side list', async ({ page: pw }) => {
 	await mockStored(pw, 'tabuser', makeCollection(679));
 	await pw.goto('/u/tabuser');
 	await expect(pw.locator('.shelf-wide [data-spine]')).toHaveCount(679);
-	await expect(pw.getByText('679 records, one spine each.')).toBeVisible();
-	await pw.getByRole('button', { name: /^Shelf 1 of 3/ }).click();
-	await expect(pw.getByRole('dialog')).toBeVisible();
+	await expect(pw.getByText('679 records, one spine each. The first one added sits on the left.', { exact: true })).toBeVisible();
+	await expect(pw.locator('.shelf-wide .ends')).toHaveText(/^\s*First added\s*Latest\s*$/);
+	await settled(pw);
+	const shelf = pw.getByRole('button', { name: /^Shelf 1 of 3: \d+ records, [A-Z][a-z]{2} \d{4} to [A-Z][a-z]{2} \d{4}\. Open the list\.$/ });
+	const range = (await shelf.getAttribute('aria-label'))!.match(/, ([^,]+)\. Open the list\.$/)![1];
+	await shelf.click();
+	await expect(pw.getByRole('dialog', { name: range })).toBeVisible();
 });
 
 test('the shelf is on Overview only', async ({ page: pw }) => {
@@ -492,7 +496,7 @@ test('an empty collection is one board and a line', async ({ page: pw }) => {
 test('one record says "1 record"', async ({ page: pw }) => {
 	await mockStored(pw, 'oneshelf', makeCollection(1));
 	await pw.goto('/u/oneshelf');
-	await expect(pw.getByText('1 record, one spine each.')).toBeVisible();
+	await expect(pw.getByText('1 record, one spine each. The first one added sits on the left.', { exact: true })).toBeVisible();
 	await expect(pw.getByRole('button', { name: /^Shelf 1 of 1: 1 record, / })).toBeVisible();
 });
 

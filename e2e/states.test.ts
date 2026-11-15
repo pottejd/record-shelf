@@ -213,11 +213,14 @@ test('Ctrl, Cmd and Alt with a shortcut key are left to the browser', async ({ p
 	await expect(pw).toHaveURL(/\?tab=records$/);
 });
 
+/** A shelf's side list is titled with the months the shelf covers: "Mar 2021 to Jan 2023". */
+const SHELF_RANGE = /^[A-Z][a-z]{2} \d{4} to [A-Z][a-z]{2} \d{4}$/;
+
 test('under the side list j, k, / and s do nothing; Escape closes the help, then the list', async ({ page: pw }) => {
 	await mockStored(pw, 'tabuser', makeCollection(150));
 	await pw.goto('/u/tabuser');
 	await pw.getByRole('button', { name: /^Shelf 1 of 1/ }).click();
-	const list = pw.getByRole('dialog', { name: /^\d{4} to \d{4}$/ });
+	const list = pw.getByRole('dialog', { name: SHELF_RANGE });
 	await expect(list).toBeVisible();
 	for (const key of ['j', 'k', '/', 's']) await pw.keyboard.press(key);
 	await pw.waitForTimeout(300);
@@ -276,7 +279,7 @@ test('closing the side list gives focus back to what opened it: Escape, the clos
 	await expect(pw.locator('#overview')).toBeVisible();
 	await settled(pw);
 	const shelf = pw.getByRole('button', { name: /^Shelf 1 of 1/ });
-	const list = pw.getByRole('dialog', { name: /^\d{4} to \d{4}$/ });
+	const list = pw.getByRole('dialog', { name: SHELF_RANGE });
 
 	const ways: Array<[string, () => Promise<void>]> = [
 		['Escape', () => pw.keyboard.press('Escape')],
@@ -307,7 +310,7 @@ test('the side list holds focus, and its last "Show more" hands focus to the fir
 	await expect(pw.locator('#overview')).toBeVisible();
 	await settled(pw);
 	await pw.getByRole('button', { name: /^Shelf 1 of 1/ }).click();
-	const list = pw.getByRole('dialog', { name: /^\d{4} to \d{4}$/ });
+	const list = pw.getByRole('dialog', { name: SHELF_RANGE });
 	await expect(list).toBeVisible();
 	const inside = () => list.evaluate((el) => el.contains(document.activeElement));
 

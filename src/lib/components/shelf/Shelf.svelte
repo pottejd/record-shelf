@@ -126,8 +126,8 @@
 				{#if empty}
 					<span>Nothing on the shelf yet.</span>
 				{:else}
-					<span>Oldest</span>
-					{#if !capped}<span>Newest</span>{/if}
+					<span>First added</span>
+					{#if !capped}<span>Latest</span>{/if}
 				{/if}
 			</div>
 			{#if capped}

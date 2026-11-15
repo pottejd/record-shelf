@@ -405,13 +405,16 @@ and today's wording otherwise.
 The shelf is the one bold thing on the site. It appears on the Overview tab
 only, under the lead line:
 
-> <n> records, one spine each. The oldest pressing sits on the left.
+> <n> records, one spine each. The first one added sits on the left.
+
+(With one record: "1 record, one spine each. …". With none there is no lead
+line.)
 
 **What a spine means**
 
 | Property | Comes from | Rule |
 |---|---|---|
-| Position | Release year | Oldest at the left of the top shelf, newest at the right of the bottom shelf. Same year: by artist, then title. Records with no year go at the very end. |
+| Position | Date added | The first record added at the left of the top shelf, the latest at the right of the bottom shelf. Added at the same instant: by artist, then title, then the copy's id, so the order is the same on every visit. Records whose date added is missing or unreadable go at the very end. (Release year until 0.12.0; the owner chose date added after go-live.) |
 | Height | Record size | A 7-inch is 56% of the shelf height, a 10-inch 90%. Everything else is full height: LPs, 12-inch singles, CDs, tapes, box sets. |
 | Width | Number of discs | One disc is one unit wide, two discs two units, three or more four units. On top of that each record's thickness varies a little, from 0.8 to 1.4 times its width, fixed per record from its id. A two-disc record is always wider than any single. |
 | Colour | Nothing | Decoration. Picked from the spine set by a fixed rule from the record's id, so a record keeps its colour between visits. Weights as in the mockup: ink 5, cream 6, tan 4, grey 3, red 2, blue 2, mustard 2, green 1, plum 1. |
@@ -456,8 +459,8 @@ Stage 2 includes a tuning pass after the owner has looked at their real shelf.
   partly filled shelf, left-aligned, with one board.
 - At most six shelves on a wide screen and eight on a phone. A larger
   collection shows those and a "Show the whole shelf" button for the rest.
-- "Oldest" and "Newest" sit under the last shelf, left and right, in small
-  muted text.
+- "First added" and "Latest" sit under the last shelf, left and right, in
+  small muted text. While the shelf is capped only "First added" shows.
 - An empty collection shows one empty board and "Nothing on the shelf yet."
 
 **Using it**
@@ -465,10 +468,15 @@ Stage 2 includes a tuning pass after the owner has looked at their real shelf.
 - Hovering a spine shows a small label naming that record: title, artist,
   year.
 - Clicking or tapping a shelf opens the side list with that shelf's records,
-  oldest first, titled with its year range ("1957 to 1979").
+  in shelf order (first added first), titled with the months the shelf covers
+  ("Mar 2021 to Jan 2023"). A shelf inside one month is titled "Mar 2021";
+  unknown dates are left out of the range, and a shelf of only unknown dates
+  is "Date unknown". Months are three-letter English names and four-digit
+  years, read in the browser's local time, as the Collection timeline's month
+  columns are.
 - Each shelf is one keyboard stop, announced as, for example, "Shelf 1 of 3:
-  227 records, 1957 to 1979." Enter opens the same side list. The spines
-  themselves are not keyboard stops.
+  227 records, Mar 2021 to Jan 2023. Open the list." Enter opens the same
+  side list. The spines themselves are not keyboard stops.
 
 **While loading.** Records never arrive all at once. The server hands over
 the first 100 of a stored copy; the browser then fetches the rest from the
@@ -718,7 +726,8 @@ on them one by one. Most important first.
 
 1. **Dark mode stays**, looking like the dark frame. The site has a
    light/dark switch today, so dropping it would take something away.
-2. **What a spine means.** Order is release year; height is record size;
+2. **What a spine means.** Order is release year (changed after go-live to
+   date added, at the owner's word; see [The shelf](#the-shelf)); height is record size;
    width is number of discs; colour is decoration only. The alternative,
    colour by genre, is described under [The shelf](#the-shelf).
 3. **The picture wins over the data.** The mockup's spine sizes are made up

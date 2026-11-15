@@ -15,13 +15,13 @@ function variant(container: HTMLElement, kind: 'wide' | 'narrow'): HTMLElement {
 
 const shelves = (el: HTMLElement) => within(el).queryAllByRole('button', { name: /^Shelf / });
 
-function rec(id: number, title: string, artist: string, year: number): DiscogsCollectionItem {
+function rec(id: number, title: string, artist: string, year: number, added = '2020-01-15T12:00:00Z'): DiscogsCollectionItem {
 	return {
 		id,
 		instance_id: id,
 		folder_id: 1,
 		rating: 0,
-		date_added: '2020-01-01T00:00:00Z',
+		date_added: added,
 		basic_information: {
 			id,
 			title,
@@ -49,17 +49,35 @@ describe('Shelf', () => {
 		const items = makeCollection(679);
 		const { container } = render(Shelf, { props: { items, total: 679, onOpen: vi.fn() } });
 		const first = shelves(variant(container, 'wide'))[0];
-		expect(first).toHaveAccessibleName(/^Shelf 1 of 3: \d+ records, \d{4} to \d{4}\. Open the list\.$/);
+		expect(first).toHaveAccessibleName(
+			/^Shelf 1 of 3: \d+ records, [A-Z][a-z]{2} \d{4} to [A-Z][a-z]{2} \d{4}\. Open the list\.$/
+		);
 	});
 
-	it('opens the side list with that shelf, oldest first', async () => {
+	it('opens the side list with that shelf, in the order the records were added', async () => {
 		const items = makeCollection(679);
 		const onOpen = vi.fn();
 		const { container } = render(Shelf, { props: { items, total: 679, onOpen } });
-		await fireEvent.click(shelves(variant(container, 'wide'))[1]);
+		const second = shelves(variant(container, 'wide'))[1];
+		await fireEvent.click(second);
 		const row = splitShelves(shelfOrder(items), 3)[1];
 		expect(onOpen).toHaveBeenCalledTimes(1);
 		expect(onOpen).toHaveBeenCalledWith(shelfTitle(row), row.map((s) => s.item));
+		const added = row.map((s) => new Date(s.item.date_added).getTime());
+		expect(added).toEqual([...added].sort((a, b) => a - b));
+		// The list's title is the range in the shelf's name.
+		expect(second.getAttribute('aria-label')).toContain(`, ${shelfTitle(row)}. Open the list.`);
+	});
+
+	it('"First added" and "Latest" under the last shelf; only "First added" while capped', () => {
+		const small = render(Shelf, { props: { items: makeCollection(10), total: 10, onOpen: vi.fn() } });
+		const ends = variant(small.container, 'wide').querySelector('.ends')!;
+		expect([...ends.children].map((e) => e.textContent)).toEqual(['First added', 'Latest']);
+		small.unmount();
+
+		const huge = render(Shelf, { props: { items: makeCollection(5000), total: 5000, onOpen: vi.fn() } });
+		const capped = variant(huge.container, 'wide').querySelector('.ends')!;
+		expect([...capped.children].map((e) => e.textContent)).toEqual(['First added']);
 	});
 
 	it('caps a huge collection until asked', async () => {
@@ -99,7 +117,7 @@ describe('Shelf', () => {
 			expect(within(el).queryAllByRole('button')).toHaveLength(0);
 			expect(within(el).getByText('Nothing on the shelf yet.')).toBeInTheDocument();
 		}
-		expect(screen.queryByText('Oldest')).toBeNull();
+		expect(screen.queryByText('First added')).toBeNull();
 	});
 
 	it('a small collection does not stretch', () => {
@@ -117,7 +135,7 @@ describe('Shelf', () => {
 			props: { items: [rec(1, 'Only', 'Someone', 1971)], total: 1, onOpen: vi.fn() }
 		});
 		expect(shelves(variant(container, 'wide'))[0]).toHaveAccessibleName(
-			'Shelf 1 of 1: 1 record, 1971. Open the list.'
+			'Shelf 1 of 1: 1 record, Jan 2020. Open the list.'
 		);
 	});
 
@@ -132,7 +150,7 @@ describe('Shelf', () => {
 	});
 
 	it('names the record under the pointer, as text', async () => {
-		const items = [rec(1, '<b>Loud</b>', 'Someone', 1971), rec(2, 'No year', 'Nobody', 0)];
+		const items = [rec(1, '<b>Loud</b>', 'Someone', 1971), rec(2, 'No year', 'Nobody', 0, '2020-02-15T12:00:00Z')];
 		const { container } = render(Shelf, { props: { items, total: 2, onOpen: vi.fn() } });
 		const wide = variant(container, 'wide');
 		const label = container.querySelector<HTMLElement>('.spine-label')!;

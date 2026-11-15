@@ -5,6 +5,8 @@ export interface Spine {
 	key: number;
 	item: DiscogsCollectionItem;
 	year: number;
+	/** When the record was added, in milliseconds; 0 when unknown. */
+	added: number;
 	units: 1 | 2 | 4;
 	width: number;
 	height: 1 | 0.9 | 0.56;
@@ -47,6 +49,11 @@ function heightOf(item: DiscogsCollectionItem): 1 | 0.9 | 0.56 {
 	return 1;
 }
 
+function addedOf(item: DiscogsCollectionItem): number {
+	const t = new Date(item.date_added ?? '').getTime();
+	return Number.isFinite(t) ? t : 0;
+}
+
 export function spineOf(item: DiscogsCollectionItem): Spine {
 	const releaseId = item.basic_information.id;
 	const units = unitsOf(item);
@@ -55,6 +62,7 @@ export function spineOf(item: DiscogsCollectionItem): Spine {
 		key: item.instance_id,
 		item,
 		year: item.basic_information.year || 0,
+		added: addedOf(item),
 		units,
 		width: units * thickness,
 		height: heightOf(item),
@@ -62,12 +70,13 @@ export function spineOf(item: DiscogsCollectionItem): Spine {
 	};
 }
 
+/** In the order the records were added, the first on the left; an unknown date goes last. */
 export function shelfOrder(items: DiscogsCollectionItem[]): Spine[] {
 	const artist = (s: Spine) => s.item.basic_information.artists?.[0]?.name ?? '';
 	return items.map(spineOf).sort((a, b) => {
-		if ((a.year === 0) !== (b.year === 0)) return a.year === 0 ? 1 : -1;
+		if ((a.added === 0) !== (b.added === 0)) return a.added === 0 ? 1 : -1;
 		return (
-			a.year - b.year ||
+			a.added - b.added ||
 			artist(a).localeCompare(artist(b)) ||
 			(a.item.basic_information.title ?? '').localeCompare(b.item.basic_information.title ?? '') ||
 			String(a.key).localeCompare(String(b.key), undefined, { numeric: true })
@@ -93,12 +102,27 @@ export function splitShelves(spines: Spine[], count: number): Spine[][] {
 	return rows;
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "Mar 2021". Local time, as the Collection timeline's month columns. */
+function monthOf(t: number): string {
+	const d = new Date(t);
+	return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** The months a shelf covers: "Mar 2021 to Jan 2023", or "Mar 2021" inside one month. */
 export function shelfTitle(shelf: Spine[]): string {
-	const years = shelf.map((s) => s.year).filter((y) => y > 0);
-	if (!years.length) return 'Year unknown';
-	const lo = Math.min(...years);
-	const hi = Math.max(...years);
-	return lo === hi ? String(lo) : `${lo} to ${hi}`;
+	let lo = Infinity;
+	let hi = -Infinity;
+	for (const s of shelf) {
+		if (s.added === 0) continue;
+		lo = Math.min(lo, s.added);
+		hi = Math.max(hi, s.added);
+	}
+	if (lo === Infinity) return 'Date unknown';
+	const first = monthOf(lo);
+	const last = monthOf(hi);
+	return first === last ? first : `${first} to ${last}`;
 }
 
 /** Which list the shelf draws while records are still loading. */

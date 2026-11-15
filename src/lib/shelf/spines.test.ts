@@ -17,13 +17,14 @@ function rec(o: {
 	formats?: Partial<DiscogsFormat>[];
 	artist?: string;
 	title?: string;
+	added?: string;
 }): DiscogsCollectionItem {
 	return {
 		id: o.id,
 		instance_id: o.id,
 		folder_id: 1,
 		rating: 0,
-		date_added: '2020-01-01T00:00:00-00:00',
+		date_added: o.added ?? '2020-01-01T00:00:00-00:00',
 		basic_information: {
 			id: o.id,
 			title: o.title ?? 'T',
@@ -86,9 +87,39 @@ describe('spines and shelves', () => {
 		expect(mix(1, 1)).not.toBe(mix(1, 2));
 		expect(mix(12345, 2)).toMatchInlineSnapshot(`599080673`);
 	});
-	it('orders by year, unknown last, then artist, title', () => {
-		const out = shelfOrder([rec({ id: 1, year: 0 }), rec({ id: 2, year: 1980, artist: 'B' }), rec({ id: 3, year: 1960 }), rec({ id: 4, year: 1980, artist: 'A' })]);
-		expect(out.map((s) => s.key)).toEqual([3, 4, 2, 1]);
+	it('keeps when a record was added, 0 when unknown', () => {
+		expect(spineOf(rec({ id: 1, added: '2021-03-15T12:00:00-00:00' })).added).toBe(Date.UTC(2021, 2, 15, 12));
+		expect(spineOf(rec({ id: 1, added: '' })).added).toBe(0);
+		expect(spineOf(rec({ id: 1, added: 'not a date' })).added).toBe(0);
+		expect(spineOf({ ...rec({ id: 1 }), date_added: undefined as never }).added).toBe(0);
+	});
+	it('orders by date added, earliest first, whatever the release year', () => {
+		const out = shelfOrder([
+			rec({ id: 1, year: 1960, added: '2023-01-10T12:00:00Z' }),
+			rec({ id: 2, year: 2020, added: '2019-06-01T12:00:00Z' }),
+			rec({ id: 3, year: 0, added: '2021-03-15T12:00:00Z' })
+		]);
+		expect(out.map((s) => s.key)).toEqual([2, 3, 1]);
+	});
+	it('puts records with a missing or unreadable date last', () => {
+		const out = shelfOrder([
+			rec({ id: 1, added: '' }),
+			rec({ id: 2, added: '2024-01-01T12:00:00Z' }),
+			rec({ id: 3, added: 'garbage' }),
+			rec({ id: 4, added: '2001-01-01T12:00:00Z' })
+		]);
+		expect(out.map((s) => s.key)).toEqual([4, 2, 1, 3]);
+	});
+	it('records added at the same instant fall back to artist, title, then key', () => {
+		const at = '2022-05-05T12:00:00Z';
+		const out = shelfOrder([
+			rec({ id: 5, added: at, artist: 'B', title: 'A' }),
+			rec({ id: 12, added: at, artist: 'A', title: 'Z' }),
+			rec({ id: 3, added: at, artist: 'A', title: 'Y' }),
+			rec({ id: 10, added: at, artist: 'A', title: 'Y' }),
+			rec({ id: 2, added: at, artist: 'A', title: 'Y' })
+		]);
+		expect(out.map((s) => s.key)).toEqual([2, 3, 10, 12, 5]);
 	});
 	it('counts shelves', () => {
 		expect(shelfCount(679, 230)).toBe(3);
@@ -107,11 +138,31 @@ describe('spines and shelves', () => {
 		expect(splitShelves([], 3)).toEqual([[], [], []]);
 		expect(splitShelves(spines.slice(0, 2), 3).flat()).toHaveLength(2);
 	});
-	it('titles a shelf', () => {
-		expect(shelfTitle(shelfOrder([rec({ id: 1, year: 1957 }), rec({ id: 2, year: 1979 }), rec({ id: 3, year: 0 })]))).toBe('1957 to 1979');
-		expect(shelfTitle(shelfOrder([rec({ id: 1, year: 1990 }), rec({ id: 2, year: 1990 })]))).toBe('1990');
-		expect(shelfTitle(shelfOrder([rec({ id: 1, year: 0 })]))).toBe('Year unknown');
-		expect(shelfTitle([])).toBe('Year unknown');
+	it('titles a shelf with the months it covers', () => {
+		// Noon UTC on the 15th is the same month in every time zone.
+		const shelf = shelfOrder([
+			rec({ id: 1, added: '2021-03-15T12:00:00Z' }),
+			rec({ id: 2, added: '2022-07-15T12:00:00Z' }),
+			rec({ id: 3, added: '2023-01-15T12:00:00Z' }),
+			rec({ id: 4, added: '' })
+		]);
+		expect(shelfTitle(shelf)).toBe('Mar 2021 to Jan 2023');
+		expect(shelfTitle(shelfOrder([rec({ id: 1, added: '2021-03-02T12:00:00Z' }), rec({ id: 2, added: '2021-03-28T12:00:00Z' })]))).toBe('Mar 2021');
+		expect(shelfTitle(shelfOrder([rec({ id: 1, added: '' }), rec({ id: 2, added: 'garbage' })]))).toBe('Date unknown');
+		expect(shelfTitle([])).toBe('Date unknown');
+	});
+	it('names every month in three English letters', () => {
+		const names = Array.from({ length: 12 }, (_, m) =>
+			shelfTitle(shelfOrder([rec({ id: 1, added: `2020-${String(m + 1).padStart(2, '0')}-15T12:00:00Z` })]))
+		);
+		expect(names).toEqual(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m) => `${m} 2020`));
+	});
+	it('reads the month in local time, as the Collection timeline does', () => {
+		// Late on the last of March and early on the first of April, local time.
+		const late = new Date(2021, 2, 31, 23, 30).toISOString();
+		const early = new Date(2021, 3, 1, 0, 30).toISOString();
+		expect(shelfTitle(shelfOrder([rec({ id: 1, added: late })]))).toBe('Mar 2021');
+		expect(shelfTitle(shelfOrder([rec({ id: 1, added: late }), rec({ id: 2, added: early })]))).toBe('Mar 2021 to Apr 2021');
 	});
 	it('decides what the shelf draws', () => {
 		const prev = [1];
@@ -123,8 +174,10 @@ describe('spines and shelves', () => {
 		expect(shelfSource([], { items: next, phase: 'error', background: false }, true)).toBe(next);
 		expect(shelfSource(prev, { items: [], phase: 'error', background: false }, true)).toBe(prev);
 	});
-	it('the order is the same on every visit, with many records in one year', () => {
-		const items = Array.from({ length: 50 }, (_, i) => rec({ id: i + 1, year: i % 2 ? 0 : 1999, artist: 'Same', title: 'Same' }));
+	it('the order is the same on every visit, with many records added at once', () => {
+		const items = Array.from({ length: 50 }, (_, i) =>
+			rec({ id: i + 1, added: i % 3 === 0 ? '' : i % 3 === 1 ? '2024-02-02T10:00:00Z' : '2019-09-09T10:00:00Z', artist: 'Same', title: 'Same' })
+		);
 		const a = shelfOrder(items).map((s) => s.key);
 		const b = shelfOrder([...items].reverse()).map((s) => s.key);
 		expect(a).toEqual(b);

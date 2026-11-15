@@ -32,7 +32,7 @@
 <div class="hero">
 	{#if total > 0}
 		<p class="lead">
-			{total.toLocaleString()} {total === 1 ? 'record' : 'records'}, one spine each. The oldest pressing sits on the left.
+			{total.toLocaleString()} {total === 1 ? 'record' : 'records'}, one spine each. The first one added sits on the left.
 		</p>
 	{/if}
 	<Shelf items={shelfItems} {total} onOpen={openDrawer} />
