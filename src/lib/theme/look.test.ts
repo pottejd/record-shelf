@@ -15,7 +15,6 @@ import { fileURLToPath } from 'node:url';
 export const PENDING: string[] = [
 	'src/lib/components/ArtistLoyalty.svelte',
 	'src/lib/components/BarChart.svelte',
-	'src/lib/components/BrandNav.svelte',
 	'src/lib/components/browser/FilterControls.svelte',
 	'src/lib/components/browser/Pagination.svelte',
 	'src/lib/components/browser/RecordCard.svelte',
@@ -33,7 +32,6 @@ export const PENDING: string[] = [
 	'src/lib/components/DayPatterns.svelte',
 	'src/lib/components/DonutChart.svelte',
 	'src/lib/components/DuplicateDetector.svelte',
-	'src/lib/components/FloatingActions.svelte',
 	'src/lib/components/FormatDrilldown.svelte',
 	'src/lib/components/FormatUpgrades.svelte',
 	'src/lib/components/GenreEvolution.svelte',
@@ -57,7 +55,6 @@ export const PENDING: string[] = [
 	'src/lib/components/Recommendations.svelte',
 	'src/lib/components/SectionNav.svelte',
 	'src/lib/components/ShareableCard.svelte',
-	'src/lib/components/SiteFooter.svelte',
 	'src/lib/components/SkeletonProfile.svelte',
 	'src/lib/components/SkeletonWantlist.svelte',
 	'src/lib/components/StatCard.svelte',

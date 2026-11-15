@@ -4,7 +4,6 @@
 	import CollectionDrawer from '$lib/components/CollectionDrawer.svelte';
 	import SectionNav from '$lib/components/SectionNav.svelte';
 	import KeyboardHelp from '$lib/components/KeyboardHelp.svelte';
-	import FloatingActions from '$lib/components/FloatingActions.svelte';
 	import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
 	import LoadingBanner from '$lib/components/profile/LoadingBanner.svelte';
 	import ProfileOverview from '$lib/components/profile/ProfileOverview.svelte';
@@ -14,13 +13,12 @@
 	import ProfileInsights from '$lib/components/profile/ProfileInsights.svelte';
 	import ProfileShare from '$lib/components/profile/ProfileShare.svelte';
 	import OldestNewestHighlights from '$lib/components/profile/OldestNewestHighlights.svelte';
-	import SiteFooter from '$lib/components/SiteFooter.svelte';
-	import BrandNav from '$lib/components/BrandNav.svelte';
 	import SkeletonProfile from '$lib/components/SkeletonProfile.svelte';
 	import { findDuplicates, groupAlbums } from '$lib/utils/albums';
 	import { computeCollectionStats } from '$lib/api/discogs';
 	import { goto } from '$app/navigation';
 	import { createLoader } from '$lib/sync/loader.svelte';
+	import { useFrame } from '$lib/frame/frame.svelte';
 	import { keyboardNav } from '$lib/actions/keyboardNav';
 	import { sampleN } from '$lib/utils/array';
 	import { toChartData } from '$lib/utils/chart';
@@ -86,6 +84,26 @@
 	let drawerTitle = $state('');
 	let drawerItems: DiscogsCollectionItem[] = $state([]);
 	let showHelp = $state(false);
+
+	// The refresh button and "Keyboard shortcuts" live in the shared top bar and
+	// footer; hand them this page's actions while it is on screen.
+	const frame = useFrame();
+	$effect(() => {
+		const l = loader;
+		const ready = profile != null && !s.error;
+		frame.refresh.run = ready ? () => l.refresh() : null;
+		frame.help = ready ? () => (showHelp = true) : null;
+		return () => {
+			frame.refresh.run = null;
+			frame.help = null;
+		};
+	});
+	$effect(() => {
+		frame.refresh.busy = s.phase === 'loading' || s.phase === 'waiting' || s.phase === 'refreshing';
+		return () => {
+			frame.refresh.busy = false;
+		};
+	});
 
 	function openDrawer(title: string, items: DiscogsCollectionItem[]) {
 		drawerTitle = title;
@@ -183,7 +201,6 @@
 
 {#if s.error?.code === 'NOT_FOUND' || s.error?.code === 'PRIVATE'}
 <main id="main-content" class="profile">
-	<BrandNav />
 	<div class="card" role="alert">
 		{#if s.error.code === 'NOT_FOUND'}
 			No Discogs user named "{data.username}".
@@ -191,7 +208,6 @@
 			{data.username}'s collection is private.
 		{/if}
 	</div>
-	<SiteFooter />
 </main>
 {:else if profile}
 <main
@@ -204,12 +220,7 @@
 		onShowHelp: () => (showHelp = true)
 	}}
 >
-	<ProfileHeader
-		{profile}
-		{badges}
-		refreshing={s.phase === 'loading' || s.phase === 'waiting' || s.phase === 'refreshing'}
-		onRefresh={() => loader.refresh()}
-	/>
+	<ProfileHeader {profile} {badges} />
 
 	<SectionNav sections={navSections} />
 
@@ -251,8 +262,6 @@
 			<OldestNewestHighlights {stats} />
 		</div>
 	{/if}
-
-	<SiteFooter />
 </main>
 
 <CollectionDrawer
@@ -262,11 +271,9 @@
 	onClose={closeDrawer}
 />
 
-<FloatingActions onHelp={() => (showHelp = true)} />
 <KeyboardHelp open={showHelp} onClose={() => (showHelp = false)} />
 {:else}
 <main id="main-content" class="profile">
-	<BrandNav />
 	<LoadingBanner state={s} onRetry={() => loader.run()} />
 	<SkeletonProfile />
 </main>
@@ -276,7 +283,7 @@
 	.profile {
 		max-width: 1200px;
 		margin: 0 auto;
-		padding: 2rem;
+		padding: 2rem 0;
 	}
 
 	/* These layout/typography rules are :global(.profile ...) so they apply to
@@ -315,7 +322,7 @@
 
 	@media (max-width: 600px) {
 		.profile {
-			padding: 1rem;
+			padding: 1rem 0;
 		}
 
 		:global(.profile .card) {

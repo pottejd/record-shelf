@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goto, afterNavigate } from '$app/navigation';
-	import BrandNav from '$lib/components/BrandNav.svelte';
 
 	let username1 = $state('');
 	let username2 = $state('');
@@ -36,8 +35,6 @@
 </svelte:head>
 
 <main id="main-content" class="compare-page">
-	<BrandNav />
-
 	<div class="compare-form">
 		<h1>Head-to-Head</h1>
 		<p class="description">Compare two Discogs collections to see overlap, unique finds, and taste similarity.</p>
@@ -85,7 +82,7 @@
 	.compare-page {
 		max-width: 600px;
 		margin: 0 auto;
-		padding: 2rem;
+		padding: 2rem 0;
 	}
 
 	.compare-form {

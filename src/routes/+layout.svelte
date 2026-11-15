@@ -2,11 +2,18 @@
 	import '../app.css';
 	import '@fontsource-variable/bricolage-grotesque/wght.css';
 	import { theme, applyTheme } from '$lib/stores/theme';
+	import { LIGHT, DARK } from '$lib/theme/tokens';
 	import { navigating } from '$app/stores';
 	import { browser } from '$app/environment';
+	import { initFrame } from '$lib/frame/frame.svelte';
+	import TopBar from '$lib/components/frame/TopBar.svelte';
+	import SiteFooter from '$lib/components/frame/SiteFooter.svelte';
+	import BackToTop from '$lib/components/frame/BackToTop.svelte';
 	import SkeletonWantlist from '$lib/components/SkeletonWantlist.svelte';
 
 	let { children } = $props();
+
+	initFrame();
 
 	let isNavigatingToWantlist = $derived(
 		$navigating?.to?.url.pathname.match(/^\/u\/[^/]+\/wantlist$/) != null
@@ -16,17 +23,15 @@
 	if (browser) {
 		applyTheme($theme);
 	}
-
-	function cycleTheme() {
-		const order: Array<'system' | 'light' | 'dark'> = ['system', 'light', 'dark'];
-		const current = order.indexOf($theme);
-		const next = order[(current + 1) % order.length];
-		theme.set(next);
-	}
 </script>
 
 <svelte:head>
-	<meta name="theme-color" content={$theme === 'dark' ? '#0a0a0a' : '#fafafa'} />
+	{#if $theme === 'system'}
+		<meta name="theme-color" content={LIGHT.ground} media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content={DARK.ground} media="(prefers-color-scheme: dark)" />
+	{:else}
+		<meta name="theme-color" content={$theme === 'dark' ? DARK.ground : LIGHT.ground} />
+	{/if}
 </svelte:head>
 
 <a href="#main-content" class="skip-link">Skip to content</a>
@@ -35,37 +40,17 @@
 	<div class="loading-bar"></div>
 {/if}
 
-<button class="theme-toggle" onclick={cycleTheme} aria-label="Toggle theme: {$theme}">
-	{#if $theme === 'light'}
-		<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-			<circle cx="12" cy="12" r="5" />
-			<line x1="12" y1="1" x2="12" y2="3" />
-			<line x1="12" y1="21" x2="12" y2="23" />
-			<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-			<line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-			<line x1="1" y1="12" x2="3" y2="12" />
-			<line x1="21" y1="12" x2="23" y2="12" />
-			<line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-			<line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-		</svg>
-	{:else if $theme === 'dark'}
-		<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-			<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-		</svg>
+<div class="page">
+	<TopBar />
+	{#if isNavigatingToWantlist}
+		<SkeletonWantlist />
 	{:else}
-		<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-			<rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-			<line x1="8" y1="21" x2="16" y2="21" />
-			<line x1="12" y1="17" x2="12" y2="21" />
-		</svg>
+		{@render children()}
 	{/if}
-</button>
+	<SiteFooter />
+</div>
 
-{#if isNavigatingToWantlist}
-	<SkeletonWantlist />
-{:else}
-	{@render children()}
-{/if}
+<BackToTop />
 
 <style>
 	.loading-bar {
@@ -83,34 +68,5 @@
 		0% { transform: translateX(-100%); }
 		50% { transform: translateX(0%); }
 		100% { transform: translateX(100%); }
-	}
-
-	.theme-toggle {
-		position: fixed;
-		bottom: 1.5rem;
-		right: 1.5rem;
-		width: 40px;
-		height: 40px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: var(--color-bg-card);
-		border: 1px solid var(--color-border);
-		border-radius: 10px;
-		color: var(--color-text-secondary);
-		cursor: pointer;
-		z-index: 100;
-		transition: color 0.2s, background-color 0.2s, border-color 0.2s;
-		box-shadow: var(--shadow-md);
-	}
-
-	.theme-toggle:hover {
-		color: var(--color-primary);
-		border-color: var(--color-primary);
-	}
-
-	.theme-toggle svg {
-		width: 18px;
-		height: 18px;
 	}
 </style>

@@ -59,12 +59,6 @@
 
 <main id="main-content" class="settings">
 	<header class="settings-header">
-		<a href="/" class="back-link">
-			<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<path d="M19 12H5M12 19l-7-7 7-7" />
-			</svg>
-			Back
-		</a>
 		<h1>Settings</h1>
 	</header>
 
@@ -214,7 +208,7 @@
 	.settings {
 		max-width: 640px;
 		margin: 0 auto;
-		padding: 2rem;
+		padding: 2rem 0;
 	}
 
 	.settings-header {
@@ -246,28 +240,6 @@
 		font-size: 0.9375rem;
 		color: var(--color-text);
 		line-height: 1.5;
-	}
-
-	.back-link {
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-		color: var(--color-text-secondary);
-		text-decoration: none;
-		font-size: 0.875rem;
-		padding: 0.5rem 0.75rem;
-		border-radius: 8px;
-		transition: background-color 0.15s, color 0.15s;
-	}
-
-	.back-link:hover {
-		background: var(--color-bg-secondary);
-		color: var(--color-text);
-	}
-
-	.back-link svg {
-		width: 18px;
-		height: 18px;
 	}
 
 	h1 {

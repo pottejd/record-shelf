@@ -70,12 +70,12 @@
 
 <style>
 	.error-page {
-		min-height: 100vh;
+		min-height: 60vh;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		padding: 2rem;
+		padding: 2rem 0;
 		text-align: center;
 	}
 

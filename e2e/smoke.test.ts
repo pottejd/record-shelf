@@ -37,7 +37,7 @@ test.describe('Home page', () => {
 		await page.route('**/api/collection/anotheruser**', (route) =>
 			route.fulfill({ status: 404, json: { status: 'error', code: 'NOT_FOUND', message: 'User not found' } }));
 		await page.goto('/u/anotheruser');
-		await page.locator('a.home-link').click();
+		await page.getByRole('link', { name: 'Record Shelf home' }).click();
 		await page.waitForURL((url) => url.pathname === '/');
 		await expect(page.getByLabel('Discogs username')).toBeVisible();
 	});
@@ -55,16 +55,16 @@ test.describe('Theme toggle', () => {
 		const toggle = page.locator('.theme-toggle');
 
 		// Default is 'system'
-		await expect(toggle).toHaveAttribute('aria-label', 'Toggle theme: system');
+		await expect(toggle).toHaveText('Theme: system');
 
 		await toggle.click();
-		await expect(toggle).toHaveAttribute('aria-label', 'Toggle theme: light');
+		await expect(toggle).toHaveText('Theme: light');
 
 		await toggle.click();
-		await expect(toggle).toHaveAttribute('aria-label', 'Toggle theme: dark');
+		await expect(toggle).toHaveText('Theme: dark');
 
 		await toggle.click();
-		await expect(toggle).toHaveAttribute('aria-label', 'Toggle theme: system');
+		await expect(toggle).toHaveText('Theme: system');
 	});
 });
 

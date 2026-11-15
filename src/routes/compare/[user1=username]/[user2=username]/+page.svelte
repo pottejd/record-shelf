@@ -3,8 +3,6 @@
 	import type { DiscogsCollectionItem } from '$lib/types/discogs';
 	import type { Engine, EngineState } from '$lib/sync/engine';
 	import CoverGrid from '$lib/components/CoverGrid.svelte';
-	import BrandNav from '$lib/components/BrandNav.svelte';
-	import SiteFooter from '$lib/components/SiteFooter.svelte';
 	import LoadingBanner from '$lib/components/profile/LoadingBanner.svelte';
 	import { goto } from '$app/navigation';
 	import { createLoader } from '$lib/sync/loader.svelte';
@@ -143,7 +141,6 @@
 
 {#if blocked.length > 0}
 <main id="main-content" class="compare-results">
-	<BrandNav />
 	{#each blocked as u}
 		<div class="card" role="alert">
 			{#if u.code === 'NOT_FOUND'}
@@ -153,12 +150,9 @@
 			{/if}
 		</div>
 	{/each}
-	<SiteFooter />
 </main>
 {:else if comparison}
 <main id="main-content" class="compare-results">
-	<BrandNav />
-
 	{@render banners()}
 
 	<header class="matchup">
@@ -296,12 +290,9 @@
 	<div class="actions">
 		<a href="/compare" class="action-btn">Compare Different Users</a>
 	</div>
-
-	<SiteFooter />
 </main>
 {:else}
 <main id="main-content" class="compare-results">
-	<BrandNav />
 	{@render banners()}
 </main>
 {/if}
@@ -310,7 +301,7 @@
 	.compare-results {
 		max-width: 1200px;
 		margin: 0 auto;
-		padding: 2rem;
+		padding: 2rem 0;
 	}
 
 	.matchup {

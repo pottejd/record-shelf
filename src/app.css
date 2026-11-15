@@ -384,6 +384,10 @@ a.btn-secondary:hover {
 	top: 0;
 }
 
+.skip-link:hover {
+	color: var(--on-ink);
+}
+
 @media (prefers-reduced-motion: reduce) {
 	html {
 		scroll-behavior: auto;

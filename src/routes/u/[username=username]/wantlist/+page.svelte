@@ -94,15 +94,6 @@
 </main>
 {:else if profile}
 <main id="main-content" class="wantlist-page">
-	<nav class="nav-bar">
-		<a href="/u/{profile.username}" class="back-link">
-			<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<polyline points="15 18 9 12 15 6" />
-			</svg>
-			Back to Collection
-		</a>
-	</nav>
-
 	<header class="page-header">
 		<div class="user-info">
 			{#if profile.avatar_url}
@@ -202,35 +193,7 @@
 	.wantlist-page {
 		max-width: 1200px;
 		margin: 0 auto;
-		padding: 2rem;
-	}
-
-	.nav-bar {
-		margin-bottom: 1.5rem;
-	}
-
-	.back-link {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.25rem;
-		text-decoration: none;
-		color: var(--color-text-secondary);
-		font-size: 0.875rem;
-		font-weight: 500;
-		padding: 0.5rem 0.75rem 0.5rem 0.25rem;
-		margin: -0.5rem;
-		border-radius: 8px;
-		transition: background-color 0.15s, color 0.15s;
-	}
-
-	.back-link:hover {
-		background: var(--color-bg-secondary);
-		color: var(--color-text);
-	}
-
-	.back-link svg {
-		width: 18px;
-		height: 18px;
+		padding: 2rem 0;
 	}
 
 	.page-header {
@@ -441,7 +404,7 @@
 
 	@media (max-width: 600px) {
 		.wantlist-page {
-			padding: 1rem;
+			padding: 1rem 0;
 		}
 
 		.wantlist-grid {
