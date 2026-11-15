@@ -202,7 +202,6 @@
 	let genreData = $derived(
 		toChartData(stats.genreBreakdown, { sort: 'value-desc', limit: CHART_LIMITS.TOP_GENRES })
 	);
-	let formatData = $derived(toChartData(stats.formatBreakdown, { sort: 'value-desc' }));
 	let styleData = $derived(
 		toChartData(stats.styleBreakdown, { sort: 'value-desc', limit: CHART_LIMITS.TOP_STYLES })
 	);
@@ -236,7 +235,7 @@
 			<meta property="og:image" content={profile.avatar_url} />
 		{/if}
 		<meta name="twitter:card" content="summary" />
-		<meta name="twitter:title" content="{profile.username}'s Record Collection" />
+		<meta name="twitter:title" content="{profile.username}'s shelf - Record Shelf" />
 		<meta name="twitter:description" content="{profile.username}'s record collection: {totalDiscogsItems} records on Record Shelf" />
 	{:else}
 		<title>Record Shelf</title>
@@ -284,7 +283,6 @@
 				{items}
 				{stats}
 				{genreData}
-				{formatData}
 				{styleData}
 				onGenre={filterByGenre}
 				onStyle={filterByStyle}

@@ -239,6 +239,16 @@ describe('layoutCard', () => {
 		expect(t).not.toContain('Avg. year');
 		expect(t).toContain('679 records, 412 artists, 230 labels');
 	});
+
+	it('says "1 year" for a span of one year, and "69 years" for more', () => {
+		const textsFor = (collectionSpan: number) =>
+			texts(
+				layoutCard({ username: 'bob', address: 'h/u/bob', stats: { ...stats, collectionSpan }, badges: [], spines: [] }, measure)
+			).map((m) => m.text);
+		expect(textsFor(1)).toContain('1 year');
+		expect(textsFor(1)).not.toContain('1 years');
+		expect(textsFor(69)).toContain('69 years');
+	});
 });
 
 describe('shareText', () => {

@@ -107,13 +107,21 @@
 		white-space: nowrap;
 	}
 
+	/* A long name (say "Folk, World, & Country") wraps onto a second line rather
+	   than losing its end; a name too long even for two is cut there. */
 	.horizontal .label {
 		width: 28%;
 		flex-shrink: 0;
 		font-size: 17px;
+		line-height: 1.25;
 		color: var(--ink);
+		white-space: normal;
+		overflow-wrap: anywhere;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 
 	.bar-wrapper {

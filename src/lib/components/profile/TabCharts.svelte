@@ -14,7 +14,6 @@
 		items,
 		stats,
 		genreData,
-		formatData,
 		styleData,
 		onGenre,
 		onStyle,
@@ -25,7 +24,6 @@
 		items: DiscogsCollectionItem[];
 		stats: CollectionStats;
 		genreData: ChartDatum[];
-		formatData: ChartDatum[];
 		styleData: ChartDatum[];
 		onGenre: (genre: string) => void;
 		onStyle: (style: string) => void;
@@ -76,7 +74,7 @@
 	<div class="col-half stack">
 		<section class="section format">
 			<h2>By format</h2>
-			<FormatBreakdown {items} {formatData} onFilter={openDrawer} />
+			<FormatBreakdown {items} onFilter={openDrawer} />
 		</section>
 
 		<section class="section">

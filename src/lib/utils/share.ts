@@ -143,7 +143,7 @@ function facts(s: CollectionStats): [string, string][] {
 	const out: [string, string][] = [];
 	if (s.dominantGenre) out.push(['Top genre', s.dominantGenre]);
 	if (s.dominantDecade) out.push(['Favorite era', s.dominantDecade]);
-	if (s.collectionSpan) out.push(['Year span', `${s.collectionSpan} years`]);
+	if (s.collectionSpan) out.push(['Year span', count(s.collectionSpan, 'year')]);
 	if (s.averageYear) out.push(['Avg. year', String(s.averageYear)]);
 	return out;
 }

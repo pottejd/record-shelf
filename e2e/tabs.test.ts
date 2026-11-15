@@ -39,6 +39,9 @@ test('a tab changes the address and the content, and Back returns', async ({ pag
 	await pw.goto('/u/tabuser');
 	await expect(pw.locator('#overview')).toBeVisible();
 	await expect(pw.locator('#overview')).toContainText('150');
+	for (const meta of ['meta[property="og:title"]', 'meta[name="twitter:title"]']) {
+		await expect(pw.locator(meta)).toHaveAttribute('content', "tabuser's shelf - Record Shelf");
+	}
 	// The fixture's copy is older than a day, so a background refresh follows the
 	// first load; let it finish before counting.
 	await pw.waitForLoadState('networkidle');
@@ -145,6 +148,33 @@ for (const { scheme, chosen } of [{ scheme: 'light', chosen: 'dark' }, { scheme:
 		await expectQuiet(oldest.locator('img'));
 	});
 }
+
+test('two copies of one pressing are two cards in the Records grid, through a search and a re-sort', async ({ page: pw }) => {
+	const title = 'One Pressing Twice';
+	const items = makeCollection(30);
+	const original = { ...items[0], basic_information: { ...items[0].basic_information, title } };
+	const copy = { ...original, instance_id: original.instance_id + 500, date_added: new Date(Date.UTC(2026, 10, 14)).toISOString() };
+	await mockStored(pw, 'tabuser', [original, ...items.slice(1), copy]);
+	await pw.goto('/u/tabuser?tab=records');
+	const records = pw.locator('#records .item-card');
+	await expect(records).toHaveCount(24);
+	await settled(pw);
+	const copies = records.filter({ hasText: title });
+
+	// All 31 on screen: both copies are there, newest first and wherever the other was added.
+	await pw.getByRole('button', { name: 'Show more' }).click();
+	await expect(records).toHaveCount(31);
+	await expect(copies).toHaveCount(2);
+	// Sorted by title, the two stand side by side; a search finds both.
+	await pw.getByRole('button', { name: 'Title', exact: true }).click();
+	await expect(records).toHaveCount(24);
+	await pw.getByRole('button', { name: 'Show more' }).click();
+	await expect(records).toHaveCount(31);
+	await expect(copies).toHaveCount(2);
+	await pw.getByLabel('Search the collection').fill(title);
+	await expect(records).toHaveCount(2);
+	await expect(copies).toHaveCount(2);
+});
 
 const cards = '#records .item-card';
 /** One of the fixture's 90-character titles. */

@@ -253,7 +253,8 @@
 	</div>
 {:else}
 	<div class="items-grid" bind:this={gridEl}>
-		{#each visibleItems as item (item.id)}
+		<!-- Keyed by the copy, not the release: two copies of one pressing are two cards. -->
+		{#each visibleItems as item (item.instance_id)}
 			<RecordCard {item} />
 		{/each}
 	</div>

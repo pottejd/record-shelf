@@ -3,9 +3,8 @@
 	import { partColour, foldSeries, type ChartDatum } from '$lib/utils/chart';
 	import SplitBar from '$lib/components/SplitBar.svelte';
 
-	let { items, formatData, onFilter }: {
+	let { items, onFilter }: {
 		items: DiscogsCollectionItem[];
-		formatData: ChartDatum[];
 		onFilter: (title: string, items: DiscogsCollectionItem[]) => void;
 	} = $props();
 
@@ -15,9 +14,12 @@
 		children: { name: string; count: number }[];
 	}
 
-	let parts = $derived(foldSeries(formatData));
-	let total = $derived(formatData.reduce((sum, d) => sum + d.value, 0));
+	// The bar and the rows both come from the tree, which counts records with each
+	// format (not format entries: a two-disc set counts once), so the bar's spoken
+	// percents and the printed ones always agree.
 	let tree = $derived(buildTree(items));
+	let parts = $derived(foldSeries(tree.map((node): ChartDatum => ({ label: node.name, value: node.count }))));
+	let total = $derived(tree.reduce((sum, node) => sum + node.count, 0));
 	let expanded = $state<string | null>(null);
 
 	/** A format in the bar has its colour; one folded into "Other" has the Other colour. */
