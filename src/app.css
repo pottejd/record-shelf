@@ -1,69 +1,119 @@
+/* The Shelf look. Colours and sizes are tokens; src/lib/theme/tokens.ts holds
+   the same colour values and tokens.test.ts keeps the two in step. */
 :root {
-	--color-primary: #6366f1;
-	--color-primary-hover: #4f46e5;
-	--color-accent: #ec4899;
-	--color-bg: #fafafa;
-	--color-bg-secondary: #f0f0f0;
-	--color-bg-tertiary: #e5e5e5;
-	--color-bg-card: #ffffff;
-	--color-text: #1a1a1a;
-	--color-text-secondary: #525252;
-	--color-text-tertiary: #a3a3a3;
-	--color-border: #e5e5e5;
-	--color-border-light: #f5f5f5;
+	--ground: #ECEEE8;
+	--ink: #18201C;
+	--muted: #4A534D;
+	--hairline: #C2C8BE;
+	--track: #D5DAD1;
+	--accent: #C8321F;
+	--on-ink: #ECEEE8;
 
-	--gradient-primary: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
-	--gradient-brand: linear-gradient(135deg, var(--color-primary), #8b5cf6);
-	--gradient-warm: linear-gradient(135deg, #f97316, #eab308);
-	--gradient-cool: linear-gradient(135deg, #06b6d4, #3b82f6);
+	--spine-1: #18201C;
+	--spine-2: #F6F3EA;
+	--spine-3: #C8B899;
+	--spine-4: #8C8F8A;
+	--spine-5: #C8321F;
+	--spine-6: #2E5A88;
+	--spine-7: #D7A53A;
+	--spine-8: #5F7F5C;
+	--spine-9: #3B2A3F;
+	--spine-edge: rgba(24,32,28,0.3);
+	--cover-edge: rgba(24,32,28,0.12);
 
-	--font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
-		'Open Sans', 'Helvetica Neue', sans-serif;
+	--chart-1: #2B66A8;
+	--chart-2: #A8770A;
+	--chart-3: #7A4E9C;
+	--chart-4: #23855A;
+	--chart-5: #C8321F;
+	--chart-other: #7C837D;
 
-	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-	--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-	--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+	--shade-1: #DDE1D8;
+	--shade-2: #AEB7AC;
+	--shade-3: #869288;
+	--shade-4: #4A574E;
+	--shade-5: #18201C;
+
+	--font-sans: 'Bricolage Grotesque Variable', 'Segoe UI', system-ui, sans-serif;
+	--rule: 4px;
+	--section-gap: 56px;
+	--page-max: 1280px;
+	--page-pad: clamp(20px, 4.4%, 56px);
+	--control: 52px;
+	--touch: 44px;
 }
 
 /* Explicit dark mode via toggle */
 html[data-theme="dark"] {
-	--color-primary: #818cf8;
-	--color-primary-hover: #a5b4fc;
-	--color-accent: #f472b6;
-	--color-bg: #0a0a0a;
-	--color-bg-secondary: #171717;
-	--color-bg-tertiary: #262626;
-	--color-bg-card: #171717;
-	--color-text: #fafafa;
-	--color-text-secondary: #a3a3a3;
-	--color-text-tertiary: #525252;
-	--color-border: #262626;
-	--color-border-light: #1f1f1f;
+	--ground: #131815;
+	--ink: #E8EBE3;
+	--muted: #A6B0A7;
+	--hairline: #2F3933;
+	--track: #3A463F;
+	--accent: #E2513A;
+	--on-ink: #131815;
 
-	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-	--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-	--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+	--spine-1: #2B352F;
+	--spine-2: #F1EEE4;
+	--spine-3: #C8B899;
+	--spine-4: #8C8F8A;
+	--spine-5: #D9452F;
+	--spine-6: #4F86C2;
+	--spine-7: #D7A53A;
+	--spine-8: #7FA37B;
+	--spine-9: #8A6A93;
+	--spine-edge: rgba(0,0,0,0.45);
+	--cover-edge: rgba(232,235,227,0.16);
+
+	--chart-1: #5490CC;
+	--chart-2: #B98A26;
+	--chart-3: #9F7FC8;
+	--chart-4: #42A277;
+	--chart-5: #E2513A;
+	--chart-other: #7C867F;
+
+	--shade-1: #404E46;
+	--shade-2: #5C6B61;
+	--shade-3: #93A097;
+	--shade-4: #BCC5BC;
+	--shade-5: #E8EBE3;
 }
 
 /* System preference fallback (when no explicit theme is set) */
 @media (prefers-color-scheme: dark) {
 	html:not([data-theme="light"]) {
-		--color-primary: #818cf8;
-		--color-primary-hover: #a5b4fc;
-		--color-accent: #f472b6;
-		--color-bg: #0a0a0a;
-		--color-bg-secondary: #171717;
-		--color-bg-tertiary: #262626;
-		--color-bg-card: #171717;
-		--color-text: #fafafa;
-		--color-text-secondary: #a3a3a3;
-		--color-text-tertiary: #525252;
-		--color-border: #262626;
-		--color-border-light: #1f1f1f;
+		--ground: #131815;
+		--ink: #E8EBE3;
+		--muted: #A6B0A7;
+		--hairline: #2F3933;
+		--track: #3A463F;
+		--accent: #E2513A;
+		--on-ink: #131815;
 
-		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-		--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-		--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+		--spine-1: #2B352F;
+		--spine-2: #F1EEE4;
+		--spine-3: #C8B899;
+		--spine-4: #8C8F8A;
+		--spine-5: #D9452F;
+		--spine-6: #4F86C2;
+		--spine-7: #D7A53A;
+		--spine-8: #7FA37B;
+		--spine-9: #8A6A93;
+		--spine-edge: rgba(0,0,0,0.45);
+		--cover-edge: rgba(232,235,227,0.16);
+
+		--chart-1: #5490CC;
+		--chart-2: #B98A26;
+		--chart-3: #9F7FC8;
+		--chart-4: #42A277;
+		--chart-5: #E2513A;
+		--chart-other: #7C867F;
+
+		--shade-1: #404E46;
+		--shade-2: #5C6B61;
+		--shade-3: #93A097;
+		--shade-4: #BCC5BC;
+		--shade-5: #E8EBE3;
 	}
 }
 
@@ -75,9 +125,263 @@ html[data-theme="dark"] {
 
 html {
 	font-family: var(--font-sans);
+	line-height: 1.4;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	scroll-behavior: smooth;
+}
+
+body {
+	margin: 0;
+	padding: 0;
+	background-color: var(--ground);
+	color: var(--ink);
+	font-size: 17px;
+	line-height: 1.4;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	margin-top: 0;
+	line-height: 1.2;
+	color: var(--ink);
+}
+
+h1 {
+	font-size: clamp(44px, 6.9vw, 88px);
+	font-weight: 800;
+	letter-spacing: -0.03em;
+	line-height: 0.95;
+}
+
+@media (max-width: 699px) {
+	h1 {
+		font-size: 40px;
+	}
+}
+
+a {
+	color: var(--ink);
+	text-decoration: underline;
+	text-underline-offset: 4px;
+}
+
+a:hover {
+	color: var(--accent);
+}
+
+img {
+	max-width: 100%;
+	height: auto;
+}
+
+::selection {
+	background: var(--ink);
+	color: var(--ground);
+}
+
+:focus-visible {
+	outline: 2px solid var(--ink);
+	outline-offset: 3px;
+}
+
+/* Layout */
+.page {
+	max-width: var(--page-max);
+	margin: 0 auto;
+	padding-left: var(--page-pad);
+	padding-right: var(--page-pad);
+}
+
+.section {
+	border-top: var(--rule) solid var(--ink);
+	padding-top: 16px;
+	margin-bottom: var(--section-gap);
+}
+
+.section h2 {
+	margin: 0 0 16px;
+	font-size: 28px;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+.rows > * {
+	border-top: 1px solid var(--hairline);
+}
+
+.rows > *:first-child {
+	border-top: 0;
+}
+
+.cols {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 56px 64px;
+}
+
+.col-wide {
+	flex: 3 1 480px;
+	min-width: 0;
+}
+
+.col-narrow {
+	flex: 2 1 320px;
+	min-width: 0;
+}
+
+/* Buttons */
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: var(--control);
+	min-width: var(--touch);
+	padding: 0 28px;
+	border: 2px solid var(--ink);
+	border-radius: 0;
+	font: inherit;
+	font-size: 18px;
+	font-weight: 600;
+	line-height: 1;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.btn-primary,
+a.btn-primary:hover {
+	background: var(--ink);
+	color: var(--on-ink);
+}
+
+.btn-secondary,
+a.btn-secondary:hover {
+	background: transparent;
+	color: var(--ink);
+}
+
+.btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Underlined input or select: no box */
+.field {
+	display: block;
+	width: 100%;
+	min-height: var(--control);
+	padding: 0;
+	border: 0;
+	border-bottom: 2px solid var(--ink);
+	border-radius: 0;
+	background: transparent;
+	color: var(--ink);
+	font: inherit;
+	font-size: 18px;
+}
+
+.field::placeholder {
+	color: var(--muted);
+	opacity: 1;
+}
+
+/* Text styles */
+.lead {
+	margin: 0;
+	font-size: 20px;
+	font-weight: 400;
+	color: var(--muted);
+}
+
+@media (max-width: 699px) {
+	.lead {
+		font-size: 18px;
+	}
+}
+
+.muted {
+	color: var(--muted);
+}
+
+.small {
+	font-size: 15px;
+	font-weight: 400;
+	color: var(--muted);
+}
+
+.figure {
+	font-size: 34px;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	line-height: 1.1;
+}
+
+/* A record cover: square, with a 1px inner edge so pale sleeves keep their outline */
+.cover {
+	display: block;
+	aspect-ratio: 1;
+	width: 100%;
+	object-fit: cover;
+	outline: 1px solid var(--cover-edge);
+	outline-offset: -1px;
+}
+
+/* An error message: ink text with an accent rule on the left */
+.error-note {
+	margin: 0;
+	padding: 4px 0 4px 16px;
+	border-left: 4px solid var(--accent);
+	color: var(--ink);
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Shared loading spinner (18px, takes the colour of the text around it).
+   Components override size / spacing via a scoped .spinner rule where they differ. */
+.spinner {
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+	border: 2px solid currentColor;
+	border-top-color: transparent;
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
+
+.skip-link {
+	position: absolute;
+	top: -40px;
+	left: 0;
+	padding: 0.5rem 1rem;
+	background: var(--ink);
+	color: var(--on-ink);
+	z-index: 300;
+	text-decoration: none;
+	font-weight: 600;
+	font-size: 0.875rem;
+}
+
+.skip-link:focus {
+	top: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -94,97 +398,36 @@ html {
 	}
 }
 
-body {
-	margin: 0;
-	padding: 0;
-	background-color: var(--color-bg);
-	color: var(--color-text);
-	line-height: 1.6;
-}
-
-a {
-	color: var(--color-primary);
-	transition: color 0.2s;
-}
-
-a:hover {
-	color: var(--color-primary-hover);
-}
-
-img {
-	max-width: 100%;
-	height: auto;
-}
-
-h1, h2, h3, h4, h5, h6 {
-	line-height: 1.2;
-	color: var(--color-text);
-}
-
-::selection {
-	background: var(--color-primary);
-	color: white;
-}
-
-:focus-visible {
-	outline: 2px solid var(--color-primary);
-	outline-offset: 2px;
-}
-
-/* Smooth loading transition */
-@keyframes fadeIn {
-	from { opacity: 0; transform: translateY(8px); }
-	to { opacity: 1; transform: translateY(0); }
+/* ==== TEMPORARY (task 20 deletes everything below) ======================
+   Old names that unconverted components still use, pointed at the new
+   tokens, and the old .card drawn as a .section. */
+html {
+	--color-bg: var(--ground);
+	--color-bg-card: var(--ground);
+	--color-bg-secondary: var(--track);
+	--color-bg-tertiary: var(--track);
+	--color-text: var(--ink);
+	--color-text-secondary: var(--muted);
+	--color-text-tertiary: var(--muted);
+	--color-border: var(--hairline);
+	--color-border-light: var(--hairline);
+	--color-primary: var(--ink);
+	--color-primary-hover: var(--ink);
+	--color-accent: var(--accent);
+	--color-danger: var(--accent);
+	--gradient-primary: var(--ink);
+	--gradient-brand: var(--ink);
+	--gradient-warm: var(--ink);
+	--gradient-cool: var(--ink);
+	--shadow-sm: none;
+	--shadow-md: none;
+	--shadow-lg: none;
 }
 
 .card {
-	background: var(--color-bg-card);
-	border: 1px solid var(--color-border);
-	border-radius: 16px;
-	padding: 1.5rem;
-	margin-bottom: 1.5rem;
-	animation: fadeIn 0.3s ease-out;
-}
-
-/* Shared loading spinner (white-on-accent, 18px). Components override size /
-   spacing via a scoped .spinner rule where they differ. */
-.spinner {
-	display: inline-block;
-	width: 18px;
-	height: 18px;
-	border: 2px solid rgba(255, 255, 255, 0.3);
-	border-top-color: white;
-	border-radius: 50%;
-	animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-	to { transform: rotate(360deg); }
-}
-
-.skip-link {
-	position: absolute;
-	top: -40px;
-	left: 0;
-	padding: 0.5rem 1rem;
-	background: var(--color-primary);
-	color: white;
-	z-index: 300;
-	transition: top 0.2s;
-	text-decoration: none;
-	font-weight: 600;
-	font-size: 0.875rem;
-}
-
-.skip-link:focus {
-	top: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-	*,
-	*::before,
-	*::after {
-		animation-duration: 0.01ms !important;
-		transition-duration: 0.01ms !important;
-	}
+	border-top: var(--rule) solid var(--ink);
+	padding-top: 16px;
+	margin-bottom: var(--section-gap);
+	background: none;
+	border-radius: 0;
 }

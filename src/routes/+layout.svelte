@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import '@fontsource-variable/bricolage-grotesque/wght.css';
 	import { theme, applyTheme } from '$lib/stores/theme';
 	import { navigating } from '$app/stores';
 	import { browser } from '$app/environment';
