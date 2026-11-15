@@ -29,20 +29,33 @@ describe('CollectingCalendar', () => {
 		expect(screen.getByText('2 records added in the past year')).toBeInTheDocument();
 	});
 
-	it('names every day; only a day with records has a label to show and a shade', () => {
+	it('names every day; only a day with records has a shade', () => {
 		render(CollectingCalendar, { props: { items: [addedOn(2026, 10, 13), addedOn(2026, 10, 13)] } });
 		const grid = screen.getByRole('grid', { name: 'Records added each day in the past year' });
 		const day = within(grid).getByRole('gridcell', { name: 'Fri, Nov 13, 2026: 2 records' });
-		expect(day.querySelector('.day-tip')).toHaveTextContent('Fri, Nov 13, 2026: 2 records');
 		expect(day).toHaveClass('step-5');
 		const empty = within(grid).getByRole('gridcell', { name: 'Thu, Nov 12, 2026: no records' });
-		expect(empty.querySelector('.day-tip')).toBeNull();
 		expect(empty).toHaveClass('step-0');
 		// Seven rows, Sunday first; Saturday's row ends on today.
 		const rows = within(grid).getAllByRole('row');
 		expect(rows).toHaveLength(7);
 		const saturdays = within(rows[6]).getAllByRole('gridcell');
 		expect(saturdays[saturdays.length - 1]).toHaveAccessibleName('Sat, Nov 14, 2026: no records');
+	});
+
+	it('shows one label, outside the scroll box: under the pointer only for a day with records', async () => {
+		const { container } = render(CollectingCalendar, { props: { items: [addedOn(2026, 10, 13)] } });
+		const grid = screen.getByRole('grid');
+		expect(container.querySelector('.day-tip')).toBeNull();
+		await fireEvent.pointerEnter(within(grid).getByRole('gridcell', { name: 'Thu, Nov 12, 2026: no records' }));
+		expect(container.querySelector('.day-tip')).toBeNull();
+		const day = within(grid).getByRole('gridcell', { name: 'Fri, Nov 13, 2026: 1 record' });
+		await fireEvent.pointerEnter(day);
+		const tip = container.querySelector('.day-tip');
+		expect(tip).toHaveTextContent('Fri, Nov 13, 2026: 1 record');
+		expect(grid.contains(tip)).toBe(false);
+		await fireEvent.pointerLeave(day);
+		expect(container.querySelector('.day-tip')).toBeNull();
 	});
 
 	it('is one tab stop, on the latest day with records', () => {

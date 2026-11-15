@@ -22,7 +22,8 @@
 
 {#if evolution.years.length > 0}
 	<div class="genre-evolution">
-		<div class="rows">
+		<!-- Not "rows": the global .rows rule would draw hairlines between the years. -->
+		<div class="years">
 			{#each evolution.years as y (y.year)}
 				<div class="year">
 					<span class="year-label">{y.year}</span>

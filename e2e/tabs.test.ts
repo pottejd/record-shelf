@@ -609,60 +609,193 @@ test('Activity on a phone: one column in reading order; only the calendar and th
 	await expect.poll(() => timeline.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
 });
 
+
+/**
+ * A collection whose last days are known: Saturday 14 November 2026 has two
+ * records, the Friday before it one, and the Friday a week before that one.
+ */
+function calendarCollection() {
+	const items = makeCollection(150);
+	const dates = ['2026-11-14', '2026-11-14', '2026-11-13', '2026-11-06'];
+	dates.forEach((d, i) => { items[i] = { ...items[i], date_added: `${d}T12:00:00.000Z` }; });
+	const on = (d: string) => items.filter((i) => i.date_added.startsWith(d)).length;
+	/** The label of a day, as the calendar writes it. */
+	const label = (day: string, d: string) => `${day}: ${on(d) === 0 ? 'no records' : `${on(d)} record${on(d) === 1 ? '' : 's'}`}`;
+	return { items, label };
+}
+
+/**
+ * The focused day's label against the calendar's scroll box and the page: where
+ * it sits, whether the box holds it (and so could cut it), and the day's box.
+ */
+async function calendarTip(pw: Page) {
+	return pw.locator('#activity').evaluate((root) => {
+		const tip = root.querySelector('.day-tip');
+		const box = root.querySelector('[role="grid"]')!;
+		const day = document.activeElement!;
+		const r = (el: Element) => { const b = el.getBoundingClientRect(); return { left: b.left, right: b.right, top: b.top, bottom: b.bottom }; };
+		return {
+			tip: tip ? r(tip) : null,
+			text: tip?.textContent ?? null,
+			visible: tip ? getComputedStyle(tip).visibility === 'visible' : false,
+			insideBox: tip ? box.contains(tip) : false,
+			box: r(box),
+			day: r(day),
+			name: day.getAttribute('aria-label'),
+			page: document.documentElement.clientWidth
+		};
+	});
+}
+
+/** The label is shown whole: beside its day, inside the box's visible part and inside the page. */
+function expectWholeTip(t: Awaited<ReturnType<typeof calendarTip>>) {
+	expect(t.tip).not.toBeNull();
+	expect(t.visible).toBe(true);
+	expect(t.text).toBe(t.name);
+	expect(t.insideBox).toBe(false); // so the scroll box cannot cut it
+	const tip = t.tip!;
+	expect(tip.right - tip.left).toBeGreaterThan(100);
+	expect(tip.left).toBeGreaterThanOrEqual(Math.max(0, t.box.left) - 0.5);
+	expect(tip.right).toBeLessThanOrEqual(Math.min(t.page, t.box.right) + 0.5);
+	// Over or under its day, and covering its column.
+	expect(Math.abs(tip.top - (t.day.bottom + 6)) < 1 || Math.abs(tip.bottom - (t.day.top - 6)) < 1).toBe(true);
+	expect(tip.left).toBeLessThanOrEqual(t.day.left + 0.5);
+	expect(tip.right).toBeGreaterThanOrEqual(t.day.right - 0.5);
+}
+
 test.describe('Activity calendar by keyboard', () => {
 	test.use({ timezoneId: 'UTC' });
 
 	test('the calendar is one tab stop; arrow keys move the day and show its count', async ({ page: pw }) => {
 		await pw.clock.setFixedTime(new Date('2026-11-14T18:00:00Z'));
-		const items = makeCollection(150);
-		// Saturday 14 November has two records, the Friday before it one, and the Friday a week before that one.
-		const dates = ['2026-11-14', '2026-11-14', '2026-11-13', '2026-11-06'];
-		dates.forEach((d, i) => { items[i] = { ...items[i], date_added: `${d}T12:00:00.000Z` }; });
-		const on = (d: string) => items.filter((i) => i.date_added.startsWith(d)).length;
-		const label = (day: string, d: string) => `${day}: ${on(d)} record${on(d) === 1 ? '' : 's'}`;
+		const { items, label } = calendarCollection();
 		await mockStored(pw, 'tabuser', items);
 		await pw.goto('/u/tabuser?tab=activity');
 		const grid = pw.getByRole('grid', { name: 'Records added each day in the past year' });
 		await expect(grid).toBeVisible();
 		await settled(pw);
 		await expect(grid.locator('[tabindex="0"]')).toHaveCount(1);
+		const tip = pw.locator('#activity .day-tip');
+		await expect(tip).toHaveCount(0);
 
 		// One Tab from the tab row lands on the latest day with records, and shows its count.
 		await pw.getByRole('link', { name: 'Extras' }).focus();
 		await pw.keyboard.press('Tab');
 		const sat = grid.getByRole('gridcell', { name: label('Sat, Nov 14, 2026', '2026-11-14') });
 		await expect(sat).toBeFocused();
-		await expect(sat.locator('.day-tip')).toBeVisible();
-		await expect(sat.locator('.day-tip')).toHaveText(label('Sat, Nov 14, 2026', '2026-11-14'));
+		await expect(tip).toBeVisible();
+		await expect(tip).toHaveText(label('Sat, Nov 14, 2026', '2026-11-14'));
 
 		// Up is the day before: the Friday, with its own count.
 		await pw.keyboard.press('ArrowUp');
 		const fri = grid.getByRole('gridcell', { name: label('Fri, Nov 13, 2026', '2026-11-13') });
 		await expect(fri).toBeFocused();
-		await expect(fri.locator('.day-tip')).toBeVisible();
-		await expect(fri.locator('.day-tip')).toHaveText(label('Fri, Nov 13, 2026', '2026-11-13'));
-		await expect(sat.locator('.day-tip')).toBeHidden();
+		await expect(tip).toHaveText(label('Fri, Nov 13, 2026', '2026-11-13'));
 
 		// Left is the week before.
 		await pw.keyboard.press('ArrowLeft');
 		const before = grid.getByRole('gridcell', { name: label('Fri, Nov 6, 2026', '2026-11-06') });
 		await expect(before).toBeFocused();
-		await expect(before.locator('.day-tip')).toBeVisible();
+		await expect(tip).toHaveText(label('Fri, Nov 6, 2026', '2026-11-06'));
 
-		// Still one tab stop, now on the day last chosen; Tab leaves the calendar.
+		// A day with no records shows its label on keyboard focus too.
+		await pw.keyboard.press('ArrowUp');
+		const thu = grid.getByRole('gridcell', { name: label('Thu, Nov 5, 2026', '2026-11-05') });
+		await expect(thu).toBeFocused();
+		await expect(tip).toBeVisible();
+		await expect(tip).toHaveText(label('Thu, Nov 5, 2026', '2026-11-05'));
+		await pw.keyboard.press('ArrowDown');
+		await expect(before).toBeFocused();
+
+		// Still one tab stop, now on the day last chosen; Tab leaves the calendar and the label goes.
 		await expect(grid.locator('[tabindex="0"]')).toHaveCount(1);
 		await expect(before).toHaveAttribute('tabindex', '0');
 		await pw.keyboard.press('Tab');
 		expect(await grid.evaluate((el) => el.contains(document.activeElement))).toBe(false);
+		await expect(tip).toHaveCount(0);
 		await pw.keyboard.press('Shift+Tab');
 		await expect(before).toBeFocused();
+		await pw.keyboard.press('Tab');
 
-		// A day with no records is an empty cell: nothing shows on hover.
-		const empty = grid.getByRole('gridcell', { name: /: no records$/ }).first();
-		await expect(empty.locator('.day-tip')).toHaveCount(0);
-		// A day with records shows the same label on hover.
-		await pw.mouse.move(0, 0);
+		// Under the pointer an empty day stays silent; a day with records shows the same label.
+		await grid.getByRole('gridcell', { name: /: no records$/ }).last().hover();
+		await expect(tip).toHaveCount(0);
 		await sat.hover();
-		await expect(sat.locator('.day-tip')).toBeVisible();
+		await expect(tip).toBeVisible();
+		await expect(tip).toHaveText(label('Sat, Nov 14, 2026', '2026-11-14'));
+		await pw.mouse.move(0, 0);
+		await expect(tip).toHaveCount(0);
+	});
+
+	test('on a phone a focused day\'s label is whole at both edges of what is on screen', async ({ page: pw }) => {
+		await pw.clock.setFixedTime(new Date('2026-11-14T18:00:00Z'));
+		const { items } = calendarCollection();
+		await mockStored(pw, 'tabuser', items);
+		await pw.setViewportSize({ width: 390, height: 844 });
+		await pw.goto('/u/tabuser?tab=activity');
+		const grid = pw.getByRole('grid', { name: 'Records added each day in the past year' });
+		await expect(grid).toBeVisible();
+		await settled(pw);
+
+		// The right edge: Tab lands on Saturday 14 November, the last day (bottom row, label above).
+		await pw.getByRole('link', { name: 'Extras' }).focus();
+		await pw.keyboard.press('Tab');
+		const right = await calendarTip(pw);
+		expect(right.day.right).toBeGreaterThan(right.box.right - 40);
+		expectWholeTip(right);
+
+		// The left edge of what is on screen, in the top row (label below) and the bottom row (label above).
+		for (const row of [0, 6]) {
+			await grid.evaluate((box, row) => {
+				const b = box.getBoundingClientRect();
+				const cells = [...box.querySelectorAll('[role="row"]')[row].querySelectorAll<HTMLElement>('[role="gridcell"]')];
+				cells.find((c) => c.getBoundingClientRect().left >= b.left)!.focus();
+			}, row);
+			const left = await calendarTip(pw);
+			expect(left.day.left).toBeLessThan(left.box.left + 40);
+			expectWholeTip(left);
+		}
+
+		// Home goes to the first week: the box scrolls to its start and the label stays whole there.
+		await pw.keyboard.press('Home');
+		await expect.poll(() => grid.evaluate((el) => el.scrollLeft)).toBe(0);
+		expectWholeTip(await calendarTip(pw));
+		// End goes back to the last week, at the right edge.
+		await pw.keyboard.press('End');
+		const end = await calendarTip(pw);
+		expect(end.day.right).toBeGreaterThan(end.box.right - 40);
+		expectWholeTip(end);
+		expect(await pw.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 	});
 });
+
+for (const width of [1280, 390]) {
+	test(`Genre evolution: a focused year shows its counts inside the page at ${width}px`, async ({ page: pw }) => {
+		await mockStored(pw, 'tabuser', makeCollection(150));
+		await pw.setViewportSize({ width, height: 900 });
+		await pw.goto('/u/tabuser?tab=activity');
+		const years = pw.locator('#activity .genre-evolution [role="group"]');
+		await expect(years).toHaveCount(5);
+		await settled(pw);
+
+		// Keyboard focus, from the neighbouring year: the first with Shift+Tab, the last with Tab.
+		for (const [at, from, key] of [[0, 1, 'Shift+Tab'], [4, 3, 'Tab']] as const) {
+			await years.nth(from).focus();
+			await pw.keyboard.press(key);
+			const year = years.nth(at);
+			await expect(year).toBeFocused();
+			const counts = year.locator('.counts');
+			await expect(counts).toHaveText(/^\S.*\d$/);
+			const shown = await counts.evaluate((el) => {
+				const b = el.getBoundingClientRect();
+				return { left: b.left, right: b.right, width: b.width, height: b.height, clip: getComputedStyle(el).clipPath, page: document.documentElement.clientWidth };
+			});
+			expect(shown.clip).toBe('none');
+			expect(shown.width).toBeGreaterThan(60);
+			expect(shown.height).toBeGreaterThan(20);
+			expect(shown.left).toBeGreaterThanOrEqual(0);
+			expect(shown.right).toBeLessThanOrEqual(shown.page);
+		}
+		expect(await pw.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+	});
+}

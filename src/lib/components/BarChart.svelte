@@ -16,31 +16,37 @@
 	}
 </script>
 
+{#snippet bar(item: { label: string; value: number })}
+	{@const short = horizontal ? null : shortLabel(item.label)}
+	{#if short}
+		<span class="label"><span class="label-long">{item.label}</span><span class="label-short">{short}</span></span>
+	{:else}
+		<span class="label">{item.label}</span>
+	{/if}
+	<div class="bar-wrapper">
+		{#if horizontal}
+			<div class="track"><div class="bar" style:--v={item.value / maxValue}></div></div>
+		{:else}
+			<div class="bar" style:--v={item.value / maxValue}></div>
+		{/if}
+		<span class="value">{item.value.toLocaleString()}</span>
+	</div>
+{/snippet}
+
 <!-- One series, so every bar is ink; each bar has its number beside it. Horizontal
-     bars stand on a track; columns do not. -->
+     bars stand on a track; columns do not. A bar that opens a list is a button;
+     one that does not is plain text and ink. -->
 <div class="chart" class:horizontal class:clickable>
 	{#each data as item}
-		{@const short = horizontal ? null : shortLabel(item.label)}
-		<button
-			class="bar-container"
-			type="button"
-			disabled={!clickable}
-			onclick={() => onItemClick?.(item.label)}
-		>
-			{#if short}
-				<span class="label"><span class="label-long">{item.label}</span><span class="label-short">{short}</span></span>
-			{:else}
-				<span class="label">{item.label}</span>
-			{/if}
-			<div class="bar-wrapper">
-				{#if horizontal}
-					<div class="track"><div class="bar" style:--v={item.value / maxValue}></div></div>
-				{:else}
-					<div class="bar" style:--v={item.value / maxValue}></div>
-				{/if}
-				<span class="value">{item.value.toLocaleString()}</span>
+		{#if clickable}
+			<button class="bar-container" type="button" onclick={() => onItemClick?.(item.label)}>
+				{@render bar(item)}
+			</button>
+		{:else}
+			<div class="bar-container">
+				{@render bar(item)}
 			</div>
-		</button>
+		{/if}
 	{/each}
 </div>
 
@@ -86,11 +92,6 @@
 	.clickable .bar-container:hover .label {
 		text-decoration: underline;
 		text-underline-offset: 4px;
-	}
-
-	.bar-container:disabled {
-		cursor: default;
-		color: inherit;
 	}
 
 	.horizontal .bar-container {

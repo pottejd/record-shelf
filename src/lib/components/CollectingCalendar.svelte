@@ -159,6 +159,52 @@
 		await tick();
 		box?.querySelector<HTMLElement>(`[data-date="${chosen}"]`)?.focus();
 	}
+
+	// The label. A day with records shows it under the pointer; any day shows it
+	// on keyboard focus, an empty one included. There is one label, drawn outside
+	// the scroll box (which would clip it) and kept inside the part of the year
+	// on screen.
+	let hovered = $state<string | null>(null);
+	let focused = $state<string | null>(null);
+	let shown = $derived.by(() => {
+		const date = hovered ?? focused;
+		return date === null ? null : (calendarData.find((d) => d.date === date) ?? null);
+	});
+	let body = $state<HTMLDivElement | undefined>();
+	let tipEl = $state<HTMLSpanElement | undefined>();
+	let tipAt = $state<{ left: number; top: number } | null>(null);
+
+	function onFocusIn(e: FocusEvent, day: DayData) {
+		chosen = day.date;
+		let visible = true;
+		try {
+			visible = (e.currentTarget as HTMLElement).matches(':focus-visible');
+		} catch {
+			// A browser without :focus-visible shows the label on any focus.
+		}
+		focused = visible ? day.date : null;
+	}
+
+	/** Under the day for the top four rows, over it for the bottom three; never past the box's visible edges. */
+	function placeTip() {
+		if (!shown || !box || !body || !tipEl) return void (tipAt = null);
+		const cell = box.querySelector<HTMLElement>(`[data-date="${shown.date}"]`);
+		if (!cell) return void (tipAt = null);
+		const c = cell.getBoundingClientRect();
+		const b = box.getBoundingClientRect();
+		const o = body.getBoundingClientRect();
+		const w = tipEl.offsetWidth;
+		const h = tipEl.offsetHeight;
+		const row = calendarData.findIndex((d) => d.date === shown.date) % 7;
+		const left = Math.min(Math.max(c.left, b.left), b.right - w) - o.left;
+		const top = (row < 4 ? c.bottom + 6 : c.top - 6 - h) - o.top;
+		tipAt = { left: Math.max(b.left - o.left, left), top };
+	}
+
+	$effect(() => {
+		void shown;
+		placeTip();
+	});
 </script>
 
 <div class="collecting-calendar">
@@ -169,68 +215,80 @@
 
 	<!-- One tab stop: the chosen day. Arrow keys move it, and the box scrolls to
 	     follow when the year does not fit. -->
-	<div
-		class="calendar-scroll"
-		role="grid"
-		aria-label="Records added each day in the past year"
-		tabindex="-1"
-		bind:this={box}
-		onkeydown={onKeydown}
-	>
-		<div class="calendar-inner">
-			<div class="calendar-container" style:--weeks={weekCount}>
-				<div class="day-labels" aria-hidden="true">
-					<span></span>
-					<span>Mon</span>
-					<span></span>
-					<span>Wed</span>
-					<span></span>
-					<span>Fri</span>
-					<span></span>
-				</div>
-
-				<div class="calendar-grid">
-					<div class="month-labels" aria-hidden="true">
-						{#each monthLabels as { label, index }}
-							<span style:grid-column={index + 1}>{label}</span>
-						{/each}
+	<div class="calendar-body" bind:this={body}>
+		<div
+			class="calendar-scroll"
+			role="grid"
+			aria-label="Records added each day in the past year"
+			tabindex="-1"
+			bind:this={box}
+			onkeydown={onKeydown}
+			onscroll={placeTip}
+		>
+			<div class="calendar-inner">
+				<div class="calendar-container" style:--weeks={weekCount}>
+					<div class="day-labels" aria-hidden="true">
+						<span></span>
+						<span>Mon</span>
+						<span></span>
+						<span>Wed</span>
+						<span></span>
+						<span>Fri</span>
+						<span></span>
 					</div>
 
-					<div class="rows">
-						{#each rows as row, r}
-							<div class="row" role="row">
-								{#each row as day, w (day.date)}
-									<div
-										class="day step-{day.step}"
-										class:tip-below={r < 4}
-										class:tip-end={w >= weekCount / 2}
-										role="gridcell"
-										aria-label={day.label}
-										tabindex={calendarData[activeIndex]?.date === day.date ? 0 : -1}
-										data-date={day.date}
-										onfocus={() => (chosen = day.date)}
-									>
-										{#if day.count > 0}
-											<span class="day-tip" aria-hidden="true">{day.label}</span>
-										{/if}
-									</div>
-								{/each}
-							</div>
-						{/each}
+					<div class="calendar-grid">
+						<div class="month-labels" aria-hidden="true">
+							{#each monthLabels as { label, index }}
+								<span style:grid-column={index + 1}>{label}</span>
+							{/each}
+						</div>
+
+						<div class="rows">
+							{#each rows as row}
+								<div class="row" role="row">
+									{#each row as day (day.date)}
+										<div
+											class="day step-{day.step}"
+											class:shown={shown?.date === day.date}
+											role="gridcell"
+											aria-label={day.label}
+											tabindex={calendarData[activeIndex]?.date === day.date ? 0 : -1}
+											data-date={day.date}
+											onfocus={(e) => onFocusIn(e, day)}
+											onblur={() => (focused = null)}
+											onpointerenter={() => (hovered = day.count > 0 ? day.date : null)}
+											onpointerleave={() => (hovered = null)}
+										></div>
+									{/each}
+								</div>
+							{/each}
+						</div>
 					</div>
 				</div>
-			</div>
 
-			<div class="calendar-legend" aria-hidden="true">
-				<span>Fewer</span>
-				<div class="legend-squares">
-					{#each [1, 2, 3, 4, 5] as step}
-						<div class="legend-cell step-{step}"></div>
-					{/each}
+				<div class="calendar-legend" aria-hidden="true">
+					<span>Fewer</span>
+					<div class="legend-squares">
+						{#each [1, 2, 3, 4, 5] as step}
+							<div class="legend-cell step-{step}"></div>
+						{/each}
+					</div>
+					<span>More</span>
 				</div>
-				<span>More</span>
 			</div>
 		</div>
+
+		{#if shown}
+			<span
+				class="day-tip"
+				class:placed={tipAt !== null}
+				bind:this={tipEl}
+				style:left="{tipAt?.left ?? 0}px"
+				style:top="{tipAt?.top ?? 0}px"
+				aria-hidden="true"
+			>{shown.label}</span>
+		{/if}
 	</div>
 
 	<ul class="visually-hidden" aria-label="Records added each month in the past year">
@@ -244,7 +302,8 @@
 	/* A year of day cells, a column per week, shaded by count on the five-step
 	   ramp, with the "Fewer … More" key under it. A day with nothing is an empty
 	   cell with a hairline edge. A day with records shows its date and count in a
-	   label on hover and on keyboard focus alike. */
+	   label on hover and on keyboard focus alike; an empty day shows its label on
+	   keyboard focus only. */
 	.calendar-header {
 		display: flex;
 		flex-wrap: wrap;
@@ -262,9 +321,13 @@
 		color: var(--muted);
 	}
 
+	.calendar-body {
+		position: relative;
+		margin-top: 16px;
+	}
+
 	.calendar-scroll {
 		overflow-x: auto;
-		margin-top: 16px;
 	}
 
 	.calendar-scroll:focus {
@@ -347,14 +410,11 @@
 	.step-4 { background: var(--shade-4); }
 	.step-5 { background: var(--shade-5); }
 
-	/* The label: ink with ground-coloured text. The top rows open it below the
-	   cell and the bottom rows above, so it stays inside the box; the right half
-	   of the year opens it leftwards. */
+	/* The label: ink with ground-coloured text, placed by placeTip() over the
+	   box rather than inside it, so the scroll box cannot cut it. Hidden until
+	   placed, so it never shows in the wrong spot for a frame. */
 	.day-tip {
-		display: none;
 		position: absolute;
-		bottom: calc(100% + 6px);
-		left: 0;
 		z-index: 2;
 		padding: 6px 10px;
 		background: var(--ink);
@@ -363,23 +423,14 @@
 		line-height: 1.3;
 		white-space: nowrap;
 		pointer-events: none;
+		visibility: hidden;
 	}
 
-	.tip-below .day-tip {
-		top: calc(100% + 6px);
-		bottom: auto;
+	.day-tip.placed {
+		visibility: visible;
 	}
 
-	.tip-end .day-tip {
-		left: auto;
-		right: 0;
-	}
-
-	.day:hover .day-tip,
-	.day:focus-visible .day-tip {
-		display: block;
-	}
-
+	.day.shown,
 	.day:hover,
 	.day:focus-visible {
 		z-index: 1;
