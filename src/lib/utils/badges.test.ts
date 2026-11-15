@@ -16,7 +16,6 @@ function baseStats(overrides: Partial<CollectionStats> = {}): CollectionStats {
 		topArtists: [],
 		topLabels: [],
 		topStyles: [],
-		recentlyAdded: [],
 		addedByMonth: [],
 		oldestRelease: null,
 		newestRelease: null,

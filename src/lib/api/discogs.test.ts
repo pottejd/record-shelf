@@ -235,12 +235,6 @@ describe('computeCollectionStats', () => {
 		expect(stats.topRatedItems).toEqual([]);
 	});
 
-	it('limits recentlyAdded to 12 items', () => {
-		const items = Array.from({ length: 20 }, (_, i) => makeItem({ id: i + 1 }));
-		const stats = computeCollectionStats(items);
-		expect(stats.recentlyAdded).toHaveLength(12);
-	});
-
 	it('limits topArtists and topLabels to 20', () => {
 		const items = Array.from({ length: 25 }, (_, i) =>
 			makeItem({

@@ -241,9 +241,6 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 	const topLabels = sortByCount(labelCounts).slice(0, TOP_LIST_LIMIT);
 	const topStyles = sortByCount(styleCounts).slice(0, TOP_LIST_LIMIT);
 
-	// Recently added (already sorted by API)
-	const recentlyAdded = items.slice(0, GRID_PREVIEW_LIMIT);
-
 	// Added by month (last 12 months)
 	const addedByMonth = Object.entries(addedByMonthMap)
 		.sort((a, b) => a[0].localeCompare(b[0]))
@@ -303,7 +300,6 @@ export function computeCollectionStats(items: DiscogsCollectionItem[]): Collecti
 		topArtists,
 		topLabels,
 		topStyles,
-		recentlyAdded,
 		addedByMonth,
 		oldestRelease,
 		newestRelease,

@@ -114,7 +114,6 @@ export interface CollectionStats {
 	topArtists: Array<{ name: string; count: number }>;
 	topLabels: Array<{ name: string; count: number }>;
 	topStyles: Array<{ name: string; count: number }>;
-	recentlyAdded: DiscogsCollectionItem[];
 	addedByMonth: Array<{ date: string; count: number }>;
 	oldestRelease: DiscogsBasicInformation | null;
 	newestRelease: DiscogsBasicInformation | null;

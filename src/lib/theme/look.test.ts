@@ -7,12 +7,7 @@ import { fileURLToPath } from 'node:url';
  * token blocks) must stay inside the Shelf look: no colour literals, gradients
  * (other than repeating ones), shadows (other than inset), rounded corners
  * (other than 0 and 50%), old colour/gradient/shadow variables, or all-caps.
- *
- * PENDING lists files not converted yet. A task that converts a file removes
- * its entry; a task that deletes or moves a pending file removes its entry too.
- * Files not listed here, including every new file, are checked from the start.
  */
-export const PENDING: string[] = [];
 
 export interface Violation {
 	line: number;
@@ -106,7 +101,7 @@ const svelteFiles = Object.fromEntries(
 
 describe('look guard', () => {
 	const files: Record<string, string> = {
-		...Object.fromEntries(Object.entries(svelteFiles).filter(([p]) => !PENDING.includes(p))),
+		...svelteFiles,
 		'src/app.css': withoutTokenBlocks(appCss)
 	};
 
@@ -117,8 +112,19 @@ describe('look guard', () => {
 		});
 	}
 
-	it('every pending file exists', () => {
-		expect(PENDING.filter((p) => !(p in svelteFiles))).toEqual([]);
+	it('no file keeps the old card style', () => {
+		const sources = import.meta.glob('/src/**/*.{svelte,ts,html}', {
+			query: '?raw',
+			import: 'default',
+			eager: true
+		}) as Record<string, string>;
+		// A stylesheet imported raw comes back empty under Vitest, so app.css is read from disk.
+		sources['/src/app.css'] = appCss;
+		const found = Object.entries(sources)
+			.filter(([path]) => path !== '/src/lib/theme/look.test.ts')
+			.filter(([, text]) => /class="card"|\.card\b/.test(text))
+			.map(([path]) => path);
+		expect(found).toEqual([]);
 	});
 });
 

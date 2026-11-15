@@ -417,37 +417,3 @@ a.btn-secondary:hover {
 		scroll-behavior: auto !important;
 	}
 }
-
-/* ==== TEMPORARY (task 20 deletes everything below) ======================
-   Old names that unconverted components still use, pointed at the new
-   tokens, and the old .card drawn as a .section. */
-html {
-	--color-bg: var(--ground);
-	--color-bg-card: var(--ground);
-	--color-bg-secondary: var(--track);
-	--color-bg-tertiary: var(--track);
-	--color-text: var(--ink);
-	--color-text-secondary: var(--muted);
-	--color-text-tertiary: var(--muted);
-	--color-border: var(--hairline);
-	--color-border-light: var(--hairline);
-	--color-primary: var(--ink);
-	--color-primary-hover: var(--ink);
-	--color-accent: var(--accent);
-	--color-danger: var(--accent);
-	--gradient-primary: var(--ink);
-	--gradient-brand: var(--ink);
-	--gradient-warm: var(--ink);
-	--gradient-cool: var(--ink);
-	--shadow-sm: none;
-	--shadow-md: none;
-	--shadow-lg: none;
-}
-
-.card {
-	border-top: var(--rule) solid var(--ink);
-	padding-top: 16px;
-	margin-bottom: var(--section-gap);
-	background: none;
-	border-radius: 0;
-}

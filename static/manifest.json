@@ -4,8 +4,8 @@
 	"description": "Visualize and explore any public Discogs collection",
 	"start_url": "/",
 	"display": "standalone",
-	"background_color": "#ffffff",
-	"theme_color": "#1a1a1a",
+	"background_color": "#ECEEE8",
+	"theme_color": "#ECEEE8",
 	"icons": [
 		{
 			"src": "/favicon.svg",

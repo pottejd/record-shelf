@@ -6,13 +6,53 @@
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 		<link rel="apple-touch-icon" href="/favicon.svg" />
 		<link rel="manifest" href="/manifest.json" />
+		<meta name="theme-color" content="#ECEEE8" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#131815" media="(prefers-color-scheme: dark)" />
 		%sveltekit.head%
 		<script src="%sveltekit.assets%/theme-init.js"></script>
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
 		<noscript>
-			<div style="text-align:center;padding:3rem;font-family:system-ui,sans-serif">
+			<style>
+				.no-js {
+					max-width: 30rem;
+					margin: 0 auto;
+					padding: 48px 20px;
+					font-family: 'Segoe UI', system-ui, sans-serif;
+					color: #18201c;
+					border-top: 4px solid #18201c;
+				}
+				.no-js h1 {
+					font-size: 2rem;
+					line-height: 1.15;
+					margin: 0 0 12px;
+				}
+				.no-js p {
+					color: #4a534d;
+					font-size: 1.0625rem;
+					line-height: 1.6;
+					margin: 0 0 12px;
+				}
+				@media (prefers-color-scheme: dark) {
+					body {
+						background: #131815;
+					}
+					.no-js {
+						color: #e8ebe3;
+						border-top-color: #e8ebe3;
+					}
+					.no-js p {
+						color: #a6b0a7;
+					}
+				}
+				@media (prefers-color-scheme: light) {
+					body {
+						background: #eceee8;
+					}
+				}
+			</style>
+			<div class="no-js">
 				<h1>Record Shelf</h1>
 				<p>JavaScript is required to use this application.</p>
 				<p>Please enable JavaScript in your browser settings.</p>

@@ -3,55 +3,82 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="theme-color" content="#ECEEE8" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#131815" media="(prefers-color-scheme: dark)" />
 		<title>Offline · Record Shelf</title>
+		<!-- This page is cached by the service worker and cannot read the site's tokens, so it holds the colours itself. -->
 		<style>
+			:root {
+				--ground: #eceee8;
+				--ink: #18201c;
+				--muted: #4a534d;
+				--on-ink: #eceee8;
+			}
+			@media (prefers-color-scheme: dark) {
+				:root {
+					--ground: #131815;
+					--ink: #e8ebe3;
+					--muted: #a6b0a7;
+					--on-ink: #131815;
+				}
+			}
 			body {
-				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-				background: #0a0a0a;
-				color: #fafafa;
+				font-family: 'Segoe UI', system-ui, sans-serif;
+				background: var(--ground);
+				color: var(--ink);
 				display: flex;
 				min-height: 100vh;
 				margin: 0;
 				align-items: center;
 				justify-content: center;
-				text-align: center;
 			}
 			.wrap {
-				padding: 2rem;
-				max-width: 28rem;
+				padding: 32px 20px;
+				max-width: 30rem;
+				border-top: 4px solid var(--ink);
 			}
 			svg {
-				width: 64px;
-				height: 64px;
-				opacity: 0.6;
-				margin-bottom: 1rem;
+				width: 48px;
+				height: 48px;
+				margin: 20px 0 16px;
 			}
 			h1 {
-				font-size: 1.5rem;
-				margin: 0 0 0.5rem;
+				font-size: 2rem;
+				font-weight: 700;
+				line-height: 1.15;
+				margin: 0 0 12px;
 			}
 			p {
-				color: #a3a3a3;
+				color: var(--muted);
+				font-size: 1.0625rem;
 				line-height: 1.6;
-				margin: 0 0 1.5rem;
+				margin: 0 0 28px;
 			}
 			a.retry {
 				display: inline-block;
-				background: linear-gradient(135deg, #6366f1, #8b5cf6);
-				color: #fff;
+				background: var(--ink);
+				color: var(--on-ink);
+				border: 2px solid var(--ink);
 				text-decoration: none;
-				border-radius: 10px;
-				padding: 0.75rem 1.5rem;
-				font-size: 0.9375rem;
+				padding: 12px 24px;
+				min-height: 20px;
+				font-size: 1rem;
 				font-weight: 600;
+			}
+			a.retry:hover {
+				background: transparent;
+				color: var(--ink);
+			}
+			a.retry:focus-visible {
+				outline: 2px solid var(--ink);
+				outline-offset: 3px;
 			}
 		</style>
 	</head>
 	<body>
-		<div class="wrap">
+		<main class="wrap">
 			<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-				<circle cx="24" cy="24" r="22" stroke="currentColor" stroke-width="2.5" />
-				<circle cx="24" cy="24" r="10" stroke="currentColor" stroke-width="1.5" opacity="0.5" />
+				<circle cx="24" cy="24" r="19" stroke="currentColor" stroke-width="3" />
 				<circle cx="24" cy="24" r="4" fill="currentColor" />
 			</svg>
 			<h1>You're offline</h1>
@@ -60,6 +87,6 @@
 				try again.
 			</p>
 			<a class="retry" href="/">Try again</a>
-		</div>
+		</main>
 	</body>
 </html>
