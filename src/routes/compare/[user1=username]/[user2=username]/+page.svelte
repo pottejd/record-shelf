@@ -142,7 +142,7 @@
 {#if blocked.length > 0}
 <main id="main-content" class="compare-results">
 	{#each blocked as u}
-		<div class="card" role="alert">
+		<div class="error-note blocked" role="alert">
 			{#if u.code === 'NOT_FOUND'}
 				No Discogs user named "{u.username}".
 			{:else}
@@ -156,11 +156,11 @@
 	{@render banners()}
 
 	<header class="matchup">
-		<div class="user-card">
+		<div class="user-card user-1">
 			{#if user1.profile.avatar_url}
-				<img src={user1.profile.avatar_url} alt="" class="avatar" />
+				<img src={user1.profile.avatar_url} alt="" class="avatar cover" />
 			{/if}
-			<a href="/u/{user1.profile.username}" class="username">{user1.profile.username}</a>
+			<a href="/u/{user1.profile.username}" class="username"><span class="swatch swatch-1" aria-hidden="true"></span>{user1.profile.username}</a>
 			<span class="item-count">{user1.totalItems} records</span>
 		</div>
 
@@ -169,11 +169,11 @@
 			<span class="similarity-label">{getSimilarityLabel(comparison.similarityScore)}</span>
 		</div>
 
-		<div class="user-card">
+		<div class="user-card user-2">
 			{#if user2.profile.avatar_url}
-				<img src={user2.profile.avatar_url} alt="" class="avatar" />
+				<img src={user2.profile.avatar_url} alt="" class="avatar cover" />
 			{/if}
-			<a href="/u/{user2.profile.username}" class="username">{user2.profile.username}</a>
+			<a href="/u/{user2.profile.username}" class="username"><span class="swatch swatch-2" aria-hidden="true"></span>{user2.profile.username}</a>
 			<span class="item-count">{user2.totalItems} records</span>
 		</div>
 	</header>
@@ -193,9 +193,16 @@
 		</div>
 	</section>
 
+	{#snippet legend()}
+		<div class="legend">
+			<span class="legend-item"><span class="swatch swatch-1" aria-hidden="true"></span>{user1.profile.username}</span>
+			<span class="legend-item"><span class="swatch swatch-2" aria-hidden="true"></span>{user2.profile.username}</span>
+		</div>
+	{/snippet}
+
 	{#if comparison.sharedArtists.length > 0}
-		<section class="card">
-			<h2>Shared Artists</h2>
+		<section class="section">
+			<h2>Shared artists</h2>
 			<div class="artist-tags">
 				{#each comparison.sharedArtists as artist}
 					<span class="artist-tag">{artist}</span>
@@ -208,42 +215,38 @@
 	{/if}
 
 	{#if comparison.genreOverlap?.length > 0}
-		<section class="card">
-			<h2>Genre Comparison</h2>
+		{@const max = Math.max(1, ...comparison.genreOverlap.flatMap((g) => [g.count1, g.count2]))}
+		<section class="section">
+			<h2>Genre comparison</h2>
+			{@render legend()}
 			<div class="genre-bars">
 				{#each comparison.genreOverlap as g}
-					{@const max = Math.max(g.count1, g.count2, 1)}
 					<div class="genre-row">
 						<div class="genre-bar-left">
-							<div class="bar bar-1" style="width: {(g.count1 / max) * 100}%">
-								{#if g.count1 > 0}<span class="bar-label">{g.count1}</span>{/if}
-							</div>
+							<div class="bar bar-1" style="--v: {g.count1 / max}"></div>
+							{#if g.count1 > 0}<span class="bar-label">{g.count1}</span>{/if}
 						</div>
 						<span class="genre-name">{g.genre}</span>
 						<div class="genre-bar-right">
-							<div class="bar bar-2" style="width: {(g.count2 / max) * 100}%">
-								{#if g.count2 > 0}<span class="bar-label">{g.count2}</span>{/if}
-							</div>
+							<div class="bar bar-2" style="--v: {g.count2 / max}"></div>
+							{#if g.count2 > 0}<span class="bar-label">{g.count2}</span>{/if}
 						</div>
 					</div>
 				{/each}
-			</div>
-			<div class="genre-legend">
-				<span class="legend-item"><span class="legend-dot dot-1"></span>{user1.profile.username}</span>
-				<span class="legend-item"><span class="legend-dot dot-2"></span>{user2.profile.username}</span>
 			</div>
 		</section>
 	{/if}
 
 	{#if comparison.decades1 && comparison.decades2}
 		{@const allDecades = [...new Set([...Object.keys(comparison.decades1), ...Object.keys(comparison.decades2)])].sort()}
-		<section class="card">
-			<h2>Decade Comparison</h2>
+		{@const max = Math.max(1, ...Object.values(comparison.decades1), ...Object.values(comparison.decades2))}
+		<section class="section">
+			<h2>Decade comparison</h2>
+			{@render legend()}
 			<div class="decade-chart">
 				{#each allDecades as decade}
 					{@const v1 = comparison.decades1[decade] || 0}
 					{@const v2 = comparison.decades2[decade] || 0}
-					{@const max = Math.max(v1, v2, 1)}
 					<div class="decade-col">
 						<div class="decade-bars">
 							<div class="decade-bar bar-1" style="height: {(v1 / max) * 100}%"
@@ -254,6 +257,10 @@
 							</div>
 						</div>
 						<span class="decade-label">{decade}</span>
+						<span class="decade-values">
+							<span><span class="visually-hidden">{user1.profile.username}: </span>{v1}</span>
+							<span><span class="visually-hidden">{user2.profile.username}: </span>{v2}</span>
+						</span>
 					</div>
 				{/each}
 			</div>
@@ -261,15 +268,15 @@
 	{/if}
 
 	{#if comparison.overlap.length > 0}
-		<section class="card">
-			<h2>Records Both Own</h2>
+		<section class="section">
+			<h2>Records both own</h2>
 			<CoverGrid items={comparison.overlap.slice(0, SHARED_RECORDS_PREVIEW)} />
 		</section>
 	{/if}
 
 	<div class="grid-2col">
-		<section class="card">
-			<h2>Only {user1.profile.username} Has</h2>
+		<section class="section">
+			<h2>Only {user1.profile.username} has</h2>
 			{#if comparison.uniqueTo1.length > 0}
 				<CoverGrid items={comparison.uniqueTo1} />
 			{:else}
@@ -277,8 +284,8 @@
 			{/if}
 		</section>
 
-		<section class="card">
-			<h2>Only {user2.profile.username} Has</h2>
+		<section class="section">
+			<h2>Only {user2.profile.username} has</h2>
 			{#if comparison.uniqueTo2.length > 0}
 				<CoverGrid items={comparison.uniqueTo2} />
 			{:else}
@@ -288,7 +295,7 @@
 	</div>
 
 	<div class="actions">
-		<a href="/compare" class="action-btn">Compare Different Users</a>
+		<a href="/compare" class="btn btn-secondary">Compare Different Users</a>
 	</div>
 </main>
 {:else}
@@ -299,247 +306,233 @@
 
 <style>
 	.compare-results {
-		max-width: 1200px;
-		margin: 0 auto;
-		padding: 2rem 0;
+		padding-top: 56px;
+	}
+
+	.blocked + .blocked {
+		margin-top: 16px;
 	}
 
 	.matchup {
-		display: flex;
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
-		justify-content: center;
-		gap: 2rem;
-		margin-bottom: 2rem;
-		flex-wrap: wrap;
+		gap: 24px 40px;
+		margin-bottom: 40px;
 	}
 
 	.user-card {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 1.5rem;
-		background: var(--color-bg-card);
-		border: 1px solid var(--color-border);
-		border-radius: 16px;
-		min-width: 150px;
+		align-items: flex-start;
+		gap: 8px;
+		min-width: 0;
+	}
+
+	.user-2 {
+		align-items: flex-end;
+		text-align: right;
 	}
 
 	.avatar {
 		width: 64px;
 		height: 64px;
-		border-radius: 50%;
-		object-fit: cover;
 	}
 
 	.username {
-		font-weight: 600;
-		font-size: 1.125rem;
-		color: var(--color-text);
-		text-decoration: none;
-	}
-
-	.username:hover {
-		color: var(--color-primary);
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
+		max-width: 100%;
+		font-size: 32px;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		line-height: 1.1;
+		overflow-wrap: anywhere;
 	}
 
 	.item-count {
-		font-size: 0.875rem;
-		color: var(--color-text-secondary);
+		font-size: 17px;
+		color: var(--muted);
 	}
 
 	.vs-badge {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.25rem;
+		gap: 4px;
+		text-align: center;
 	}
 
 	.similarity-score {
-		font-size: 2.5rem;
-		font-weight: 700;
-		background: linear-gradient(135deg, #6366f1, #ec4899);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
+		font-size: 64px;
+		font-weight: 800;
+		letter-spacing: -0.03em;
+		line-height: 1;
 	}
 
 	.similarity-label {
-		font-size: 0.875rem;
-		color: var(--color-text-secondary);
-		font-weight: 500;
+		font-size: 17px;
+		color: var(--muted);
 	}
 
 	.stats-row {
-		display: flex;
-		justify-content: center;
-		gap: 1rem;
-		margin-bottom: 2rem;
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		margin-bottom: var(--section-gap);
+		border-top: 1px solid var(--hairline);
+		border-bottom: 1px solid var(--hairline);
 	}
 
 	.stat-card {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		padding: 1rem 2rem;
-		background: var(--color-bg-secondary);
-		border-radius: 12px;
+		gap: 2px;
+		padding: 16px 0;
+	}
+
+	.stat-card + .stat-card {
+		padding-left: 24px;
+		border-left: 1px solid var(--hairline);
 	}
 
 	.stat-value {
-		font-size: 1.5rem;
-		font-weight: 700;
-		color: var(--color-primary);
+		font-size: 34px;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		line-height: 1.1;
 	}
 
 	.stat-label {
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	/* Base .card styling is global (app.css); only page-specific tweaks here. */
-	.card h2 {
-		margin: 0 0 1.25rem;
-		font-size: 1rem;
-		font-weight: 600;
-		color: var(--color-text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.grid-2col {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-		gap: 1.5rem;
-		margin-bottom: 1.5rem;
-	}
-
-	.grid-2col .card {
-		margin-bottom: 0;
+		gap: 0 64px;
 	}
 
 	.artist-tags {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: 4px 28px;
 	}
 
 	.artist-tag {
-		padding: 0.375rem 0.75rem;
-		background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
-		border-radius: 20px;
-		font-size: 0.875rem;
-		font-weight: 500;
+		font-size: 18px;
+		font-weight: 600;
 	}
 
 	.more-tag {
-		padding: 0.375rem 0.75rem;
-		background: var(--color-bg-secondary);
-		border-radius: 20px;
-		font-size: 0.875rem;
-		color: var(--color-text-tertiary);
+		font-size: 18px;
+		color: var(--muted);
+	}
+
+	.swatch {
+		display: inline-block;
+		width: 14px;
+		height: 14px;
+		flex-shrink: 0;
+	}
+
+	.swatch-1,
+	.bar-1 {
+		background: var(--chart-1);
+	}
+
+	.swatch-2,
+	.bar-2 {
+		background: var(--chart-2);
+	}
+
+	.legend {
+		display: flex;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 4px 24px;
+		margin-bottom: 16px;
+		font-size: 15px;
+	}
+
+	.legend-item {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		min-width: 0;
+		overflow-wrap: anywhere;
 	}
 
 	.genre-bars {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
 	}
 
 	.genre-row {
 		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		gap: 0.5rem;
+		grid-template-columns: 1fr 140px 1fr;
+		gap: 12px;
 		align-items: center;
+		min-height: 36px;
+		border-top: 1px solid var(--hairline);
+	}
+
+	.genre-row:first-child {
+		border-top: 0;
+	}
+
+	.genre-bar-left,
+	.genre-bar-right {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-width: 0;
 	}
 
 	.genre-bar-left {
-		display: flex;
-		justify-content: flex-end;
+		flex-direction: row-reverse;
 	}
 
-	.genre-bar-right {
-		display: flex;
-		justify-content: flex-start;
-	}
-
+	/* --v is this count over the largest count in the chart; 56px is kept for the number. */
 	.bar {
-		height: 24px;
-		border-radius: 4px;
-		display: flex;
-		align-items: center;
-		min-width: 2px;
-		transition: width 0.3s ease;
-	}
-
-	.bar-1 {
-		background: var(--gradient-brand);
-		justify-content: flex-start;
-		padding-left: 6px;
-	}
-
-	.bar-2 {
-		background: linear-gradient(135deg, #ec4899, #f43f5e);
-		justify-content: flex-end;
-		padding-right: 6px;
+		flex: 0 0 auto;
+		width: calc((100% - 56px) * var(--v));
+		height: 20px;
 	}
 
 	.bar-label {
-		font-size: 0.6875rem;
+		font-size: 15px;
 		font-weight: 600;
-		color: white;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.genre-name {
-		font-size: 0.75rem;
+		font-size: 15px;
 		font-weight: 500;
 		text-align: center;
-		min-width: 80px;
-		color: var(--color-text-secondary);
+		overflow-wrap: anywhere;
+		line-height: 1.2;
 	}
-
-	.genre-legend {
-		display: flex;
-		justify-content: center;
-		gap: 1.5rem;
-		margin-top: 1rem;
-		font-size: 0.8125rem;
-		color: var(--color-text-secondary);
-	}
-
-	.legend-item {
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-	}
-
-	.legend-dot {
-		width: 10px;
-		height: 10px;
-		border-radius: 50%;
-	}
-
-	.dot-1 { background: #6366f1; }
-	.dot-2 { background: #ec4899; }
 
 	.decade-chart {
 		display: flex;
-		justify-content: center;
-		gap: 0.5rem;
+		gap: 8px;
 		align-items: flex-end;
-		height: 180px;
-		padding: 1rem 0;
+		padding-top: 8px;
+		overflow-x: auto;
 	}
 
+	/* Positioned so the visually hidden names stay inside the scrolling chart. */
 	.decade-col {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 6px;
 		flex: 1;
-		max-width: 60px;
+		min-width: 44px;
+		max-width: 120px;
 	}
 
 	.decade-bars {
@@ -548,99 +541,103 @@
 		align-items: flex-end;
 		height: 150px;
 		width: 100%;
+		border-bottom: 1px solid var(--ink);
 	}
 
 	.decade-bar {
 		flex: 1;
-		border-radius: 3px 3px 0 0;
-		min-height: 2px;
-		transition: height 0.3s ease;
 	}
 
 	.decade-label {
-		font-size: 0.625rem;
-		color: var(--color-text-tertiary);
+		font-size: 15px;
+		font-weight: 600;
 		white-space: nowrap;
 	}
 
+	.decade-values {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		font-size: 13px;
+		line-height: 1.3;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+
 	.no-data {
-		text-align: center;
-		color: var(--color-text-tertiary);
-		font-size: 0.875rem;
-		padding: 2rem;
+		color: var(--muted);
 		margin: 0;
 	}
 
 	.actions {
-		display: flex;
-		justify-content: center;
-		margin: 2rem 0;
+		margin-top: 8px;
 	}
 
-	.action-btn {
-		padding: 0.75rem 1.5rem;
-		background: var(--color-bg-secondary);
-		border-radius: 8px;
-		text-decoration: none;
-		color: var(--color-text);
-		font-weight: 500;
-		transition: background-color 0.15s;
-	}
-
-	.action-btn:hover {
-		background: var(--color-bg-tertiary);
-	}
-
-	@media (max-width: 600px) {
+	@media (max-width: 699px) {
 		.compare-results {
-			padding: 1rem;
+			padding-top: 32px;
 		}
 
 		.matchup {
-			flex-direction: column;
+			grid-template-columns: 1fr;
 		}
 
 		.vs-badge {
 			order: -1;
+			align-items: flex-start;
+			text-align: left;
+		}
+
+		.user-2 {
+			align-items: flex-start;
+			text-align: left;
+		}
+
+		.username {
+			font-size: 28px;
 		}
 
 		.stats-row {
-			flex-direction: column;
+			grid-template-columns: 1fr;
 		}
 
-		.stat-card {
-			padding: 0.75rem 1rem;
+		.stat-card + .stat-card {
+			padding-left: 0;
+			border-left: 0;
+			border-top: 1px solid var(--hairline);
 		}
 
 		.genre-row {
-			grid-template-columns: 1fr 60px 1fr;
+			grid-template-columns: 1fr 76px 1fr;
+			gap: 6px;
 		}
 
 		.genre-name {
-			font-size: 0.6875rem;
-			min-width: 60px;
+			font-size: 13px;
+		}
+
+		.bar {
+			width: calc((100% - 40px) * var(--v));
 		}
 
 		.bar-label {
-			font-size: 0.5625rem;
+			font-size: 13px;
 		}
 
 		.decade-chart {
-			height: 140px;
-			gap: 0.25rem;
-			overflow-x: auto;
+			gap: 4px;
 		}
 
 		.decade-col {
 			min-width: 36px;
 		}
 
-		.decade-bars {
-			height: 110px;
+		.decade-label {
+			font-size: 13px;
 		}
 
-		.decade-label {
-			font-size: 0.5625rem;
+		.actions .btn {
+			width: 100%;
 		}
 	}
 </style>

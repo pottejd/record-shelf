@@ -61,15 +61,7 @@ export const PENDING: string[] = [
 	'src/lib/components/TimelineChart.svelte',
 	'src/lib/components/TopList.svelte',
 	'src/lib/components/ValueEstimate.svelte',
-	'src/lib/components/YearHeatmap.svelte',
-	'src/routes/+error.svelte',
-	'src/routes/+layout.svelte',
-	'src/routes/+page.svelte',
-	'src/routes/compare/+page.svelte',
-	'src/routes/compare/[user1=username]/[user2=username]/+page.svelte',
-	'src/routes/settings/+page.svelte',
-	'src/routes/u/[username=username]/+page.svelte',
-	'src/routes/u/[username=username]/wantlist/+page.svelte'
+	'src/lib/components/YearHeatmap.svelte'
 ];
 
 export interface Violation {

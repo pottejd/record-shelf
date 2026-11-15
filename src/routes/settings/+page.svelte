@@ -63,7 +63,7 @@
 	</header>
 
 	{#if showRedirectNotice}
-		<div class="redirect-notice">
+		<div class="redirect-notice error-note">
 			<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
 			</svg>
@@ -71,9 +71,9 @@
 		</div>
 	{/if}
 
-	<section class="card">
+	<section class="section">
 		<h2>Discogs API Token</h2>
-		<p class="description">
+		<p class="description muted">
 			Record Shelf needs a Discogs Personal Access Token to fetch collection data.
 			Your token is stored in your browser and sent to this app as a cookie so it can fetch your collection server-side. It is never shared with third parties.
 		</p>
@@ -85,14 +85,14 @@
 						type="text"
 						bind:value={token}
 						placeholder="Paste your token here"
-						class="token-input"
+						class="field token-input"
 					/>
 				{:else}
 					<input
 						type="password"
 						bind:value={token}
 						placeholder="Paste your token here"
-						class="token-input"
+						class="field token-input"
 					/>
 				{/if}
 				<button
@@ -116,14 +116,14 @@
 			</div>
 
 			<div class="button-group">
-				<button class="btn primary" onclick={handleSave} disabled={!token.trim()}>
+				<button class="btn btn-primary" onclick={handleSave} disabled={!token.trim()}>
 					{#if saved}
 						Saved!
 					{:else}
 						Save Token
 					{/if}
 				</button>
-				<button class="btn secondary" onclick={testToken} disabled={testing || !token.trim()}>
+				<button class="btn btn-secondary" onclick={testToken} disabled={testing || !token.trim()}>
 					{#if testing}
 						Testing...
 					{:else}
@@ -131,13 +131,13 @@
 					{/if}
 				</button>
 				{#if $settings.discogsToken}
-					<button class="btn danger" onclick={handleClear}>Clear</button>
+					<button class="btn btn-secondary" onclick={handleClear}>Clear</button>
 				{/if}
 			</div>
 		</div>
 
 		{#if testResult}
-			<div class="test-result" class:success={testResult.success} class:error={!testResult.success}>
+			<div class="test-result" class:success={testResult.success} class:error-note={!testResult.success}>
 				{#if testResult.success}
 					<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
@@ -155,7 +155,7 @@
 		{/if}
 	</section>
 
-	<section class="card instructions">
+	<section class="section instructions">
 		<h2>How to Get a Token</h2>
 		<ol>
 			<li>
@@ -190,14 +190,14 @@
 		</div>
 	</section>
 
-	<section class="card about">
+	<section class="section about">
 		<h2>About Record Shelf</h2>
 		<p>
 			Record Shelf visualizes any public Discogs collection with beautiful charts and statistics.
 			Enter any public Discogs username to explore their collection.
 		</p>
-		<p class="version">Version {version}</p>
-		<p class="copyright">
+		<p class="version small">Version {version}</p>
+		<p class="copyright small">
 			&copy; {new Date().getFullYear()} Record Shelf. All rights reserved.<br />
 			Not affiliated with Discogs. Discogs is a trademark of Zink Media, Inc.
 		</p>
@@ -206,65 +206,43 @@
 
 <style>
 	.settings {
-		max-width: 640px;
-		margin: 0 auto;
-		padding: 2rem 0;
+		max-width: 720px;
+		padding-top: 56px;
 	}
 
 	.settings-header {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		margin-bottom: 2rem;
+		margin-bottom: 48px;
+	}
+
+	h1 {
+		margin: 0;
 	}
 
 	.redirect-notice {
 		display: flex;
-		gap: 0.75rem;
-		padding: 1rem 1.25rem;
-		background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(234, 179, 8, 0.1));
-		border: 1px solid rgba(249, 115, 22, 0.3);
-		border-radius: 12px;
-		margin-bottom: 1.5rem;
+		gap: 12px;
+		margin-bottom: 48px;
 	}
 
 	.redirect-notice svg {
 		width: 24px;
 		height: 24px;
 		flex-shrink: 0;
-		color: #f97316;
+		color: var(--ink);
 	}
 
 	.redirect-notice p {
 		margin: 0;
-		font-size: 0.9375rem;
-		color: var(--color-text);
-		line-height: 1.5;
-	}
-
-	h1 {
-		margin: 0;
-		font-size: 1.5rem;
-	}
-
-	/* Base .card styling is global (app.css); only page-specific tweaks here. */
-	.card h2 {
-		margin: 0 0 0.75rem;
-		font-size: 1.125rem;
-		font-weight: 600;
 	}
 
 	.description {
-		margin: 0 0 1.25rem;
-		color: var(--color-text-secondary);
-		font-size: 0.9375rem;
-		line-height: 1.5;
+		margin: 0 0 24px;
 	}
 
 	.token-input-group {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 24px;
 	}
 
 	.input-wrapper {
@@ -274,38 +252,34 @@
 
 	.token-input {
 		flex: 1;
-		padding: 0.875rem 3rem 0.875rem 1rem;
-		font-size: 0.9375rem;
-		border: 1px solid var(--color-border);
-		border-radius: 10px;
-		background: var(--color-bg);
-		color: var(--color-text);
-		font-family: monospace;
+		min-width: 0;
+		padding-right: 52px;
+		font-family: ui-monospace, Consolas, monospace;
+		font-size: 17px;
 	}
 
-	.token-input:focus {
-		outline: none;
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+	.token-input::placeholder {
+		font-family: var(--font-sans);
 	}
 
 	.toggle-visibility {
 		position: absolute;
-		right: 0.75rem;
-		top: 50%;
-		transform: translateY(-50%);
+		right: 0;
+		bottom: 4px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: var(--touch);
+		height: var(--touch);
+		padding: 0;
+		border: 0;
 		background: none;
-		border: none;
-		padding: 0.375rem;
+		color: var(--muted);
 		cursor: pointer;
-		color: var(--color-text-tertiary);
-		border-radius: 6px;
-		transition: color 0.15s, background-color 0.15s;
 	}
 
 	.toggle-visibility:hover {
-		color: var(--color-text-secondary);
-		background: var(--color-bg-secondary);
+		color: var(--ink);
 	}
 
 	.toggle-visibility svg {
@@ -316,62 +290,21 @@
 
 	.button-group {
 		display: flex;
-		gap: 0.5rem;
+		gap: 12px 16px;
 		flex-wrap: wrap;
-	}
-
-	.btn {
-		padding: 0.625rem 1.25rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		border: none;
-		border-radius: 8px;
-		cursor: pointer;
-		transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
-	}
-
-	.btn:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.btn.primary {
-		background: var(--gradient-brand);
-		color: white;
-	}
-
-	.btn.primary:hover:not(:disabled) {
-		transform: translateY(-1px);
-		box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-	}
-
-	.btn.secondary {
-		background: var(--color-bg-secondary);
-		color: var(--color-text);
-	}
-
-	.btn.secondary:hover:not(:disabled) {
-		background: var(--color-bg-tertiary);
-	}
-
-	.btn.danger {
-		background: #fee2e2;
-		color: #dc2626;
-	}
-
-	.btn.danger:hover:not(:disabled) {
-		background: #fecaca;
 	}
 
 	.test-result {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		margin-top: 1rem;
-		padding: 0.75rem 1rem;
-		border-radius: 8px;
-		font-size: 0.875rem;
+		gap: 8px;
+		margin-top: 24px;
 		font-weight: 500;
+	}
+
+	.test-result.success {
+		padding: 4px 0 4px 16px;
+		border-left: 4px solid var(--ink);
 	}
 
 	.test-result svg {
@@ -380,23 +313,13 @@
 		flex-shrink: 0;
 	}
 
-	.test-result.success {
-		background: #dcfce7;
-		color: #166534;
-	}
-
-	.test-result.error {
-		background: #fee2e2;
-		color: #dc2626;
-	}
-
 	.instructions ol {
 		margin: 0;
 		padding: 0 0 0 1.25rem;
 	}
 
 	.instructions li {
-		margin-bottom: 1rem;
+		margin-bottom: 16px;
 	}
 
 	.instructions li:last-child {
@@ -405,73 +328,52 @@
 
 	.instructions li strong {
 		display: block;
-		margin-bottom: 0.25rem;
+		margin-bottom: 2px;
 	}
 
 	.instructions li p {
 		margin: 0;
-		color: var(--color-text-secondary);
-		font-size: 0.875rem;
-	}
-
-	.instructions a {
-		color: var(--color-primary);
+		color: var(--muted);
 	}
 
 	.note {
 		display: flex;
-		gap: 0.75rem;
-		margin-top: 1.5rem;
-		padding: 1rem;
-		background: var(--color-bg-secondary);
-		border-radius: 10px;
-		font-size: 0.875rem;
+		gap: 12px;
+		margin-top: 32px;
+		padding-top: 16px;
+		border-top: 1px solid var(--hairline);
 	}
 
 	.note svg {
 		width: 20px;
 		height: 20px;
 		flex-shrink: 0;
-		color: var(--color-primary);
+		margin-top: 2px;
+		color: var(--ink);
 	}
 
 	.note p {
 		margin: 0;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
+		color: var(--muted);
 	}
 
 	.note strong {
-		color: var(--color-text);
+		color: var(--ink);
 	}
 
 	.about p {
-		margin: 0 0 0.75rem;
-		color: var(--color-text-secondary);
-		font-size: 0.9375rem;
-		line-height: 1.5;
+		margin: 0 0 12px;
+		color: var(--muted);
 	}
 
-	.version {
-		font-size: 0.8125rem;
-		color: var(--color-text-tertiary);
-		margin-bottom: 0.5rem;
-	}
-
-	.copyright {
-		font-size: 0.75rem;
-		color: var(--color-text-tertiary);
-		line-height: 1.6;
+	.about .copyright {
 		margin: 0;
+		line-height: 1.6;
 	}
 
-	@media (max-width: 500px) {
+	@media (max-width: 699px) {
 		.settings {
-			padding: 1rem;
-		}
-
-		.card {
-			padding: 1.25rem;
+			padding-top: 32px;
 		}
 
 		.button-group {

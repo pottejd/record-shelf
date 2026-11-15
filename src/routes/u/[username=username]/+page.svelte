@@ -281,9 +281,7 @@
 
 <style>
 	.profile {
-		max-width: 1200px;
-		margin: 0 auto;
-		padding: 2rem 0;
+		padding-top: 56px;
 	}
 
 	/* These layout/typography rules are :global(.profile ...) so they apply to
@@ -300,34 +298,27 @@
 	:global(.profile .grid-2col) {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-		gap: 1.5rem;
-		margin-bottom: 1.5rem;
+		gap: 0 64px;
 	}
 
-	/* Base .card styling is global (app.css); these are page-specific tweaks. */
+	/* A .card heading reads as a section heading (the global .card is drawn as a .section). */
 	:global(.profile .card h2) {
-		margin: 0 0 1.25rem;
-		font-size: 1rem;
-		font-weight: 600;
-		color: var(--color-text-secondary, #666);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		margin: 0 0 16px;
+		font-size: 28px;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+		color: var(--ink);
 	}
 
 	:global(.profile .section-subtitle) {
-		margin: -1rem 0 1.25rem;
-		font-size: 0.875rem;
-		color: var(--color-text-tertiary);
+		margin: -8px 0 16px;
+		font-size: 15px;
+		color: var(--muted);
 	}
 
-	@media (max-width: 600px) {
+	@media (max-width: 699px) {
 		.profile {
-			padding: 1rem 0;
-		}
-
-		:global(.profile .card) {
-			padding: 1rem;
-			border-radius: 12px;
+			padding-top: 32px;
 		}
 
 		:global(.profile .stats-overview) {

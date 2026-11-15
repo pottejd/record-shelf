@@ -59,7 +59,7 @@
 		left: 0;
 		width: 100%;
 		height: 3px;
-		background: var(--gradient-primary);
+		background: var(--ink);
 		z-index: 200;
 		animation: loading 1.5s ease-in-out infinite;
 	}

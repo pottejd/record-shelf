@@ -51,110 +51,65 @@
 	{#if message}
 		<p class="message">{message}</p>
 	{/if}
-	<p class="suggestion">{info.suggestion}</p>
+	<p class="suggestion muted">{info.suggestion}</p>
 	<div class="actions">
-		<a href="/" class="btn primary">Back to Home</a>
+		<a href="/" class="btn btn-primary">Back to Home</a>
 		{#if status === 401}
-			<a href="/settings" class="btn secondary">Go to Settings</a>
+			<a href="/settings" class="btn btn-secondary">Go to Settings</a>
 		{/if}
 		{#if status === 429}
-			<button class="btn secondary" onclick={() => location.reload()}>
+			<button class="btn btn-secondary" onclick={() => location.reload()}>
 				Retry
 			</button>
 		{/if}
 		{#if status === 404}
-			<a href="/compare" class="btn secondary">Compare Collections</a>
+			<a href="/compare" class="btn btn-secondary">Compare Collections</a>
 		{/if}
 	</div>
 </main>
 
 <style>
 	.error-page {
-		min-height: 60vh;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: 2rem 0;
-		text-align: center;
+		padding-top: 56px;
 	}
 
 	.error-icon {
-		font-size: 3rem;
-		margin-bottom: 0.5rem;
+		font-size: 40px;
+		line-height: 1;
+		margin-bottom: 16px;
 	}
 
 	h1 {
-		font-size: 5rem;
 		margin: 0;
-		line-height: 1;
-		background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
-		font-weight: 800;
 	}
 
 	.title {
-		font-size: 1.5rem;
-		font-weight: 600;
-		margin: 0.5rem 0 0;
-		color: var(--color-text);
+		margin: 16px 0 0;
+		font-size: 28px;
+		font-weight: 700;
+		letter-spacing: -0.01em;
 	}
 
 	.message {
-		font-size: 1.125rem;
-		color: var(--color-text-secondary, #666);
-		margin: 0.75rem 0 0.5rem;
-		max-width: 450px;
+		margin: 12px 0 0;
+		max-width: 560px;
+		font-size: 18px;
 	}
 
 	.suggestion {
-		font-size: 0.9rem;
-		color: var(--color-text-tertiary, #999);
-		margin: 0 0 2rem;
-		max-width: 400px;
+		margin: 12px 0 32px;
+		max-width: 560px;
 	}
 
 	.actions {
 		display: flex;
-		gap: 0.75rem;
+		gap: 12px 16px;
 		flex-wrap: wrap;
-		justify-content: center;
 	}
 
-	.btn {
-		padding: 0.75rem 1.5rem;
-		border-radius: 10px;
-		font-weight: 600;
-		font-size: 0.9rem;
-		text-decoration: none;
-		cursor: pointer;
-		border: none;
-		transition: transform 0.15s, box-shadow 0.15s;
-	}
-
-	.btn:hover {
-		transform: translateY(-1px);
-	}
-
-	.btn.primary {
-		background: var(--gradient-brand);
-		color: white;
-	}
-
-	.btn.primary:hover {
-		box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-	}
-
-	.btn.secondary {
-		background: var(--color-bg-card, #f5f5f5);
-		color: var(--color-text, #333);
-		border: 1px solid var(--color-border, #e0e0e0);
-	}
-
-	.btn.secondary:hover {
-		border-color: var(--color-primary, #6366f1);
-		color: var(--color-primary, #6366f1);
+	@media (max-width: 699px) {
+		.error-page {
+			padding-top: 32px;
+		}
 	}
 </style>

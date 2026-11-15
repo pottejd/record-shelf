@@ -84,7 +84,7 @@
 
 {#if s.error?.code === 'NOT_FOUND' || s.error?.code === 'PRIVATE'}
 <main id="main-content" class="wantlist-page">
-	<div class="card" role="alert">
+	<div class="error-note" role="alert">
 		{#if s.error.code === 'NOT_FOUND'}
 			No Discogs user named "{data.username}".
 		{:else}
@@ -97,11 +97,11 @@
 	<header class="page-header">
 		<div class="user-info">
 			{#if profile.avatar_url}
-				<img src={profile.avatar_url} alt={profile.username} class="avatar" />
+				<img src={profile.avatar_url} alt={profile.username} class="avatar cover" />
 			{/if}
 			<div>
 				<h1>{profile.username}'s Wantlist</h1>
-				<p class="count">{s.totalItems} items</p>
+				<p class="count lead">{s.totalItems} items</p>
 			</div>
 		</div>
 	</header>
@@ -126,6 +126,7 @@
 				<button
 					class="sort-btn"
 					class:active={sortBy === option.value}
+					aria-pressed={sortBy === option.value}
 					onclick={() => sortBy = option.value as typeof sortBy}
 				>{option.label}</button>
 			{/each}
@@ -167,7 +168,7 @@
 			{#if searchQuery}
 				<p class="empty-title">No results</p>
 				<p class="empty-desc">No items match "{searchQuery}"</p>
-				<button class="clear-btn" onclick={() => searchQuery = ''}>Clear search</button>
+				<button class="btn btn-secondary clear-btn" onclick={() => searchQuery = ''}>Clear search</button>
 			{:else}
 				<svg aria-hidden="true" class="empty-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
 					<circle cx="32" cy="32" r="24" opacity="0.3" />
@@ -177,7 +178,7 @@
 				</svg>
 				<p class="empty-title">Wantlist is empty</p>
 				<p class="empty-desc">{profile.username} hasn't added any items to their wantlist yet.</p>
-				<a href="/u/{profile.username}" class="back-btn">View Collection</a>
+				<a href="/u/{profile.username}" class="btn btn-secondary back-btn">View Collection</a>
 			{/if}
 		</div>
 	{/if}
@@ -191,137 +192,133 @@
 
 <style>
 	.wantlist-page {
-		max-width: 1200px;
-		margin: 0 auto;
-		padding: 2rem 0;
+		padding-top: 56px;
 	}
 
 	.page-header {
-		margin-bottom: 1.5rem;
+		margin-bottom: 40px;
 	}
 
 	.user-info {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: 20px;
 	}
 
 	.avatar {
-		width: 56px;
-		height: 56px;
-		border-radius: 50%;
-		object-fit: cover;
-		border: 2px solid var(--color-border);
+		width: 64px;
+		height: 64px;
+		flex-shrink: 0;
 	}
 
 	h1 {
 		margin: 0;
-		font-size: 1.5rem;
+		overflow-wrap: anywhere;
 	}
 
 	.count {
-		margin: 0.25rem 0 0;
-		font-size: 0.875rem;
-		color: var(--color-text-secondary);
+		margin: 12px 0 0;
 	}
 
 	.controls {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
-		margin-bottom: 1.5rem;
+		gap: 8px;
+		margin-bottom: 32px;
 	}
 
 	.search-bar {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 16px;
 	}
 
 	.sort-bar {
 		display: flex;
 		align-items: center;
-		gap: 0.375rem;
+		gap: 0 28px;
 		flex-wrap: wrap;
 	}
 
 	.sort-label {
-		font-size: 0.75rem;
-		color: var(--color-text-tertiary);
-		font-weight: 500;
-		margin-right: 0.25rem;
+		font-size: 17px;
+		color: var(--muted);
 	}
 
 	.sort-btn {
-		padding: 0.375rem 0.75rem;
-		font-size: 0.75rem;
+		min-height: 48px;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: var(--muted);
+		font: inherit;
+		font-size: 17px;
 		font-weight: 500;
-		border: 1px solid var(--color-border);
-		border-radius: 6px;
-		background: var(--color-bg-card);
-		color: var(--color-text-secondary);
 		cursor: pointer;
-		transition: all 0.15s;
 	}
 
 	.sort-btn:hover {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
+		color: var(--ink);
 	}
 
 	.sort-btn.active {
-		background: var(--color-primary);
-		border-color: var(--color-primary);
-		color: white;
+		color: var(--ink);
+		font-weight: 700;
 	}
 
 	.result-count {
-		font-size: 0.8125rem;
-		color: var(--color-text-tertiary);
+		font-size: 15px;
+		color: var(--muted);
 		white-space: nowrap;
 	}
 
 	.wantlist-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-		gap: 1rem;
+		grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+		gap: 32px 24px;
 	}
 
 	.want-card {
 		display: flex;
 		flex-direction: column;
+		min-width: 0;
 		text-decoration: none;
 		color: inherit;
-		border-radius: 10px;
-		overflow: hidden;
-		background: var(--color-bg-card);
-		border: 1px solid var(--color-border);
-		transition: transform 0.15s, box-shadow 0.15s;
 	}
 
-	.want-card:hover {
-		transform: translateY(-4px);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+	.want-card:hover .want-title {
+		text-decoration: underline;
+		text-underline-offset: 4px;
 	}
 
+	/* Square cover on the track colour, with the 1px inner edge so pale sleeves keep their outline. */
 	.want-cover {
+		position: relative;
 		width: 100%;
 		aspect-ratio: 1;
-		background: var(--color-bg-secondary);
+		background: var(--track);
+	}
+
+	.want-cover::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		box-shadow: inset 0 0 0 1px var(--cover-edge);
+		pointer-events: none;
 	}
 
 	.want-info {
-		padding: 0.75rem;
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
+		gap: 2px;
+		padding-top: 12px;
 	}
 
 	.want-title {
 		margin: 0;
-		font-size: 0.8125rem;
+		font-size: 17px;
 		font-weight: 600;
-		line-height: 1.3;
+		line-height: 1.25;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
@@ -331,8 +328,8 @@
 
 	.want-artist {
 		margin: 0;
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
+		font-size: 15px;
+		color: var(--muted);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -340,76 +337,67 @@
 
 	.want-meta {
 		display: flex;
-		gap: 0.5rem;
-		margin-top: 0.25rem;
-	}
-
-	.want-year, .want-format {
-		font-size: 0.6875rem;
-		color: var(--color-text-tertiary);
+		gap: 8px;
+		margin-top: 2px;
+		font-size: 15px;
 	}
 
 	.want-year {
 		font-weight: 600;
-		color: var(--color-primary);
+	}
+
+	.want-format {
+		color: var(--muted);
 	}
 
 	.empty-state {
-		text-align: center;
-		padding: 4rem 1rem;
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 0.5rem;
+		align-items: flex-start;
+		gap: 8px;
+		padding: 40px 0;
 	}
 
 	.empty-icon {
-		width: 80px;
-		height: 80px;
-		color: var(--color-text-tertiary);
-		margin-bottom: 0.5rem;
+		width: 64px;
+		height: 64px;
+		color: var(--muted);
+		margin-bottom: 8px;
 	}
 
 	.empty-title {
 		margin: 0;
-		font-size: 1.125rem;
-		font-weight: 600;
-		color: var(--color-text-secondary);
+		font-size: 21px;
+		font-weight: 700;
 	}
 
 	.empty-desc {
 		margin: 0;
-		font-size: 0.875rem;
-		color: var(--color-text-tertiary);
+		color: var(--muted);
 	}
 
-	.clear-btn, .back-btn {
-		margin-top: 0.75rem;
-		padding: 0.5rem 1.25rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		border: 1px solid var(--color-primary);
-		border-radius: 8px;
-		background: transparent;
-		color: var(--color-primary);
-		cursor: pointer;
-		text-decoration: none;
-		transition: all 0.15s;
+	.clear-btn,
+	.back-btn {
+		margin-top: 16px;
 	}
 
-	.clear-btn:hover, .back-btn:hover {
-		background: var(--color-primary);
-		color: white;
-	}
-
-	@media (max-width: 600px) {
+	@media (max-width: 699px) {
 		.wantlist-page {
-			padding: 1rem 0;
+			padding-top: 32px;
+		}
+
+		.avatar {
+			width: 48px;
+			height: 48px;
+		}
+
+		.sort-bar {
+			gap: 0 18px;
 		}
 
 		.wantlist-grid {
-			grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-			gap: 0.75rem;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 24px 16px;
 		}
 	}
 </style>

@@ -37,7 +37,7 @@
 <main id="main-content" class="compare-page">
 	<div class="compare-form">
 		<h1>Head-to-Head</h1>
-		<p class="description">Compare two Discogs collections to see overlap, unique finds, and taste similarity.</p>
+		<p class="lead description">Compare two Discogs collections to see overlap, unique finds, and taste similarity.</p>
 
 		<div class="inputs">
 			<div class="input-group">
@@ -46,6 +46,7 @@
 					id="user1"
 					type="text"
 					bind:value={username1}
+					class="field"
 					placeholder="Discogs username"
 				/>
 			</div>
@@ -58,16 +59,17 @@
 					id="user2"
 					type="text"
 					bind:value={username2}
+					class="field"
 					placeholder="Discogs username"
 				/>
 			</div>
 		</div>
 
 		{#if isSameUser || sameUserError}
-			<p class="error-message">Enter two different usernames to compare</p>
+			<p class="error-note error-message">Enter two different usernames to compare</p>
 		{/if}
 
-		<button class="compare-btn" onclick={compare} disabled={!username1.trim() || !username2.trim() || isLoading || isSameUser}>
+		<button class="btn btn-primary compare-btn" onclick={compare} disabled={!username1.trim() || !username2.trim() || isLoading || isSameUser}>
 			{#if isLoading}
 				<span class="spinner"></span>
 				Comparing...
@@ -80,104 +82,48 @@
 
 <style>
 	.compare-page {
-		max-width: 600px;
-		margin: 0 auto;
-		padding: 2rem 0;
-	}
-
-	.compare-form {
-		text-align: center;
+		max-width: 720px;
+		padding-top: 56px;
 	}
 
 	h1 {
-		margin: 0 0 0.5rem;
-		font-size: 2rem;
-		background: linear-gradient(135deg, #6366f1, #ec4899);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
+		margin: 0;
 	}
 
 	.description {
-		margin: 0 0 2rem;
-		color: var(--color-text-secondary);
+		margin: 16px 0 40px;
 	}
 
 	.inputs {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
-		margin-bottom: 2rem;
-	}
-
-	.input-group {
-		width: 100%;
+		gap: 16px;
+		margin-bottom: 32px;
 	}
 
 	.input-group label {
 		display: block;
-		margin-bottom: 0.5rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: var(--color-text-secondary);
-	}
-
-	.input-group input {
-		width: 100%;
-		padding: 0.875rem 1rem;
-		font-size: 1rem;
-		border: 2px solid var(--color-border);
-		border-radius: 10px;
-		background: var(--color-bg-card);
-		color: var(--color-text);
-		text-align: center;
-	}
-
-	.input-group input:focus {
-		outline: 2px solid var(--color-primary);
-		outline-offset: -2px;
-		border-color: var(--color-primary);
+		font-size: 15px;
+		color: var(--muted);
 	}
 
 	.vs {
-		font-size: 1.25rem;
-		font-weight: 700;
-		color: var(--color-text-tertiary);
-		padding: 0.5rem 0;
-	}
-
-	.compare-btn {
-		padding: 1rem 2.5rem;
-		font-size: 1rem;
-		font-weight: 600;
-		background: var(--gradient-brand);
-		color: white;
-		border: none;
-		border-radius: 10px;
-		cursor: pointer;
-		transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
-	}
-
-	.compare-btn:hover:not(:disabled) {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-	}
-
-	.compare-btn:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
+		font-size: 21px;
+		font-weight: 800;
+		color: var(--muted);
 	}
 
 	.error-message {
-		color: #ef4444;
-		font-size: 0.875rem;
-		margin: 0 0 1rem;
+		margin: 0 0 24px;
 	}
 
-	/* Base .spinner is global (app.css); only spacing differs here. */
-	.spinner {
-		vertical-align: middle;
-		margin-right: 0.5rem;
+	@media (max-width: 699px) {
+		.compare-page {
+			padding-top: 32px;
+		}
+
+		.compare-btn {
+			width: 100%;
+		}
 	}
 </style>
