@@ -52,23 +52,32 @@
 	}
 </script>
 
+<!-- As drawn: a large cover, and beside it (under it on a phone) the title, the
+     artist, a line of facts, then the button and the Discogs link. Before the
+     first pick an empty square holds the cover's place. -->
 <div class="random-picker">
 	{#if picked}
-		<div class="picker-display" class:spinning={isSpinning}>
-			<a
-				href="https://www.discogs.com/release/{picked.basic_information.id}"
-				target="_blank"
-				rel="noopener noreferrer"
-				class="picked-record"
-			>
-				<img
-					src={picked.basic_information.cover_image || picked.basic_information.thumb || '/placeholder.svg'}
-					alt=""
-					class="picked-cover cover"
-				/>
-			</a>
-		</div>
-		<div class="picked-info">
+		<!-- The same address as "View on Discogs", so the cover is not a second tab stop. -->
+		<a
+			href="https://www.discogs.com/release/{picked.basic_information.id}"
+			target="_blank"
+			rel="noopener noreferrer"
+			class="picked-record"
+			tabindex="-1"
+			aria-hidden="true"
+		>
+			<img
+				src={picked.basic_information.cover_image || picked.basic_information.thumb || '/placeholder.svg'}
+				alt=""
+				class="picked-cover cover"
+			/>
+		</a>
+	{:else}
+		<div class="picked-cover empty" aria-hidden="true"></div>
+	{/if}
+
+	<div class="picked-info">
+		{#if picked}
 			<p class="picked-title">{picked.basic_information.title}</p>
 			<p class="picked-artist">{getArtistNames(picked)}</p>
 			<div class="picked-meta">
@@ -85,107 +94,72 @@
 			{#if getLabel(picked)}
 				<p class="picked-label">{getLabel(picked)}</p>
 			{/if}
-			<a
-				href="https://www.discogs.com/release/{picked.basic_information.id}"
-				target="_blank"
-				rel="noopener noreferrer"
-				class="view-link"
-			>
-				View on Discogs
-			</a>
-		</div>
-	{:else}
-		<div class="picker-display empty" class:spinning={isSpinning}>
-			<div class="picker-placeholder">
-				<svg aria-hidden="true" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2" opacity="0.3"/>
-					<circle cx="24" cy="24" r="14" stroke="currentColor" stroke-width="1.5" opacity="0.2"/>
-					<circle cx="24" cy="24" r="4" fill="currentColor" opacity="0.3"/>
-				</svg>
-				<p>Spin to discover something from the collection</p>
-			</div>
-		</div>
-	{/if}
-
-	<button class="spin-btn btn btn-primary" onclick={pickRandom} disabled={isSpinning || items.length === 0}>
-		{#if isSpinning}
-			<span class="spin-icon">
-				<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<path d="M23 4v6h-6M1 20v-6h6" />
-					<path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
-				</svg>
-			</span>
-			Spinning...
 		{:else}
-			<span class="spin-icon">
-				<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<path d="M23 4v6h-6M1 20v-6h6" />
-					<path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
-				</svg>
-			</span>
-			Pick Random Record
+			<p class="picker-prompt">Spin to discover something from the collection</p>
 		{/if}
-	</button>
+
+		<div class="picker-actions">
+			<button class="btn btn-primary" onclick={pickRandom} disabled={isSpinning || items.length === 0}>
+				{#if isSpinning}
+					Spinning…
+				{:else if picked}
+					Pick another record
+				{:else}
+					Pick random record
+				{/if}
+			</button>
+			{#if picked}
+				<a
+					href="https://www.discogs.com/release/{picked.basic_information.id}"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="view-link"
+				>
+					View on Discogs
+				</a>
+			{/if}
+		</div>
+	</div>
 </div>
 
 <style>
 	.random-picker {
 		display: flex;
-		flex-direction: column;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: 16px;
-	}
-
-	.picker-display {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.picker-display.empty {
-		width: 100%;
-		min-height: 180px;
-	}
-
-	.picker-placeholder {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 12px;
-		padding: 32px 0;
-		color: var(--muted);
-	}
-
-	.picker-placeholder svg {
-		width: 64px;
-		height: 64px;
-	}
-
-	.picker-placeholder p {
-		margin: 0;
-		font-size: 17px;
-		text-align: center;
+		gap: 24px 32px;
 	}
 
 	.picked-record {
 		display: block;
+		flex-shrink: 0;
+		width: 240px;
+		max-width: 100%;
 		text-decoration: none;
 	}
 
 	.picked-cover {
-		width: 200px;
-		height: 200px;
+		width: 240px;
+		max-width: 100%;
 		background: var(--track);
 	}
 
+	.picked-cover.empty {
+		flex-shrink: 0;
+		aspect-ratio: 1;
+		outline: 1px solid var(--cover-edge);
+		outline-offset: -1px;
+	}
+
 	.picked-info {
-		text-align: center;
-		margin-top: 8px;
+		flex: 1 1 240px;
+		min-width: 0;
+		overflow-wrap: anywhere;
 	}
 
 	.picked-title {
 		margin: 0;
-		font-size: 26px;
+		font-size: 30px;
 		font-weight: 800;
 		letter-spacing: -0.02em;
 		line-height: 1.1;
@@ -193,16 +167,15 @@
 
 	.picked-artist {
 		margin: 8px 0 0;
-		font-size: 18px;
+		font-size: 20px;
 		color: var(--muted);
 	}
 
 	.picked-meta {
 		display: flex;
 		flex-wrap: wrap;
-		justify-content: center;
 		gap: 4px 16px;
-		margin-top: 12px;
+		margin-top: 16px;
 	}
 
 	.meta-item {
@@ -221,23 +194,31 @@
 		color: var(--muted);
 	}
 
+	.picker-prompt {
+		margin: 0;
+		font-size: 20px;
+		color: var(--muted);
+	}
+
+	.picker-actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 12px 24px;
+		margin-top: 24px;
+	}
+
 	.view-link {
 		display: inline-flex;
 		align-items: center;
-		min-height: 44px;
-		margin-top: 4px;
+		min-height: var(--touch);
 		font-size: 17px;
 		font-weight: 600;
 	}
 
-	.spin-icon {
-		display: flex;
-		width: 20px;
-		height: 20px;
-	}
-
-	.spin-icon svg {
-		width: 100%;
-		height: 100%;
+	@media (max-width: 699px) {
+		.picked-title {
+			font-size: 26px;
+		}
 	}
 </style>

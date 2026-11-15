@@ -16,40 +16,67 @@
 	} = $props();
 </script>
 
-<div class="cols">
+<!-- As drawn: three rows of two sections side by side. On a phone they stack in
+     reading order: the pick, the quiz, Share, Collection value, Explore more, Export. -->
+<div class="cols extras">
 	<section class="section col-wide">
-		<h2>What should I listen to?</h2>
+		<h2 class="lone">What should I listen to?</h2>
 		<RandomPicker {items} />
 	</section>
 
 	<section class="section col-narrow">
-		<h2>Collection quiz</h2>
+		<h2 class="lone">Collection quiz</h2>
 		<CollectionQuiz {items} />
 	</section>
 </div>
 
-<div class="cols">
+<div class="cols extras">
 	<section class="section col-half">
 		<h2>Share</h2>
+		<p class="intro">The headline numbers, as text or as a picture.</p>
 		<ShareableCard {username} {stats} {badges} />
 	</section>
 
 	<section class="section col-half">
 		<h2>Collection value</h2>
+		<p class="intro">A rough estimate from Discogs marketplace prices. It samples 20 records and scales up.</p>
 		<ValueEstimate {items} {username} />
 	</section>
 </div>
 
-<div class="cols">
+<div class="cols extras">
 	<section class="section col-wide">
 		<h2>Explore more</h2>
-		<p class="section-subtitle">Recommendations based on this collection</p>
+		<p class="intro rows-follow">Searches on Discogs built from your top styles, artists and labels.</p>
 		<Recommendations {stats} />
 	</section>
 
 	<section class="section col-narrow">
 		<h2>Export</h2>
-		<p class="section-subtitle">Download collection data</p>
+		<p class="intro">Download the whole collection.</p>
 		<CollectionExport {items} {username} />
 	</section>
 </div>
+
+<style>
+	/* As drawn: a heading sits 8px over its line of introduction, which sits 16px
+	   over what follows (4px over rows); a heading with no introduction sits 24px
+	   over its content. */
+	.extras h2 {
+		margin-bottom: 8px;
+	}
+
+	.extras h2.lone {
+		margin-bottom: 24px;
+	}
+
+	.intro {
+		margin: 0 0 16px;
+		font-size: 17px;
+		color: var(--muted);
+	}
+
+	.intro.rows-follow {
+		margin-bottom: 4px;
+	}
+</style>

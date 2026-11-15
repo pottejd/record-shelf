@@ -108,42 +108,18 @@
 	}
 </script>
 
+<!-- As drawn: three secondary buttons, one under another. -->
 <div class="export-actions">
-	<button class="export-btn btn btn-secondary" onclick={downloadCSV}>
-		<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-			<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-			<polyline points="7 10 12 15 17 10" />
-			<line x1="12" y1="15" x2="12" y2="3" />
-		</svg>
-		Export CSV
-	</button>
-	<button class="export-btn btn btn-secondary" onclick={downloadJSON}>
-		<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-			<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-			<polyline points="7 10 12 15 17 10" />
-			<line x1="12" y1="15" x2="12" y2="3" />
-		</svg>
-		Export JSON
-	</button>
-	<button class="export-btn btn btn-secondary" onclick={printList}>
-		<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-			<polyline points="6 9 6 2 18 2 18 9" />
-			<path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
-			<rect x="6" y="14" width="12" height="8" />
-		</svg>
-		Print / Insurance List
-	</button>
+	<button class="btn btn-secondary" onclick={downloadCSV}>Export CSV</button>
+	<button class="btn btn-secondary" onclick={downloadJSON}>Export JSON</button>
+	<button class="btn btn-secondary" onclick={printList}>Print an insurance list</button>
 </div>
 
 <style>
 	.export-actions {
 		display: flex;
-		flex-wrap: wrap;
+		flex-direction: column;
+		align-items: flex-start;
 		gap: 12px;
-	}
-
-	.export-btn svg {
-		width: 18px;
-		height: 18px;
 	}
 </style>

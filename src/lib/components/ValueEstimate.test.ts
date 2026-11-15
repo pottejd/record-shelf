@@ -56,7 +56,7 @@ describe('ValueEstimate component', () => {
 		const net = stubNetwork();
 		render(ValueEstimate, { props: { items: makeItems(40), username: 'tester' } });
 
-		await fireEvent.click(screen.getByText('Estimate Value'));
+		await fireEvent.click(screen.getByText('Estimate value'));
 
 		// avg = 200/20 = 10; extrapolated over 40 items = $400
 		expect(await screen.findByText('$400')).toBeInTheDocument();
@@ -75,7 +75,7 @@ describe('ValueEstimate component', () => {
 		]);
 		render(ValueEstimate, { props: { items: makeItems(5), username: 'tester' } });
 
-		await fireEvent.click(screen.getByText('Estimate Value'));
+		await fireEvent.click(screen.getByText('Estimate value'));
 
 		const list = await screen.findByRole('list', { name: 'Value snapshots' });
 		expect(within(list).getByText('2026-09-01: $9,000')).toBeInTheDocument();
@@ -87,7 +87,7 @@ describe('ValueEstimate component', () => {
 		const net = stubNetwork();
 		render(ValueEstimate, { props: { items: makeItems(5), username: 'tester' } });
 
-		await fireEvent.click(screen.getByText('Estimate Value'));
+		await fireEvent.click(screen.getByText('Estimate value'));
 
 		expect(await screen.findByText('Discogs token required for marketplace data')).toBeInTheDocument();
 		expect(net.discogs).toEqual([]);
@@ -97,7 +97,7 @@ describe('ValueEstimate component', () => {
 		const net = stubNetwork(() => json({}, 401));
 		render(ValueEstimate, { props: { items: makeItems(5), username: 'tester' } });
 
-		await fireEvent.click(screen.getByText('Estimate Value'));
+		await fireEvent.click(screen.getByText('Estimate value'));
 
 		expect(await screen.findByText('Invalid or expired Discogs token')).toBeInTheDocument();
 		expect(net.discogs).toHaveLength(1);

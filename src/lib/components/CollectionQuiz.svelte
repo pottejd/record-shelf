@@ -134,35 +134,29 @@
 <div class="collection-quiz">
 	{#if !quizActive}
 		<div class="quiz-start">
-			<div class="quiz-icon">
-				<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<circle cx="12" cy="12" r="10" />
-					<path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
-					<line x1="12" y1="17" x2="12.01" y2="17" />
-				</svg>
-			</div>
 			<p class="quiz-description">Test how well you know this collection!</p>
 			{#if questionsAnswered > 0}
 				<p class="last-score">Last score: {score}/{questionsAnswered}</p>
 			{/if}
-			<button class="start-btn btn btn-primary" onclick={startQuiz}>Start Quiz</button>
+			<button class="btn btn-primary" onclick={startQuiz}>Start quiz</button>
 		</div>
 	{:else if currentQuestion}
+		<!-- As drawn: the cover beside the question, then the answers two by two. -->
 		<div class="quiz-question">
-			<div class="question-header">
-				<span class="score">Score: {score}/{questionsAnswered}</span>
+			<div class="question-head">
+				<div class="album-preview">
+					<img
+						src={currentQuestion.item.basic_information.cover_image || currentQuestion.item.basic_information.thumb}
+						alt="Mystery album"
+						class="album-cover cover"
+						class:blur={currentQuestion.type === 'album' && !showResult}
+					/>
+				</div>
+				<div class="question-words">
+					<p class="question-text">{getQuestionText(currentQuestion)}</p>
+					<p class="score">Score: {score}/{questionsAnswered}</p>
+				</div>
 			</div>
-
-			<div class="album-preview">
-				<img
-					src={currentQuestion.item.basic_information.cover_image || currentQuestion.item.basic_information.thumb}
-					alt="Mystery album"
-					class="album-cover cover"
-					class:blur={currentQuestion.type === 'album' && !showResult}
-				/>
-			</div>
-
-			<p class="question-text">{getQuestionText(currentQuestion)}</p>
 
 			<div class="options">
 				{#each currentQuestion.options as option}
@@ -182,13 +176,11 @@
 			{#if showResult}
 				<div class="result">
 					{#if selectedAnswer === currentQuestion.correctAnswer}
-						<span class="result-text correct">Correct!</span>
+						<span class="result-text">Correct!</span>
 					{:else}
-						<span class="result-text incorrect">
-							Wrong! It was {currentQuestion.correctAnswer}
-						</span>
+						<span class="result-text">Wrong! It was {currentQuestion.correctAnswer}</span>
 					{/if}
-					<button class="next-btn btn btn-secondary" onclick={nextQuestion}>Next Question</button>
+					<button class="btn btn-secondary" onclick={nextQuestion}>Next question</button>
 				</div>
 			{/if}
 		</div>
@@ -196,64 +188,36 @@
 </div>
 
 <style>
-	.collection-quiz {
-		min-height: 300px;
-	}
-
 	.quiz-start {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		justify-content: center;
+		align-items: flex-start;
 		gap: 16px;
-		padding: 32px 0;
-		text-align: center;
-	}
-
-	.quiz-icon {
-		width: 56px;
-		height: 56px;
-		color: var(--muted);
-	}
-
-	.quiz-icon svg {
-		width: 100%;
-		height: 100%;
 	}
 
 	.quiz-description {
 		margin: 0;
-		font-size: 18px;
+		font-size: 20px;
+		color: var(--muted);
 	}
 
 	.last-score {
 		margin: 0;
-		font-size: 15px;
-		color: var(--muted);
-	}
-
-	.quiz-question {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 16px;
-	}
-
-	.question-header {
-		width: 100%;
-		display: flex;
-		justify-content: flex-end;
-	}
-
-	.score {
 		font-size: 17px;
-		font-weight: 700;
+		font-weight: 600;
 		font-variant-numeric: tabular-nums;
 	}
 
+	.question-head {
+		display: flex;
+		align-items: center;
+		gap: 20px;
+	}
+
 	.album-preview {
-		width: 140px;
-		height: 140px;
+		width: 120px;
+		height: 120px;
+		flex-shrink: 0;
 		overflow: hidden;
 		background: var(--track);
 	}
@@ -267,31 +231,42 @@
 		filter: blur(20px);
 	}
 
+	.question-words {
+		min-width: 0;
+	}
+
 	.question-text {
 		margin: 0;
 		font-size: 24px;
 		font-weight: 700;
 		letter-spacing: -0.01em;
 		line-height: 1.15;
-		text-align: center;
 	}
 
+	.score {
+		margin: 8px 0 0;
+		font-size: 15px;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* Two answers to a row where there is room, one under another on a phone. */
 	.options {
-		width: 100%;
-		display: flex;
-		flex-direction: column;
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
 		gap: 12px;
+		margin-top: 20px;
 	}
 
 	/* Answers are secondary buttons. Once answered, the right one fills with ink and
 	   a wrong pick is struck through; the line below says which in words. */
 	.option-btn {
-		width: 100%;
 		justify-content: flex-start;
 		padding: 8px 16px;
 		font-size: 17px;
 		line-height: 1.3;
 		text-align: left;
+		overflow-wrap: anywhere;
 	}
 
 	.option-btn:hover:not(:disabled) {
@@ -315,15 +290,15 @@
 
 	.result {
 		display: flex;
-		flex-direction: column;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: 12px;
-		margin-top: 8px;
+		gap: 12px 24px;
+		margin-top: 20px;
 	}
 
 	.result-text {
 		font-size: 18px;
 		font-weight: 700;
-		text-align: center;
+		overflow-wrap: anywhere;
 	}
 </style>

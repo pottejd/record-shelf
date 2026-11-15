@@ -34,15 +34,15 @@
 			});
 		}
 
-		// Based on dominant decade
+		// Based on dominant decade. The decade already ends in "s" ("1970s").
 		if (s.dominantDecade) {
 			const decade = s.dominantDecade;
 			const topGenre = s.dominantGenre;
 			if (topGenre) {
 				result.push({
-					label: `${decade}s ${topGenre}`,
-					query: encodeURIComponent(`${topGenre} ${decade}s`),
-					reason: `Sweet spot: ${topGenre} from the ${decade}s`
+					label: `${decade} ${topGenre}`,
+					query: encodeURIComponent(`${topGenre} ${decade}`),
+					reason: `Sweet spot: ${topGenre} from the ${decade}`
 				});
 			}
 		}
@@ -68,40 +68,38 @@
 				href="https://www.discogs.com/search/?q={suggestion.query}&type=release"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="suggestion-card"
+				class="suggestion"
 			>
 				<span class="suggestion-label">{suggestion.label}</span>
 				<span class="suggestion-reason">{suggestion.reason}</span>
-				<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="arrow">
-					<path d="M7 17l9.2-9.2M17 17V7H7" />
-				</svg>
 			</a>
 		{/each}
 	</div>
 {/if}
 
 <style>
-	/* Searches as rows divided by hairlines, in columns where there is room. */
+	/* As drawn: searches as rows over a hairline, two columns where there is room. */
 	.suggestions {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
 		gap: 0 32px;
 	}
 
-	.suggestion-card {
-		position: relative;
+	.suggestion {
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
 		gap: 2px;
 		min-height: 68px;
-		padding: 10px 28px 10px 0;
+		padding: 10px 0;
 		border-bottom: 1px solid var(--hairline);
 		text-decoration: none;
 		color: var(--ink);
+		overflow-wrap: anywhere;
 	}
 
-	.suggestion-card:hover .suggestion-label {
+	.suggestion:hover .suggestion-label {
+		color: var(--accent);
 		text-decoration: underline;
 		text-underline-offset: 4px;
 	}
@@ -114,15 +112,5 @@
 	.suggestion-reason {
 		font-size: 15px;
 		color: var(--muted);
-	}
-
-	.arrow {
-		position: absolute;
-		top: 50%;
-		right: 0;
-		width: 16px;
-		height: 16px;
-		margin-top: -8px;
-		color: var(--ink);
 	}
 </style>

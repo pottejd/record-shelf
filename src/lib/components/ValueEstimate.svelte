@@ -101,27 +101,30 @@
 
 <div class="value-estimate">
 	{#if result}
+		<!-- As drawn: the figure and its label over a hairline, then Most valuable as rows. -->
 		<div class="value-result">
-			<span class="value-amount">{formatCurrency(result.totalValue, result.currency)}</span>
-			<span class="value-label">Estimated collection value</span>
-			<span class="value-note">
-				Based on {result.pricedCount} of {result.totalRequested} items with marketplace data
-				{#if items.length > 20}
-					(extrapolated from 20-item sample)
-				{/if}
-			</span>
-			{#if partial}
-				<span class="value-warning error-note">Discogs is busy — this is a partial estimate. Try again in a minute.</span>
-			{/if}
-			{#if result.failedCount > 0}
-				<span class="value-warning error-note">
-					⚠ {result.failedCount} price lookup{result.failedCount === 1 ? '' : 's'} failed — this estimate may be incomplete.
+			<div class="value-head">
+				<span class="value-amount">{formatCurrency(result.totalValue, result.currency)}</span>
+				<span class="value-label">Estimated collection value</span>
+				<span class="value-note">
+					Based on {result.pricedCount} of {result.totalRequested} items with marketplace data
+					{#if items.length > 20}
+						(extrapolated from 20-item sample)
+					{/if}
 				</span>
-			{/if}
+				{#if partial}
+					<span class="value-warning error-note">Discogs is busy — this is a partial estimate. Try again in a minute.</span>
+				{/if}
+				{#if result.failedCount > 0}
+					<span class="value-warning error-note">
+						⚠ {result.failedCount} price lookup{result.failedCount === 1 ? '' : 's'} failed — this estimate may be incomplete.
+					</span>
+				{/if}
+			</div>
 			{#if topValued.length > 0}
 				<div class="most-valuable">
 					<h3>Most valuable</h3>
-					<ul class="rows">
+					<ul>
 						{#each topValued as v}
 							<li>
 								<span class="mv-title">{v.item.basic_information.title}</span>
@@ -161,11 +164,10 @@
 		</div>
 	{:else}
 		<div class="value-prompt">
-			<p>Get a rough estimate of this collection's market value based on Discogs marketplace data.</p>
 			{#if errorMsg}
 				<p class="error error-note">{errorMsg}</p>
 			{/if}
-			<button class="estimate-btn btn btn-primary" onclick={estimateValue} disabled={loading}>
+			<button class="btn btn-primary" onclick={estimateValue} disabled={loading}>
 				{#if loading}
 					<span class="spinner"></span>
 					{#if progress}
@@ -174,30 +176,34 @@
 						Estimating...
 					{/if}
 				{:else}
-					Estimate Value
+					Estimate value
 				{/if}
 			</button>
-			<p class="disclaimer">Requires a Discogs API token. Samples up to 20 items and extrapolates.</p>
+			<p class="disclaimer">Requires a Discogs API token.</p>
 		</div>
 	{/if}
 </div>
 
 <style>
-	.value-result {
+	.value-head {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
 		gap: 4px;
+		padding-bottom: 16px;
+		border-bottom: 1px solid var(--hairline);
 	}
 
 	.value-amount {
-		font-size: 44px;
+		font-size: 40px;
 		font-weight: 800;
 		letter-spacing: -0.03em;
 		line-height: 1.05;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.value-label {
+		margin-top: 4px;
 		font-size: 15px;
 		color: var(--muted);
 	}
@@ -213,15 +219,9 @@
 		font-size: 15px;
 	}
 
-	.most-valuable,
-	.value-history {
-		width: 100%;
-		margin-top: 24px;
-	}
-
 	.most-valuable h3,
 	.value-history h3 {
-		margin: 0 0 4px;
+		margin: 24px 0 4px;
 		font-size: 18px;
 		font-weight: 700;
 	}
@@ -238,6 +238,7 @@
 		align-items: center;
 		gap: 16px;
 		min-height: 44px;
+		border-bottom: 1px solid var(--hairline);
 		font-size: 17px;
 	}
 

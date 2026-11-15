@@ -799,3 +799,60 @@ for (const width of [1280, 390]) {
 		expect(await pw.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
 	});
 }
+
+/** The reading order, and the order on a phone. */
+const EXTRAS = ['What should I listen to?', 'Collection quiz', 'Share', 'Collection value', 'Explore more', 'Export'];
+
+test('Extras: six sections in reading order, side by side in pairs as drawn', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser?tab=extras');
+	const extras = pw.locator('#extras');
+	await expect(extras.locator('h2')).toHaveText(EXTRAS);
+	await settled(pw);
+	const boxes = await boxesOf(extras, EXTRAS.map((text) => ({ text })));
+	for (let row = 0; row < 3; row++) {
+		const [left, right] = boxes.slice(row * 2, row * 2 + 2);
+		expect(right.y).toBeCloseTo(left.y, 0);
+		expect(right.x).toBeGreaterThan(left.x + left.width);
+		if (row > 0) {
+			expect(left.y).toBeGreaterThan(boxes[row * 2 - 2].y);
+			expect(left.x).toBeCloseTo(boxes[0].x, 0);
+		}
+	}
+	for (const label of ['Export CSV', 'Export JSON', 'Print an insurance list']) {
+		await expect(extras.getByRole('button', { name: label, exact: true })).toBeVisible();
+	}
+	await expect(extras.getByRole('button', { name: 'Estimate value', exact: true })).toBeVisible();
+	await expect(extras.getByRole('button', { name: /again/i })).toHaveCount(0);
+});
+
+test('Extras on a phone: one column in reading order, no sideways scroll', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.setViewportSize({ width: 390, height: 844 });
+	await pw.goto('/u/tabuser?tab=extras');
+	const extras = pw.locator('#extras');
+	await expect(extras.locator('h2')).toHaveText(EXTRAS);
+	await settled(pw);
+	const boxes = await boxesOf(extras, EXTRAS.map((text) => ({ text })));
+	for (let i = 1; i < boxes.length; i++) {
+		expect(boxes[i].x).toBeCloseTo(boxes[0].x, 0);
+		expect(boxes[i].y).toBeGreaterThan(boxes[i - 1].y);
+	}
+	expect(await pw.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('Extras: the pick button shows a cover, a title and a link to Discogs', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser?tab=extras');
+	const pick = pw.locator('#extras section', { has: pw.getByRole('heading', { name: 'What should I listen to?' }) });
+	await expect(pick.getByRole('link', { name: 'View on Discogs' })).toHaveCount(0);
+	await pick.getByRole('button', { name: 'Pick random record' }).click();
+	// The spin settles on a record and the button offers another.
+	await expect(pick.getByRole('button', { name: 'Pick another record' })).toBeEnabled({ timeout: 10_000 });
+	await expect(pick.locator('img.picked-cover')).toBeVisible();
+	await expect(pick.locator('img.picked-cover')).toHaveAttribute('src', /\/cover\/\d+\.jpg$/);
+	await expect(pick.locator('.picked-title')).toHaveText(/\S/);
+	const link = pick.getByRole('link', { name: 'View on Discogs' });
+	await expect(link).toBeVisible();
+	await expect(link).toHaveAttribute('href', /^https:\/\/www\.discogs\.com\/release\/\d+$/);
+});
