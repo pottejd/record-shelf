@@ -56,6 +56,9 @@ export const SPINES_DARK = [
 	'#8A6A93'
 ];
 
+// The 1px edge on the right of each spine (spec, "The shelf").
+export const SPINE_EDGE_LIGHT = 'rgba(24,32,28,0.3)';
+
 export const CHART_LIGHT = ['#2B66A8', '#A8770A', '#7A4E9C', '#23855A', '#C8321F'];
 export const CHART_DARK = ['#5490CC', '#B98A26', '#9F7FC8', '#42A277', '#E2513A'];
 

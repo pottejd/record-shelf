@@ -14,6 +14,7 @@ import {
 	SHADES_DARK,
 	SHADE_TEXT_LIGHT,
 	SHADE_TEXT_DARK,
+	SPINE_EDGE_LIGHT,
 	type Palette
 } from './tokens';
 
@@ -84,6 +85,7 @@ describe('tokens', () => {
 		expectPalette(root, LIGHT);
 		expectSets(root, SPINES_LIGHT, CHART_LIGHT, CHART_OTHER_LIGHT, SHADES_LIGHT, SHADE_TEXT_LIGHT);
 		expect(root['--spine-edge']).toBe('rgba(24,32,28,0.3)');
+		expect(SPINE_EDGE_LIGHT).toBe(root['--spine-edge']);
 		expect(root['--cover-edge']).toBe('rgba(24,32,28,0.12)');
 	});
 

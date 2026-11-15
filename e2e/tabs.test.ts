@@ -870,3 +870,24 @@ test('Extras: the pick button shows a cover, a title and a link to Discogs', asy
 	await expect(link).toBeVisible();
 	await expect(link).toHaveAttribute('href', /^https:\/\/www\.discogs\.com\/release\/\d+$/);
 });
+
+test('Extras: Download PNG saves a real PNG, and the card prints the address the page is on', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser?tab=extras');
+	const share = pw.locator('#extras section', { has: pw.getByRole('heading', { name: 'Share' }) });
+	await settled(pw);
+
+	const address = `${new URL(pw.url()).host}/u/tabuser`;
+	await expect(share).toContainText(address);
+	expect(await pw.locator('body').innerText()).not.toContain('recordshelf.app');
+
+	const [download] = await Promise.all([
+		pw.waitForEvent('download'),
+		share.getByRole('button', { name: 'Download PNG', exact: true }).click()
+	]);
+	expect(download.suggestedFilename()).toMatch(/\.png$/);
+	const chunks: Buffer[] = [];
+	for await (const chunk of await download.createReadStream()) chunks.push(chunk as Buffer);
+	const bytes = Buffer.concat(chunks);
+	expect([...bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+});

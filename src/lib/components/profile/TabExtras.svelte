@@ -34,7 +34,7 @@
 	<section class="section col-half">
 		<h2>Share</h2>
 		<p class="intro">The headline numbers, as text or as a picture.</p>
-		<ShareableCard {username} {stats} {badges} />
+		<ShareableCard {username} {stats} {items} {badges} />
 	</section>
 
 	<section class="section col-half">
