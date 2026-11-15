@@ -58,6 +58,63 @@ test('Records filters live next to the tab and survive Back', async ({ page: pw 
 	await expect(pw.getByLabel('Genre', { exact: true })).toHaveValue('Jazz');
 });
 
+test('clicking the open tab changes nothing', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser?tab=records');
+	await expect(pw.locator('#records')).toBeVisible();
+	await pw.getByRole('button', { name: 'Filters' }).click();
+	await pw.getByLabel('Genre', { exact: true }).selectOption('Jazz');
+	await expect(pw).toHaveURL(/\?tab=records&genre=Jazz$/);
+	const steps = await pw.evaluate(() => history.length);
+
+	const records = pw.getByRole('link', { name: 'Records' });
+	await expect(records).toHaveAttribute('href', '/u/tabuser?tab=records');
+	await expect(records).toHaveAttribute('aria-current', 'page');
+	await records.click();
+	// Nothing should happen, so there is no event to wait for: give a navigation time to show.
+	await pw.waitForTimeout(500);
+
+	await expect(pw).toHaveURL(/\?tab=records&genre=Jazz$/);
+	await expect(pw.getByLabel('Genre', { exact: true })).toHaveValue('Jazz');
+	expect(await pw.evaluate(() => history.length)).toBe(steps);
+});
+
+const cards = '#records .item-card';
+
+test('a page number in the address opens on that page', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser?tab=records&page=2');
+	await expect(pw.locator(cards)).toHaveCount(48);
+	await expect(pw).toHaveURL(/\?tab=records&page=2$/);
+});
+
+test('the Records page survives a trip to another tab and Back', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser?tab=records');
+	await expect(pw.locator(cards)).toHaveCount(24);
+	await pw.getByRole('button', { name: /Show more/ }).click();
+	await expect(pw.locator(cards)).toHaveCount(48);
+	await expect(pw).toHaveURL(/\?tab=records&page=2$/);
+
+	await pw.getByRole('link', { name: 'Charts' }).click();
+	await expect(pw.locator('#charts')).toBeVisible();
+	await pw.goBack();
+
+	await expect(pw.locator('#records')).toBeVisible();
+	await expect(pw.locator(cards)).toHaveCount(48);
+	await expect(pw).toHaveURL(/\?tab=records&page=2$/);
+});
+
+test('changing a filter on page 2 returns to page 1', async ({ page: pw }) => {
+	await mockStored(pw, 'tabuser', makeCollection(150));
+	await pw.goto('/u/tabuser?tab=records&page=2');
+	await expect(pw.locator(cards)).toHaveCount(48);
+	await pw.getByRole('button', { name: 'Filters' }).click();
+	await pw.getByLabel('Genre', { exact: true }).selectOption('Rock');
+	await expect(pw).toHaveURL(/\?tab=records&genre=Rock$/);
+	await expect(pw.locator(cards)).toHaveCount(24);
+});
+
 test('an old filter link opens Records', async ({ page: pw }) => {
 	await mockStored(pw, 'tabuser', makeCollection(150));
 	await pw.goto('/u/tabuser?genre=Rock');

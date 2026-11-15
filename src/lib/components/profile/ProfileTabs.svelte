@@ -2,6 +2,13 @@
 	import { TABS, TAB_LABELS, tabHref, type TabId } from '$lib/profile/tabs';
 
 	let { active, url }: { active: TabId; url: URL } = $props();
+
+	/** The open tab's link stays a real link, but a plain click on it does nothing:
+	 *  the address, the Records filters and the history stay as they are. */
+	function stayPut(e: MouseEvent) {
+		if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+		e.preventDefault();
+	}
 </script>
 
 <nav class="tabs" aria-label="Profile sections">
@@ -11,6 +18,7 @@
 			class="tab"
 			class:active={id === active}
 			aria-current={id === active ? 'page' : undefined}
+			onclick={id === active ? stayPut : undefined}
 			data-sveltekit-noscroll
 		>
 			{TAB_LABELS[id]}

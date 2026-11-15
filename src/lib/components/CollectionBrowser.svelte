@@ -142,10 +142,14 @@
 	let visibleItems = $derived(filteredItems.slice(0, visibleCount));
 	let hasMore = $derived(visibleCount < filteredItems.length);
 
-	// Reset to page 1 when filters change
+	// Back to page 1 when the search, a filter or the sort changes. Only on a change
+	// after mount: the list remounts each time Records opens, and a page number from
+	// the address must survive that.
+	let lastFilters: string | null = null;
 	$effect(() => {
-		debouncedQuery; selectedGenre; selectedFormat; selectedDecade; sortBy; sortOrder;
-		page = 1;
+		const filters = JSON.stringify([debouncedQuery, selectedGenre, selectedFormat, selectedDecade, sortBy, sortOrder]);
+		if (lastFilters !== null && filters !== lastFilters) page = 1;
+		lastFilters = filters;
 	});
 
 	function clearFilters() {
